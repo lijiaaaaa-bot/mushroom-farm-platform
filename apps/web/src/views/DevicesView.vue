@@ -107,7 +107,7 @@ onMounted(load);
 </script>
 
 <template>
-  <div class="space-y-4">
+  <div class="ops-page space-y-4">
     <section class="panel space-y-3">
       <h2 class="text-lg">批量导入</h2>
       <p v-if="canImport" class="text-sm text-mist">

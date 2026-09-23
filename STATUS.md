@@ -25,9 +25,10 @@
 - #38 F-R8-02 设备心跳与离线告警：HTTP `POST /api/v1/ingest/heartbeat` 与 MQTT `mushroom/+/+/heartbeat` 写入 lastHeartbeatAt，超时产生设备离线告警，恢复心跳自动关闭。PR #40 squash 合入 main（d23fc66）；Issue closed. https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/40
 - #41 F-R1-07 接入可观测：`GET /api/v1/ingest/observability` 汇总近窗接收、拒收、延迟与最近错误；覆盖识别 HTTP/MQTT、环境与心跳。`/ingest-observability` 展示数字与最近错误，加载失败不渲染空表。PR #42 squash 合入 main（4d04654）；Issue closed. https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/42
 - #43 F-R3-04 告警认领与误报关闭：`POST /api/v1/alerts/:id/claim` 写入认领人；`POST /api/v1/alerts/:id/false-positive` 以 closeReason `false_positive` 关闭，与普通关闭的 `resolved` 区分；认领、误报、关闭写入审计。`/alerts` 有认领与误报入口，查看员只读。PR #44 squash 合入 main（6690bcb）；Issue closed. https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/44
+- #48 管理端总览在 `/dashboard/overview` 有序列时用 ECharts 画成熟、总数、病害，并列出未关闭告警与最近识别；识别页与病害页为抓拍图卡。侧栏 `#1B7A4E`，页面底 `#F5F7FA`，白卡片 8px 圆角、1px `#E5E6EB`。PR #51。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/51
 
 ## 进行中
-- #48 管理端总览仍是四格 KPI 加空白「近 7 日」区；本分支按浅底白卡片、绿侧栏 `#1B7A4E`、有数据时画 ECharts、识别/病害改抓拍图卡来改。草稿 PR，页面尚未改完。
+- 无
 
 ## 规范
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18

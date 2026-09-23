@@ -63,7 +63,7 @@ function label(row: { channel: ChannelRow['channel']; transport: string }) {
 </script>
 
 <template>
-  <div class="space-y-4 bg-canvas">
+  <div class="ops-page space-y-4 bg-canvas">
     <p v-if="loading" class="text-mist">加载中…</p>
     <p v-else-if="error" class="text-danger">{{ error }}</p>
     <template v-else-if="summary">

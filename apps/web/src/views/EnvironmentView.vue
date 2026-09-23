@@ -34,7 +34,7 @@ function reading(value: number | null, unit: string) {
 </script>
 
 <template>
-  <section class="panel overflow-x-auto bg-white">
+  <section class="ops-page panel overflow-x-auto bg-white">
     <h2 class="text-lg">环境读数</h2>
     <p class="mb-3 text-sm text-mist">
       HTTP {{ INGEST_ENVIRONMENT_HTTP_PATH }} · MQTT {{ MQTT_ENVIRONMENT_TOPIC }}

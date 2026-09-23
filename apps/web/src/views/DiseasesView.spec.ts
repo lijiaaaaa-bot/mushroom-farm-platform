@@ -56,6 +56,7 @@ describe('DiseasesView', () => {
     expect(wrapper.text()).toContain('请求失败');
     expect(wrapper.text()).not.toContain('暂无病害记录');
     expect(wrapper.find('table').exists()).toBe(false);
+    expect(wrapper.find('.result-card').exists()).toBe(false);
     expect(wrapper.find('img').exists()).toBe(false);
     wrapper.unmount();
   });
@@ -66,10 +67,11 @@ describe('DiseasesView', () => {
 
     expect(wrapper.text()).toContain('暂无病害记录。');
     expect(wrapper.find('table').exists()).toBe(false);
+    expect(wrapper.find('.result-card').exists()).toBe(false);
     wrapper.unmount();
   });
 
-  it('renders an opener for a stored snapshot and plain text when there is none', async () => {
+  it('renders an image caption card for a stored snapshot and plain text when there is none', async () => {
     httpGet.mockImplementation((url: string) => {
       if (String(url).includes('/snapshot')) {
         return Promise.resolve({ data: new Blob(['jpeg'], { type: 'image/jpeg' }) });
@@ -77,27 +79,25 @@ describe('DiseasesView', () => {
       return Promise.resolve({ data: { items: [withSnapshot, withoutSnapshot] } });
     });
     const wrapper = await mountView();
-    const rows = wrapper.findAll('tbody tr');
+    const cards = wrapper.findAll('.result-card');
 
+    expect(wrapper.find('.result-grid').exists()).toBe(true);
+    expect(wrapper.find('table').exists()).toBe(false);
     expect(wrapper.text()).toContain('S01');
     expect(wrapper.text()).toContain('CAM-S01-01');
-    expect(wrapper.text()).toContain('2');
-    expect(wrapper.text()).toContain('3');
-    expect(rows[0].text()).toContain('查看抓拍');
-    expect(rows[0].text()).not.toContain('无抓拍');
-    expect(rows[0].find('img').exists()).toBe(false);
-    expect(rows[1].text()).toContain('无抓拍');
-    expect(rows[1].find('img').exists()).toBe(false);
-    expect(rows[1].find('button').exists()).toBe(false);
-
-    await rows[0].get('button').trigger('click');
-    await flushPromises();
-
-    const image = wrapper.get('img');
-    expect(image.attributes('src')).toBe('blob:snapshot');
+    expect(wrapper.text()).toContain('病害 3');
+    expect(wrapper.text()).toContain('等级 2');
+    expect(cards[0].text()).toContain('详情');
+    expect(cards[0].get('img').attributes('src')).toBe('blob:snapshot');
+    expect(cards[1].text()).toContain('无抓拍');
+    expect(cards[1].find('img').exists()).toBe(false);
+    expect(cards[1].find('button').exists()).toBe(false);
     expect(httpGet).toHaveBeenCalledWith('/ingest/recognitions/d-1/snapshot', {
       responseType: 'blob',
     });
+
+    await cards[0].get('button').trigger('click');
+    expect(wrapper.findAll('img').length).toBeGreaterThan(1);
     wrapper.unmount();
   });
 
@@ -107,9 +107,6 @@ describe('DiseasesView', () => {
       return Promise.resolve({ data: { items: [withSnapshot] } });
     });
     const wrapper = await mountView();
-
-    await wrapper.get('button').trigger('click');
-    await flushPromises();
 
     expect(wrapper.text()).toContain('请求失败');
     expect(wrapper.find('img').exists()).toBe(false);

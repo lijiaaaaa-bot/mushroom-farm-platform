@@ -41,40 +41,43 @@ function leave() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-canvas text-ink md:grid md:grid-cols-[240px_1fr]">
+  <div
+    class="admin-shell min-h-screen bg-canvas text-ink md:grid md:grid-cols-[240px_1fr]"
+    data-theme="farm-ops-light"
+  >
     <aside
-      class="border-b border-line bg-white md:border-b-0 md:border-r"
+      class="admin-sidebar bg-sidebar text-white md:border-r md:border-white/10"
       :class="open ? 'block' : 'hidden md:block'"
     >
       <div class="px-5 py-6">
-        <p class="text-xs tracking-[0.2em] text-accent">MUSHROOM OPS</p>
-        <h1 class="mt-1 text-lg font-semibold">食用菌种植管理</h1>
+        <p class="text-xs tracking-[0.16em] text-white/70">MUSHROOM OPS</p>
+        <h1 class="mt-1 text-lg font-semibold text-white">食用菌种植管理</h1>
       </div>
       <nav class="space-y-1 px-3 pb-6">
         <router-link
           v-for="link in links"
           :key="link.to"
           :to="link.to"
-          class="block rounded-lg px-3 py-2 text-sm text-mist hover:bg-canvas hover:text-accent"
-          exact-active-class="!bg-canvas !text-accent"
+          class="block rounded-md px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white"
+          exact-active-class="!bg-sidebar-active !text-white"
           @click="open = false"
         >
           {{ link.label }}
         </router-link>
-        <p class="px-3 pt-4 text-xs text-mist/70">二期槽位</p>
+        <p class="px-3 pt-4 text-xs text-white/60">二期槽位</p>
         <router-link
           v-for="link in phase2"
           :key="link.to"
           :to="link.to"
-          class="block rounded-lg px-3 py-2 text-sm text-mist hover:bg-canvas hover:text-accent"
+          class="block rounded-md px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white"
           @click="open = false"
         >
           {{ link.label }}
         </router-link>
       </nav>
     </aside>
-    <div class="bg-canvas">
-      <header class="flex items-center justify-between border-b border-line bg-white px-4 py-3 md:px-6">
+    <div class="min-w-0 bg-canvas">
+      <header class="admin-topbar flex items-center justify-between border-b border-line bg-white px-4 py-3 md:px-6">
         <button class="btn-ghost md:hidden" type="button" @click="open = !open">菜单</button>
         <p class="text-sm text-ink">{{ route.meta.title }}</p>
         <div class="flex items-center gap-3 text-sm">
@@ -83,7 +86,7 @@ function leave() {
           <button class="btn-ghost" type="button" @click="leave">退出</button>
         </div>
       </header>
-      <main class="p-4 md:p-6">
+      <main class="admin-main p-4 md:p-6">
         <router-view />
       </main>
     </div>
