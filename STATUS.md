@@ -1,34 +1,23 @@
-# 食用菌种植管理平台｜项目指挥台（STATUS）
+# STATUS｜mushroom-farm-platform
 
-> 更新：2026-09-23 10:44（Asia/Shanghai）  
-> 公开仓：https://github.com/lijiaaaaa-bot/mushroom-farm-platform  
-> 用法：看本文件 + Issues + PR；不要只靠聊天追问。
+更新：2026-09-23（Asia/Shanghai）  
+仓：https://github.com/lijiaaaaa-bot/mushroom-farm-platform
 
-## 状态灯
+## 已完成
+- Day-1 硬墙 + HTTP 接入 + 告警确认（smoke）
+- 公开 GitHub main
+- 招标样本 / 计划 / 需求文档进仓（`bid-sample/`、`docs/`）
+- MQTT 竖切 PR：https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/5 （待合并）
+- 指挥台仓：https://github.com/lijiaaaaa-bot/mushroom-project-console
 
-### ✅ 已完成
-- [x] Day-1 架构硬墙（`ARCHITECTURE_WALLS.md` + `packages/contracts`）
-- [x] HTTP 接入竖切 + 告警创建/确认（`make smoke` 曾通过）
-- [x] 招标样本包（`bid-sample/`）
-- [x] 项目计划书 / 需求规格 / 架构原则（`docs/`）
-- [x] **公开 GitHub 仓库已推送**（main）
+## 进行中 / 待开（只列可验收项）
+- #1 MQTT：合并 PR #5 后关 Issue
+- #2 大屏：暗色五区布局页 + 接现有 API
+- #3 管理端四页接通：设备 / 告警 / 采摘 / 报表导出
+- #4 指挥台 status.json 与 Issues/PR 对齐
 
-### 🔄 进行中
-- [ ] MQTT 接入竖切（CloudAgent 进行中，完成后开 PR）
-- [ ] 项目指挥台 App（独立仓，进行中）
-- [ ] 管理端暗色页打磨
-- [ ] 指挥大屏壳（二期可演示）
+## 阻塞
+- 无
 
-### ⛔ 阻塞
-- 无硬阻塞。对方 IoT 报文样例未到时，继续用【假设】黄金报文推进。
-
-## 你怎么推动（不用只聊天）
-1. 打开 **Issues**：每张卡是可推进项；评论「做这个」或改状态。
-2. 看 **Pull requests**：合并即落地。
-3. 看本 **STATUS.md**：总览灯。
-4. 工作日早上会有进度摘要推到本对话。
-
-## 关键链接
-- 仓库：https://github.com/lijiaaaaa-bot/mushroom-farm-platform
-- Issues：https://github.com/lijiaaaaa-bot/mushroom-farm-platform/issues
-- PRs：https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pulls
+## 推进方式
+在对应 Issue 评论「开干」或「先做 X」；不在看板写口号目标。
