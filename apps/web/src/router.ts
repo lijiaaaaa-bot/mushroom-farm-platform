@@ -11,7 +11,6 @@ import GrowthTrendsView from './views/GrowthTrendsView.vue';
 import HarvestView from './views/HarvestView.vue';
 import IngestObservabilityView from './views/IngestObservabilityView.vue';
 import LoginView from './views/LoginView.vue';
-import Phase2View from './views/phase2/Phase2View.vue';
 import WecomPushView from './views/WecomPushView.vue';
 import RecognitionsView from './views/RecognitionsView.vue';
 import ReportsView from './views/ReportsView.vue';
@@ -22,7 +21,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/login', component: LoginView, meta: { public: true, title: '登录' } },
-    { path: '/big-screen', component: BigScreenView, meta: { title: '菇棚监测' } },
+    { path: '/big-screen', component: BigScreenView, meta: { title: '基地大屏' } },
     {
       path: '/',
       component: AdminLayout,
@@ -41,12 +40,7 @@ const router = createRouter({
         { path: 'reports', component: ReportsView, meta: { title: '报表' } },
         { path: 'sheds', component: ShedsView, meta: { title: '棚区' } },
         { path: 'audit', component: AuditView, meta: { title: '审计' } },
-        {
-          path: 'phase2/big-screen',
-          component: Phase2View,
-          props: { title: '基地大屏', summary: '基地与单棚大屏。' },
-          meta: { title: '大屏' },
-        },
+        { path: 'phase2/big-screen', redirect: '/big-screen' },
         { path: 'phase2/trends', redirect: '/growth-trends' },
         { path: 'phase2/yield', redirect: '/harvest' },
       ],

@@ -309,7 +309,7 @@ const wallCells = computed(() => {
   const seen = new Set<string>();
   const cells: RecognitionRow[] = [];
   for (const row of recognitions.value) {
-    if (layout.value === 'panels' && selectedCode.value && row.shedCode !== selectedCode.value) continue;
+    if (selectedCode.value && row.shedCode !== selectedCode.value) continue;
     const key = `${row.shedCode}\0${row.cameraCode}`;
     if (seen.has(key)) continue;
     seen.add(key);
@@ -620,7 +620,7 @@ onBeforeUnmount(() => {
         <span class="mark" aria-hidden="true"></span>
         <div>
           <p class="eyebrow">食用菌基地</p>
-          <h1>菇棚监测</h1>
+          <h1>基地大屏</h1>
         </div>
       </div>
       <p class="clock">{{ clockText }}</p>
@@ -642,45 +642,16 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
+    <section class="zone metrics" aria-label="指标">
+      <article v-for="tile in metricTiles" :key="tile.key" class="tile" :class="{ hot: tile.hot }">
+        <p class="tile-label">{{ tile.label }}</p>
+        <p class="tile-value">{{ tile.value }}</p>
+        <p class="tile-hint">{{ tile.hint }}</p>
+      </article>
+      <p v-if="zoneError.overview" class="zone-error metric-error">{{ zoneError.overview }}</p>
+    </section>
+
     <aside v-show="layout !== 'wall'" class="zone left">
-      <div class="zone-head">
-        <h2>指标</h2>
-      </div>
-      <div class="metric-grid">
-        <article v-for="tile in metricTiles" :key="tile.key" class="tile" :class="{ hot: tile.hot }">
-          <p class="tile-label">{{ tile.label }}</p>
-          <p class="tile-value">{{ tile.value }}</p>
-          <p class="tile-hint">{{ tile.hint }}</p>
-        </article>
-      </div>
-      <p v-if="zoneError.overview" class="zone-error">{{ zoneError.overview }}</p>
-
-      <div class="zone-head split">
-        <h2>告警</h2>
-        <span>{{ visibleAlerts.length }}<template v-if="!selectedCode && alertTotal > alerts.length"> / {{ alertTotal }}</template></span>
-      </div>
-      <div class="scroll">
-        <p v-if="zoneError.alerts" class="zone-error">{{ zoneError.alerts }}</p>
-        <p v-else-if="loading && !alerts.length" class="muted">加载中…</p>
-        <p v-else-if="!visibleAlerts.length" class="muted">暂无告警。</p>
-        <ul v-else class="rows">
-          <li v-for="row in visibleAlerts" :key="row.id" class="row" :data-level="row.level">
-            <div class="row-main">
-              <span class="pip"></span>
-              <div>
-                <p class="row-title">
-                  {{ ALERT_LEVEL_LABEL[row.level] }} · {{ row.shedCode }} · {{ row.title }}
-                </p>
-                <p class="row-sub">{{ row.message }}</p>
-              </div>
-            </div>
-            <p class="row-meta">{{ ALERT_STATUS_LABEL[row.status] }} · {{ shortTime(row.createdAt) }}</p>
-          </li>
-        </ul>
-      </div>
-    </aside>
-
-    <main v-show="layout !== 'wall'" class="zone center">
       <div class="zone-head split">
         <h2>棚区平面</h2>
         <div class="legend">
@@ -732,9 +703,60 @@ onBeforeUnmount(() => {
           </div>
         </dl>
       </section>
+    </aside>
+
+    <main class="zone center wall">
+      <div class="zone-head split">
+        <h2>抓拍墙</h2>
+        <span>
+          各摄像头最近一张 · 最近 {{ recognitions.length }} 条
+          <template v-if="recognitionTotal > recognitions.length"> / 共 {{ recognitionTotal }}</template>
+        </span>
+      </div>
+      <p v-if="zoneError.recognitions" class="zone-error">{{ zoneError.recognitions }}</p>
+      <p v-else-if="loading && !wallCells.length" class="muted">加载中…</p>
+      <p v-else-if="!wallCells.length" class="muted">暂无识别记录，抓拍墙没有画面。</p>
+      <div v-else class="wall-grid">
+        <article v-for="cell in wallCells" :key="cell.id" class="wall-cell" :class="{ on: pinnedId === cell.id }">
+          <ResultCard
+            :id="cell.id"
+            :snapshot-object-key="cell.snapshotObjectKey"
+            :snapshot-url="cell.snapshotUrl"
+          >
+            <p class="wall-title">{{ cell.cameraCode }}</p>
+            <p class="wall-meta">{{ cell.shedCode }} · {{ shortTime(cell.recognizedAt) }}</p>
+            <p class="wall-counts">成熟 {{ cell.matureCount }}/{{ cell.mushroomCount }} · 病害 {{ cell.diseaseCount }}</p>
+          </ResultCard>
+          <button type="button" class="text-btn" @click="pinRecognition(cell.id)">对比此时段</button>
+        </article>
+      </div>
     </main>
 
     <aside v-show="layout !== 'wall'" class="zone right">
+      <div class="zone-head split">
+        <h2>告警</h2>
+        <span>{{ visibleAlerts.length }}<template v-if="!selectedCode && alertTotal > alerts.length"> / {{ alertTotal }}</template></span>
+      </div>
+      <div class="scroll alert-scroll">
+        <p v-if="zoneError.alerts" class="zone-error">{{ zoneError.alerts }}</p>
+        <p v-else-if="loading && !alerts.length" class="muted">加载中…</p>
+        <p v-else-if="!visibleAlerts.length" class="muted">暂无告警。</p>
+        <ul v-else class="rows">
+          <li v-for="row in visibleAlerts" :key="row.id" class="row" :data-level="row.level">
+            <div class="row-main">
+              <span class="pip"></span>
+              <div>
+                <p class="row-title">
+                  {{ ALERT_LEVEL_LABEL[row.level] }} · {{ row.shedCode }} · {{ row.title }}
+                </p>
+                <p class="row-sub">{{ row.message }}</p>
+              </div>
+            </div>
+            <p class="row-meta">{{ ALERT_STATUS_LABEL[row.status] }} · {{ shortTime(row.createdAt) }}</p>
+          </li>
+        </ul>
+      </div>
+
       <div class="zone-head split">
         <h2>环境</h2>
         <span class="caption">{{ envReadout.caption }}</span>
@@ -773,32 +795,6 @@ onBeforeUnmount(() => {
         </ul>
       </div>
     </aside>
-
-    <section v-if="layout === 'wall' || layout === 'panels'" class="zone wall">
-      <div class="zone-head split">
-        <h2>抓拍墙</h2>
-        <span>
-          各摄像头最近一张 · 最近 {{ recognitions.length }} 条
-          <template v-if="recognitionTotal > recognitions.length"> / 共 {{ recognitionTotal }}</template>
-        </span>
-      </div>
-      <p v-if="zoneError.recognitions" class="zone-error">{{ zoneError.recognitions }}</p>
-      <p v-else-if="loading && !wallCells.length" class="muted">加载中…</p>
-      <p v-else-if="!wallCells.length" class="muted">暂无识别记录，抓拍墙没有画面。</p>
-      <div v-else class="wall-grid">
-        <article v-for="cell in wallCells" :key="cell.id" class="wall-cell" :class="{ on: pinnedId === cell.id }">
-          <ResultCard
-            :id="cell.id"
-            :snapshot-object-key="cell.snapshotObjectKey"
-            :snapshot-url="cell.snapshotUrl"
-          >
-            <p>{{ cell.shedCode }} · {{ cell.cameraCode }}</p>
-            <p>{{ shortTime(cell.recognizedAt) }} · 成熟 {{ cell.matureCount }}/{{ cell.mushroomCount }} · 病害 {{ cell.diseaseCount }}</p>
-          </ResultCard>
-          <button type="button" class="text-btn" @click="pinRecognition(cell.id)">对比此时段</button>
-        </article>
-      </div>
-    </section>
 
     <footer class="zone bottom">
       <div v-if="layout === 'panels'" class="timeline-chart-wrap">
@@ -843,22 +839,22 @@ onBeforeUnmount(() => {
   height: 100vh;
   min-height: 640px;
   display: grid;
-  grid-template-columns: minmax(280px, 22vw) minmax(0, 1fr) minmax(300px, 24vw);
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 12px;
-  padding: 12px;
+  grid-template-columns: minmax(240px, 20vw) minmax(0, 1.45fr) minmax(280px, 24vw);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 10px;
   color: var(--text-primary);
   color-scheme: light;
   background: var(--bg-app);
 }
 
 .screen.skin-dark {
-  --bg-app: #24302a;
-  --bg-app-alt: #1e2822;
-  --bg-card: #2c3830;
-  --text-primary: #e7eee9;
-  --text-secondary: #a8b5ac;
-  --line: #3e4d44;
+  --bg-app: #141c18;
+  --bg-app-alt: #1b2420;
+  --bg-card: #24312b;
+  --text-primary: #f3f7f4;
+  --text-secondary: #b7c4bb;
+  --line: #3a4a42;
   --accent: #3d9a62;
   --bg-sidebar: #1b7a4e;
   --warn: #f59e0b;
@@ -866,6 +862,14 @@ onBeforeUnmount(() => {
   --warn-ink: #f59e0b;
   --idle: #6d7b72;
   color-scheme: dark;
+}
+
+.screen.skin-dark .top h1 {
+  font-size: 28px;
+}
+
+.screen.skin-dark .wall-title {
+  font-size: 16px;
 }
 
 .zone {
@@ -885,6 +889,26 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 16px;
   padding: 10px 16px;
+  border-top: 3px solid var(--bg-sidebar);
+}
+
+.metrics {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.metrics .tile-value {
+  font-size: 22px;
+}
+
+.metric-error {
+  grid-column: 1 / -1;
 }
 
 .brand {
@@ -1051,6 +1075,11 @@ onBeforeUnmount(() => {
   flex: 1;
 }
 
+.alert-scroll {
+  flex: none;
+  max-height: 34%;
+}
+
 .rows {
   list-style: none;
   margin: 0;
@@ -1141,7 +1170,7 @@ onBeforeUnmount(() => {
 .floor {
   position: relative;
   flex: 1;
-  min-height: 280px;
+  min-height: 160px;
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -1177,7 +1206,7 @@ onBeforeUnmount(() => {
 .point {
   position: absolute;
   transform: translate(-50%, -50%);
-  width: 148px;
+  width: 132px;
   padding: 8px 10px 8px 22px;
   text-align: left;
   color: var(--text-primary);
@@ -1351,35 +1380,40 @@ onBeforeUnmount(() => {
 
 .screen[data-layout='wall'] {
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
 }
 
 .screen[data-layout='panels'] {
-  grid-template-columns: minmax(240px, 20vw) minmax(0, 1fr) minmax(280px, 26vw);
-  grid-template-rows: auto minmax(220px, 1fr) minmax(220px, 0.8fr) auto;
+  grid-template-columns: minmax(220px, 18vw) minmax(0, 1.45fr) minmax(260px, 22vw);
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
 }
 
-.screen[data-layout='panels'] .left {
-  grid-column: 1;
-  grid-row: 2 / span 2;
-}
-
-.screen[data-layout='panels'] .center {
-  grid-column: 2;
-  grid-row: 2;
-}
-
-.screen[data-layout='panels'] .right {
-  grid-column: 3;
-  grid-row: 2;
+.screen[data-layout='panels'] .top,
+.screen[data-layout='panels'] .metrics,
+.screen[data-layout='panels'] .bottom {
+  grid-column: 1 / -1;
 }
 
 .screen[data-layout='panels'] .top {
   grid-row: 1;
 }
 
-.screen[data-layout='panels'] .wall {
-  grid-column: 2 / span 2;
+.screen[data-layout='panels'] .metrics {
+  grid-row: 2;
+}
+
+.screen[data-layout='panels'] .left {
+  grid-column: 1;
+  grid-row: 3;
+}
+
+.screen[data-layout='panels'] .center {
+  grid-column: 2;
+  grid-row: 3;
+}
+
+.screen[data-layout='panels'] .right {
+  grid-column: 3;
   grid-row: 3;
 }
 
@@ -1409,8 +1443,27 @@ onBeforeUnmount(() => {
 
 .wall-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 8px;
+  align-content: start;
+}
+
+.wall-title,
+.wall-meta,
+.wall-counts {
+  margin: 0;
+}
+
+.wall-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.wall-meta,
+.wall-counts {
+  font-size: 12px;
+  color: var(--text-secondary);
 }
 
 .wall-cell.on {
@@ -1465,12 +1518,18 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr;
   }
 
+  .metrics,
   .screen[data-layout='panels'] .left,
   .screen[data-layout='panels'] .center,
   .screen[data-layout='panels'] .right,
-  .screen[data-layout='panels'] .wall {
+  .screen[data-layout='panels'] .metrics,
+  .screen[data-layout='panels'] .bottom {
     grid-column: 1;
     grid-row: auto;
+  }
+
+  .metrics {
+    grid-template-columns: 1fr 1fr;
   }
 }
 

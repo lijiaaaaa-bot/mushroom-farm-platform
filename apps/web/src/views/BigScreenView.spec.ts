@@ -176,13 +176,17 @@ describe('BigScreenView', () => {
 
     const screen = zones(wrapper);
     expect(wrapper.get('.screen').attributes('data-skin')).toBe('tb-night');
-    expect(screen.top.text()).toContain('菇棚监测');
-    expect(screen.left.text()).toContain('指标');
-    expect(screen.left.text()).toContain('告警');
-    expect(screen.left.text()).toContain('高温');
-    expect(screen.center.text()).toContain('棚区平面');
-    expect(screen.center.text()).toContain('S01');
-    expect(screen.center.text()).toContain('一号棚');
+    expect(screen.top.text()).toContain('基地大屏');
+    expect(wrapper.get('.metrics').text()).toContain('棚区');
+    expect(wrapper.get('.metrics').text()).toContain('今日成熟');
+    expect(screen.left.text()).toContain('棚区平面');
+    expect(screen.left.text()).toContain('S01');
+    expect(screen.left.text()).toContain('一号棚');
+    expect(screen.center.text()).toContain('抓拍墙');
+    expect(screen.center.text()).toContain('CAM-S01');
+    expect(screen.center.text()).toContain('无抓拍');
+    expect(screen.right.text()).toContain('告警');
+    expect(screen.right.text()).toContain('高温');
     const point = wrapper.get('button.point');
     expect(point.attributes('style')).toContain('left: 50%');
     expect(point.attributes('style')).toContain('top: 46%');
@@ -209,7 +213,7 @@ describe('BigScreenView', () => {
     expect(filterHref).toContain('from=2026-09-22T16:00:00.000Z');
     expect(filterHref).toContain('to=2026-09-23T15:59:59.999Z');
     expect(filterHref).toContain('shedCode=S01');
-    expect(wrapper.find('.wall').exists()).toBe(false);
+    expect(wrapper.get('.wall').text()).toContain('抓拍墙');
     expect(chartInit).not.toHaveBeenCalled();
 
     wrapper.unmount();
@@ -220,9 +224,10 @@ describe('BigScreenView', () => {
     const wrapper = await mountScreen();
     const screen = zones(wrapper);
 
-    expect(screen.top.text()).toContain('菇棚监测');
-    expect(screen.left.text()).toContain('暂无告警');
-    expect(screen.center.text()).toContain('当前账号没有可见棚区');
+    expect(screen.top.text()).toContain('基地大屏');
+    expect(screen.left.text()).toContain('当前账号没有可见棚区');
+    expect(screen.center.text()).toContain('暂无识别记录，抓拍墙没有画面。');
+    expect(screen.right.text()).toContain('暂无告警');
     expect(screen.right.text()).toContain('暂无设备');
     expect(screen.bottom.text()).toContain('暂无告警与识别记录');
     expect(screen.bottom.text()).toContain('暂无识别时间，不能按抓拍时段筛选。');
@@ -346,7 +351,7 @@ describe('BigScreenView', () => {
     await flushPromises();
 
     expect(wrapper.get('.screen').attributes('data-layout')).toBe('panels');
-    expect(wrapper.get('main.zone.center').text()).toContain('棚区平面');
+    expect(wrapper.get('aside.zone.left').text()).toContain('棚区平面');
     expect(wrapper.get('.wall').text()).toContain('抓拍墙');
     expect(wrapper.get('.timeline-chart').attributes('class')).toContain('timeline-chart');
     expect(chartInit).toHaveBeenCalled();

@@ -71,6 +71,7 @@ function leave() {
         <button class="btn-ghost md:hidden" type="button" @click="open = !open">菜单</button>
         <p class="text-sm text-ink">{{ route.meta.title }}</p>
         <div class="flex items-center gap-3 text-sm">
+          <router-link class="btn-primary" to="/big-screen">基地大屏</router-link>
           <AlertInbox />
           <span>{{ currentUser?.displayName }} · {{ roleLabel }}</span>
           <button class="btn-ghost" type="button" @click="leave">退出</button>
