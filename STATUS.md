@@ -3,18 +3,20 @@
 更新：2026-09-23（Asia/Shanghai）  
 仓：https://github.com/lijiaaaaa-bot/mushroom-farm-platform
 
+进度只认：已合并 PR + 已关闭 Issue + 本文件一行。聊天文字不算交付。
+
 ## 已完成
 - Day-1 硬墙 + HTTP 接入 + 告警确认（smoke）
-- 公开 GitHub main
-- `bid-sample/`、`docs/` 进仓
-- MQTT 竖切 PR：https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/5
-- 指挥台仓：https://github.com/lijiaaaaa-bot/mushroom-project-console
+- 公开 GitHub main；`bid-sample/`、`docs/` 在仓内
+- #7 squash 合入 main、#6 已关闭：接入墙与 CI 门禁在 main
 
-## 进行中 / 待开
-- #1 合并 PR #5
-- #2 大屏五区页接 API
-- #3 管理端四页接通
-- #4 指挥台 status.json 对齐
+## 进行中
+- #1 MQTT：https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/5 已 ready（非 draft）；与 main 冲突且 CI checks 未上报，解冲突后 CI 绿再合并
+- #2 大屏：暗色指挥页路由 + 五区布局接现有 API（#2，`status:doing`）
+
+## 待开
+- #3 管理端四页（设备 / 告警 / 采摘 / 报表接通 API），排在 #2 之后
+- #4 指挥台 `status.json` 对齐（仓：https://github.com/lijiaaaaa-bot/mushroom-project-console）
 
 ## 阻塞
 - 无
