@@ -11,3 +11,4 @@
 | CompactionRL 训练 | 不落地（要训模型） | 明确不做 |
 | Sourcegraph MCP 代码图 | 仓小，暂不引第三方 | 明确不做 |
 | OpenAI 服务端 compaction API | 由宿主会话产品处理，不进本业务仓 | 明确不做 |
+| Overnight / Galaxy 工单 | harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单 | 本 PR |

@@ -21,6 +21,7 @@
 3. 追加 `agent-progress.md`：完成项、未决、下一人手路径
 4. 状态变了则更新 `STATUS.md` 一行
 5. 聊天只指 PR/Issue/STATUS，不当交付物
+6. 通宵或长任务走 Overnight 工单；协议在 harness，本仓指针：`docs/OVERNIGHT_TICKET.md`
 
 ## 独立判断
 新会话或子 agent：只给需求原文或只给仓；不给主会话结论。主会话只收摘要。

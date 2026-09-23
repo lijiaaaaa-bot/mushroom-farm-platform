@@ -17,6 +17,9 @@
 ## 进行中
 - 无
 
+## 规范
+- Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18
+
 ## 待开
 - #3 管理端四页（设备 / 告警 / 采摘 / 报表接通 API），排在 #2 之后
 - #4 指挥台 `status.json` 对齐（仓：https://github.com/lijiaaaaa-bot/mushroom-project-console）
