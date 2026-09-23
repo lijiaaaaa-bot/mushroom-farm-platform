@@ -3,8 +3,8 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：#36 F-R6-02 每日采摘清单人工修正并留痕（进行中，PR 未合则不关 Issue）
-- 进行中文件：`apps/api/src/harvest/`、`apps/web/src/views/HarvestView.vue`、`evidence/overnight-mvp-harvest-correct/decisions.tsv`
+- 本会话目标：#36 F-R6-02 已合入 main（PR #37，Issue closed）。STATUS 从进行中改为已完成
+- 进行中文件：`STATUS.md`、`evidence/overnight-mvp-harvest-correct/decisions.tsv`
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -33,3 +33,5 @@
 | 2026-09-23 | #34 验收：合法上报、显式键与缺省键重复、Redis 不可用时的唯一约束、识别报文打到环境路径被拒、棚负责人与查看越权 403、MQTT 入库不进识别管道。页面失败非空表、有数据渲染 | `make test` 退出码 0（API jest 39，web vitest 45）；`make gates` 退出码 0 | PR #35 未合，不关 Issue #34。本机无 Docker，未打开登录后页面 |
 | 2026-09-23 | #34 rebase 到 main dfbdbd0。STATUS：#27 移入已完成（PR #28 squash dfbdbd0，Issue closed）；#34 仍进行中，链接 PR #35 | `make test` 退出码 0（API jest 44，web vitest 48）；`make gates` 退出码 0 | PR #35 不合并 |
 | 2026-09-23 | #36 采摘修正：PATCH /harvest/daily/:id 改成熟数与蘑菇数并写回 recognition_records。审计 harvest.correct 带棚、摄像头、旧值→新值。超管、生产管理员、棚负责人可改；查看员 403 且页面无保存。棚负责人不能改他棚。保存后重拉当日汇总 | 待 `make test` 与 `make gates` | PR 未合，不关 Issue #36 |
+| 2026-09-23 | #36 验收：合法修正后汇总变为成熟 0、蘑菇 6、可采摄像头 0；越权棚 403 且不写审计；查看员 403；审计一行含用户、时间、棚、摄像头、旧值→新值。页面保存后刷新，失败仍留表，查看员无保存 | `make test` 退出码 0（API jest 50，web vitest 54）；`make gates` 退出码 0 | 本机无 Docker，未打开登录后的 /harvest |
+| 2026-09-23 | PR #37 由 lijiaaaaa-bot 合并（squash 418dee1），Issue #36 关闭。本代理未执行合并。STATUS 将 #36 移入已完成 | `make gates` | 进行中无下一条 |
