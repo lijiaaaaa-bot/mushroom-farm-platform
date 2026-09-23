@@ -13,8 +13,8 @@ interface Shed {
 }
 
 interface EditableShed extends Shed {
-  draftX: string;
-  draftY: string;
+  draftX: string | number;
+  draftY: string | number;
 }
 
 const rows = ref<EditableShed[]>([]);
@@ -40,13 +40,16 @@ function displayCoord(value: number | null) {
   return value === null || value === undefined ? '未配置' : String(value);
 }
 
-function parseCoord(value: string): number | null {
+function parseCoord(value: string | number | null): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value)) throw new Error('坐标须为数字');
+    return value;
+  }
   const trimmed = value.trim();
   if (!trimmed) return null;
   const parsed = Number(trimmed);
-  if (!Number.isFinite(parsed)) {
-    throw new Error('坐标须为数字');
-  }
+  if (!Number.isFinite(parsed)) throw new Error('坐标须为数字');
   return parsed;
 }
 
