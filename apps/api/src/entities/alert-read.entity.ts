@@ -16,7 +16,8 @@ export class AlertRead {
   @Column()
   userId: string;
 
-  @Column()
+  /** 与 alerts.id 同为 uuid。varchar 时未读 left join 会报 character varying = uuid。 */
+  @Column({ type: 'uuid' })
   alertId: string;
 
   @CreateDateColumn({ type: 'timestamptz' })

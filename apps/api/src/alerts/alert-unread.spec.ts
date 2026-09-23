@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from 'fs';
+import { join } from 'path';
 import { INestApplication } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
@@ -5,6 +7,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Role } from '@mushroom/contracts';
 import { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
+import { getMetadataArgsStorage, QueryFailedError } from 'typeorm';
 import { AuditService } from '../audit';
 import { AuthUser } from '../common/auth-user';
 import { RolesGuard } from '../common/guards';
@@ -14,6 +17,57 @@ import { AlertRead } from '../entities/alert-read.entity';
 import { AlertRule } from '../entities/alert-rule.entity';
 import { AlertsController } from './alerts.controller';
 import { AlertsService } from './alerts.service';
+
+type EntityClass = abstract new (...args: never[]) => object;
+
+/** 与 Postgres 对未标注列的默认一致：string / 未写 type → character varying。 */
+export function columnPostgresType(
+  target: EntityClass,
+  propertyName: string,
+): string | null {
+  const column = getMetadataArgsStorage().columns.find(
+    (item) => item.target === target && item.propertyName === propertyName,
+  );
+  if (!column) return null;
+  const type = column.options.type;
+  if (type === 'uuid') return 'uuid';
+  if (
+    type === undefined ||
+    type === String ||
+    type === 'varchar' ||
+    type === 'character varying'
+  ) {
+    return 'character varying';
+  }
+  return String(type);
+}
+
+/**
+ * 内存查询替身复现 Postgres 的列对列比较：varchar = uuid 在 getCount 前失败。
+ * 参数比较（r.userId = :userId）不在此列。
+ */
+export function assertPostgresColumnEquality(
+  condition: string,
+  typeOf: (alias: string, property: string) => string | null,
+) {
+  const comparison =
+    /\b([A-Za-z_][\w]*)\.([A-Za-z_][\w]*)\s*=\s*([A-Za-z_][\w]*)\.([A-Za-z_][\w]*)/g;
+  for (const match of condition.matchAll(comparison)) {
+    const left = typeOf(match[1], match[2]);
+    const right = typeOf(match[3], match[4]);
+    if (!left || !right || left === right) continue;
+    if (
+      (left === 'uuid' && right === 'character varying') ||
+      (left === 'character varying' && right === 'uuid')
+    ) {
+      throw new QueryFailedError(
+        condition,
+        [],
+        new Error('operator does not exist: character varying = uuid'),
+      );
+    }
+  }
+}
 
 const ROLES = [
   'super_admin',
@@ -40,6 +94,11 @@ class MemoryUnreadQuery {
     condition: string,
     params?: { userId?: string },
   ) {
+    assertPostgresColumnEquality(condition, (alias, property) => {
+      if (alias === 'a') return columnPostgresType(Alert, property);
+      if (alias === 'r') return columnPostgresType(AlertRead, property);
+      return null;
+    });
     if (condition.includes('userId') && params?.userId) {
       this.userId = params.userId;
     }
@@ -237,6 +296,37 @@ describe('alert unread HTTP', () => {
     };
   }
 
+  it('counts unread alerts when alert_reads.alert_id is uuid', async () => {
+    expect(columnPostgresType(AlertRead, 'alertId')).toBe('uuid');
+    expect(columnPostgresType(Alert, 'id')).toBe('uuid');
+    const created = await createAlert('S01', '未读计数');
+    const body = await unread('viewer', 'id-view', 'S01');
+    expect(body.unreadCount).toBe(1);
+    expect(body.items).toEqual([
+      expect.objectContaining({
+        id: created.id,
+        level: 'severe',
+        shedCode: 'S01',
+        title: '未读计数',
+      }),
+    ]);
+  });
+
+  it('rejects a varchar = uuid unread join before getCount', () => {
+    expect(() =>
+      assertPostgresColumnEquality(
+        'r.alertId = a.id AND r.userId = :userId',
+        (alias, property) => {
+          if (alias === 'r' && property === 'alertId') {
+            return 'character varying';
+          }
+          if (alias === 'a' && property === 'id') return 'uuid';
+          return null;
+        },
+      ),
+    ).toThrow(/operator does not exist: character varying = uuid/);
+  });
+
   it('raises unread counts for in-scope roles after an alert is created', async () => {
     expect(await unread('production_admin', 'id-producer')).toMatchObject({
       unreadCount: 0,
@@ -334,5 +424,62 @@ describe('alert unread HTTP', () => {
       id: second.id,
       shedCode: 'S02',
     });
+  });
+});
+
+describe('alert_reads.alert_id migrations', () => {
+  const migrationsDir = join(__dirname, '../../../../infra/migrations');
+  const files = readdirSync(migrationsDir)
+    .filter((name) => name.endsWith('.sql'))
+    .sort()
+    .map((name) => ({
+      name,
+      sql: readFileSync(join(migrationsDir, name), 'utf8'),
+    }));
+
+  function alertIdTypeAfterMigrations() {
+    let type: string | null = null;
+    for (const file of files) {
+      if (/CREATE TABLE IF NOT EXISTS alert_reads\b/i.test(file.sql)) {
+        const created = file.sql.match(
+          /alert_id\s+(uuid|varchar|character varying)\b/i,
+        );
+        type = created ? created[1].toLowerCase() : null;
+      }
+      if (
+        /ALTER\s+COLUMN\s+alert_id\s+TYPE\s+uuid\b/i.test(file.sql) &&
+        /::uuid/.test(file.sql)
+      ) {
+        type = 'uuid';
+      }
+    }
+    return type;
+  }
+
+  it('creates alert_id as uuid and upgrades old varchar columns', () => {
+    const create = files.find((file) => file.name === '002_alert_reads.sql');
+    const upgrade = files.find(
+      (file) => file.name === '007_alert_reads_alert_id_uuid.sql',
+    );
+    expect(create?.sql).toMatch(/alert_id uuid NOT NULL/);
+    expect(create?.sql).not.toMatch(/alert_id varchar/);
+    expect(upgrade?.sql).toMatch(/IF col_type = 'uuid' THEN\s+RETURN;/);
+    const guardAt = upgrade?.sql.indexOf("IF col_type = 'uuid'") ?? -1;
+    const deleteAt = upgrade?.sql.search(/DELETE FROM alert_reads/i) ?? -1;
+    const alterAt =
+      upgrade?.sql.search(
+        /ALTER TABLE alert_reads\s+ALTER COLUMN alert_id TYPE uuid USING btrim\(alert_id\)::uuid/i,
+      ) ?? -1;
+    expect(guardAt).toBeGreaterThan(-1);
+    expect(deleteAt).toBeGreaterThan(guardAt);
+    expect(alterAt).toBeGreaterThan(deleteAt);
+    expect(upgrade?.sql).toContain("btrim(alert_id) = ''");
+    expect(upgrade?.sql).toContain(
+      "btrim(alert_id) !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'",
+    );
+    expect(alertIdTypeAfterMigrations()).toBe('uuid');
+    expect(
+      readFileSync(join(__dirname, 'alerts.service.ts'), 'utf8'),
+    ).toContain('r.alertId = a.id');
   });
 });
