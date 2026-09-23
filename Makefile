@@ -1,4 +1,4 @@
-.PHONY: up api web test smoke migrate contracts lint gates
+.PHONY: up api web test smoke migrate contracts lint gates gates-selftest
 
 contracts:
 	npm --prefix packages/contracts install
@@ -34,6 +34,9 @@ test: contracts lint
 # 交付物门禁，与 test 分开。CI：.github/workflows/deliverable-gates.yml
 gates:
 	node scripts/gates/run-all.mjs
+
+gates-selftest:
+	node scripts/gates/selftest.mjs
 
 # HTTP 黄金报文，以及 Mosquitto 上的 recognition.mqtt.json（主题 mushroom/+/+/recognition）
 smoke: contracts

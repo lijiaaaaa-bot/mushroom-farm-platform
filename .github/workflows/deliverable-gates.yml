@@ -13,3 +13,5 @@ jobs:
           node-version: "22"
       - name: Run deliverable gates
         run: node scripts/gates/run-all.mjs
+      - name: Run gate isomorphic selftest
+        run: node scripts/gates/selftest.mjs

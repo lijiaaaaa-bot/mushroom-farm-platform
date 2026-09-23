@@ -9,6 +9,7 @@ NestJS + Vue3/TS/Vite/Tailwind + PostgreSQL/Redis/MinIO + MQTT；契约 `package
 ## 统一入口
 - 测试：`make test`
 - 文档闸：`make gates`（exit 0 才算文档过关）
+- 门禁自测：`make gates-selftest`
 - 事实源：根目录 `facts.json`、已合并 PR、关闭的 Issue、`STATUS.md`
 
 ## 上下文纪律（2026-06～09 窗）
