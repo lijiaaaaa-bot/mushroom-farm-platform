@@ -1,6 +1,6 @@
 # STATUS｜mushroom-farm-platform
 
-更新：2026-09-23（Asia/Shanghai）  
+更新：2026-09-23 21:05（Asia/Shanghai）  
 仓：https://github.com/lijiaaaaa-bot/mushroom-farm-platform
 
 进度只认：已合并 PR + 已关闭 Issue + 本文件一行。聊天文字不算交付。
@@ -27,13 +27,16 @@
 - #43 F-R3-04 告警认领与误报关闭：`POST /api/v1/alerts/:id/claim` 写入认领人；`POST /api/v1/alerts/:id/false-positive` 以 closeReason `false_positive` 关闭，与普通关闭的 `resolved` 区分；认领、误报、关闭写入审计。`/alerts` 有认领与误报入口，查看员只读。PR #44 squash 合入 main（6690bcb）；Issue closed. https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/44
 
 ## 进行中
-- 无
+- #48 管理端 Family B 轻量农事风落地（对照调查 04/06 样张；云端改代码中）
+- #47 生长趋势日聚合曲线 F-R4-01/02（云端改代码中）
+- #49 产量预估近 2–3 日 F-R6-03（云端改代码中）
+- #50 病害与同期环境同屏对照 F-R5-02（云端改代码中）
+
+## 待开
+- 无（全量需求切片已开；企微/钉钉 F-R3-06、精装大屏 F-R2-04 下一波）
 
 ## 规范
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18
-
-## 待开
-- 无
 
 ## 阻塞
 - 无
