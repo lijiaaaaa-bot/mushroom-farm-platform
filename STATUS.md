@@ -17,7 +17,7 @@
 - #4 console PR #1 merged（https://github.com/lijiaaaaa-bot/mushroom-project-console/pull/1 ，squash f75deeb）；`public/status.json` matches Issues/PR/STATUS；Issue #4 closed.
 
 ## 进行中
-- 无
+- #23 `/alert-rules` 可新建规则，并可修改阈值、等级、窗口分钟与启用；超管与生产管理员可写，棚区负责人与查看人员写操作被拒绝
 
 ## 规范
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18
