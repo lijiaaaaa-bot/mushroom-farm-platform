@@ -26,7 +26,6 @@ const links = [
 const phase2 = [
   { to: '/phase2/big-screen', label: '大屏' },
   { to: '/phase2/trends', label: '趋势' },
-  { to: '/phase2/yield', label: '产量预估' },
   { to: '/phase2/wecom', label: '企微' },
 ];
 const roleLabel = computed(() => {

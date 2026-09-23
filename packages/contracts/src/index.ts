@@ -110,6 +110,12 @@ export const INGEST_ENVIRONMENT_HTTP_PATH = '/api/v1/ingest/environment';
 export const IMAGE_RETENTION_DAYS = 30;
 export const TIMESERIES_RETENTION_DAYS = 90;
 export const DEVICE_OFFLINE_AFTER_MS = 5 * 60 * 1000;
+/** 病害对照默认取识别时间前后各这么多分钟的环境读数。 */
+export const DISEASE_ENV_WINDOW_MINUTES = 30;
+/** 产量估计要求近这么多个上海自然日都有成熟识别。 */
+export const YIELD_ESTIMATE_HISTORY_DAYS = 30;
+/** 外推的未来天数（近 2–3 日，取 3 日）。 */
+export const YIELD_ESTIMATE_HORIZON_DAYS = 3;
 export const IDEMPOTENCY_TTL_SECONDS = 7 * 24 * 3600;
 export const SNAPSHOT_KEY_PATTERN =
   'snapshots/{shedCode}/{yyyy-MM-dd}/{cameraCode}/{epochMs}.jpg';
@@ -336,6 +342,12 @@ export function todayShanghai(now = new Date()): string {
 export function shanghaiDayRange(date: string): { start: Date; end: Date } {
   const start = new Date(`${date}T00:00:00+08:00`);
   return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
+}
+
+/** 按上海日历移动整天。上海无夏令时。 */
+export function shiftShanghaiDate(date: string, deltaDays: number): string {
+  const start = new Date(`${date}T00:00:00+08:00`);
+  return shanghaiDate(new Date(start.getTime() + deltaDays * 24 * 60 * 60 * 1000));
 }
 
 export function buildSnapshotObjectKey(

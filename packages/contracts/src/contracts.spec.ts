@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   buildSnapshotObjectKey,
+  shiftShanghaiDate,
   parseAlertFalsePositive,
   parseAlertNote,
   parseCreateAlert,
@@ -108,6 +109,11 @@ describe('golden fixtures', () => {
     const rejected = parseHeartbeatIngress(extra.body);
     assert.equal(rejected.ok, false);
     if (!rejected.ok) assert.equal(rejected.code, extra.expect);
+  });
+
+  it('shifts Shanghai calendar dates by whole days', () => {
+    assert.equal(shiftShanghaiDate('2026-09-30', 1), '2026-10-01');
+    assert.equal(shiftShanghaiDate('2026-03-01', -1), '2026-02-28');
   });
 
   it('loads the snapshot key fixture', () => {

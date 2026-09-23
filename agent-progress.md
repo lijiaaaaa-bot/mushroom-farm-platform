@@ -3,8 +3,8 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：#45 STATUS 看板对齐。#41 已完成（PR #42）；#43 已完成（PR #44）；进行中无已关闭 Issue
-- 进行中文件：`STATUS.md`
+- 本会话目标：#50 F-R5-02 病害与同期环境同屏；#49 F-R6-03 近 2–3 日产量估计（标注「估计」）。不满 30 天不编造数字。PR #53 草稿未合则不关 Issue
+- 进行中文件：`apps/api/src/ingest/ingest.service.ts`、`apps/api/src/harvest/yield-estimate.ts`、`apps/web/src/views/DiseasesView.vue`、`apps/web/src/views/HarvestView.vue`、`STATUS.md`
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -42,3 +42,5 @@
 | 2026-09-23 | #45 STATUS：#41 已在已完成并引用 PR #42（squash 4d04654，Issue closed）；#43 从进行中移入已完成（PR #44 squash 6690bcb，Issue closed）；进行中改为无 | `gh pr view 42` MERGED；`gh pr view 44` MERGED；`gh issue view 41` CLOSED；`gh issue view 43` CLOSED；`make gates` | 不改业务代码，不自动合并 |
 | 2026-09-23 | #48 草稿：STATUS 进行中。目标是总览有数据时画曲线并列出告警/识别，识别与病害改为图卡；侧栏与色板按 Family B 浅色农事 | 草稿 PR 先开，页面改动随后推 | 不关 Issue |
 | 2026-09-23 | #48 管理端：绿侧栏 `#1B7A4E`、页面 `#F5F7FA`、白卡片 8px / `#E5E6EB`。总览 8 个 KPI；trend 非空才 init ECharts（成熟/总数/病害），空趋势不留高空白图。告警表与最近识别列表同页。识别与病害改为 result-card 图卡。设备/告警/采摘/环境/接入观测带 ops-page | `make test` 退出码 0（API jest 63，web vitest 69）；`make gates` 退出码 0 | 未打开登录后的总览。PR #51 草稿，不关 Issue |
+| 2026-09-23 | #50 病害同期环境：GET /diseases/:id/environment 按棚（可选传感器）对齐识别时间前后各 30 分钟。空窗说明，不用识别自带温湿度充数。/diseases 同屏。#49 产量：GET /harvest/yield-estimate，满 30 个上海自然日才线性外推未来 3 日并标注「估计」，不足则说明且 days 为空。棚隔离 | 待 `make test` 与 `make gates` | PR 未合，不关 Issue #50 / #49 |
+| 2026-09-23 | #50/#49 验收：环境窗含前后边界与他棚排除，空态不显示识别自带 22.5；产量平坦序列外推 15/1015，缺日 days 为空，棚负责人请求他棚 403。页面同屏与「估计」标注。jsdom 不初始化 ECharts | `make test` 退出码 0（API jest 72，web vitest 68）；`make gates` 退出码 0 | 未打开登录后的 /diseases 与 /harvest。PR #53 草稿未合，不关 Issue |

@@ -49,12 +49,7 @@ const router = createRouter({
           props: { title: '生长趋势', summary: '抓拍对比与生长复盘。' },
           meta: { title: '趋势' },
         },
-        {
-          path: 'phase2/yield',
-          component: Phase2View,
-          props: { title: '产量预估', summary: '未来 2–3 天可采量预估。' },
-          meta: { title: '产量预估' },
-        },
+        { path: 'phase2/yield', redirect: '/harvest' },
         {
           path: 'phase2/wecom',
           component: Phase2View,

@@ -23,11 +23,30 @@ interface Daily {
   items: EditableItem[];
 }
 
+interface YieldDay {
+  date: string;
+  offsetDays: number;
+  matureCount: number;
+}
+
+interface YieldEstimate {
+  label: string;
+  sufficient: boolean;
+  requiredDays: number;
+  historyDays: number;
+  method: string;
+  message: string | null;
+  days: YieldDay[];
+}
+
 const date = ref(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date()));
 const data = ref<Daily | null>(null);
 const error = ref('');
 const loading = ref(false);
 const savingId = ref('');
+const estimate = ref<YieldEstimate | null>(null);
+const yieldError = ref('');
+const yieldLoading = ref(false);
 const canCorrect = computed(() => canCorrectHarvest(currentUser.value?.role));
 
 function withDraft(item: Item): EditableItem {
@@ -36,6 +55,20 @@ function withDraft(item: Item): EditableItem {
     draftMature: item.matureCount,
     draftMushroom: item.mushroomCount,
   };
+}
+
+async function loadEstimate() {
+  yieldLoading.value = true;
+  yieldError.value = '';
+  try {
+    const response = await http.get<YieldEstimate>('/harvest/yield-estimate');
+    estimate.value = response.data;
+  } catch (cause) {
+    estimate.value = null;
+    yieldError.value = errorText(cause);
+  } finally {
+    yieldLoading.value = false;
+  }
 }
 
 async function load() {
@@ -76,6 +109,7 @@ async function saveRow(item: EditableItem) {
   try {
     await http.patch(`/harvest/daily/${item.id}`, body);
     await load();
+    await loadEstimate();
   } catch (cause) {
     error.value = errorText(cause);
   } finally {
@@ -83,11 +117,34 @@ async function saveRow(item: EditableItem) {
   }
 }
 
-onMounted(load);
+onMounted(() => {
+  void load();
+  void loadEstimate();
+});
 </script>
 
 <template>
   <section class="ops-page space-y-4">
+    <section class="panel space-y-3" data-testid="yield-estimate">
+      <h2 class="text-lg">近 2–3 日产量</h2>
+      <p v-if="yieldLoading" class="text-mist">加载中…</p>
+      <p v-else-if="yieldError" class="text-danger">{{ yieldError }}</p>
+      <template v-else-if="estimate">
+        <p class="text-sm">
+          <span class="rounded bg-amber/15 px-2 py-0.5 font-semibold text-amber">{{ estimate.label }}</span>
+        </p>
+        <p v-if="!estimate.sufficient" class="text-sm text-mist">{{ estimate.message }}</p>
+        <template v-else>
+          <p class="text-sm text-mist">{{ estimate.method }}。依据近 {{ estimate.historyDays }} 日，满 {{ estimate.requiredDays }} 日。</p>
+          <ul class="grid gap-3 sm:grid-cols-3">
+            <li v-for="day in estimate.days" :key="day.date" class="rounded-lg border border-line px-3 py-2" data-testid="yield-day">
+              <p class="text-sm text-mist">{{ day.date }}</p>
+              <p class="font-mono text-2xl">{{ estimate.label }} {{ day.matureCount }}</p>
+            </li>
+          </ul>
+        </template>
+      </template>
+    </section>
     <form class="flex flex-wrap items-end gap-3" @submit.prevent="load">
       <label class="text-sm">日期
         <input v-model="date" class="field mt-1" type="date" />
