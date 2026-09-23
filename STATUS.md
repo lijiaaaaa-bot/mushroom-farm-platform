@@ -1,6 +1,6 @@
 # STATUS｜mushroom-farm-platform
 
-更新：2026-09-23 22:40（Asia/Shanghai）
+更新：2026-09-23 22:45（Asia/Shanghai）
 仓：https://github.com/lijiaaaaa-bot/mushroom-farm-platform
 
 进度只认：已合并 PR + 已关闭 Issue + 本文件一行。聊天文字不算交付。
@@ -29,7 +29,7 @@
 - #57 侧栏「基地大屏」紧跟总览并链到 `/big-screen`，去掉「二期槽位」；企微不进侧栏。PR #57 squash 合入 main（199bc05）。
 - #54 F-R3-06 严重告警推送企微/钉钉：`WECOM_WEBHOOK_URL` 与/或 `DINGTALK_WEBHOOK_URL`（可选 `DINGTALK_WEBHOOK_SECRET`）。未配置则不发送、不报错。推送失败只记日志。告警页进入 `/phase2/wecom`。PR #58 squash 合入 main（e948335）；Issue #54 已关闭。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/58
 - #60 管理端总览改为 ThingsBoard 浅色运营台：指标条、已配置坐标的棚区平面、棚区表、温度图（阈值来自已启用规则）、近 7 日成熟/总数/病害、右侧告警表。侧栏沿用 #57。PR #60 squash 合入 main（af813be）。
-- `GET /api/v1/alerts/unread`：`alert_reads.alert_id` 与 `alerts.id` 同为 uuid。已有库由 `007_alert_reads_alert_id_uuid.sql` 丢掉空值和非 uuid 行后 `ALTER ... USING btrim(alert_id)::uuid`。未读计数不再因 `character varying = uuid` 返回 500。
+- `GET /api/v1/alerts/unread`：`alert_reads.alert_id` 与 `alerts.id` 同为 uuid。已有库由 `007_alert_reads_alert_id_uuid.sql` 丢掉空值和非 uuid 行后 `ALTER ... USING btrim(alert_id)::uuid`。未读计数不再因 `character varying = uuid` 返回 500。PR #61。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/61
 
 ## 进行中
 - #55 F-R2-04 基地大屏：管理端侧栏与顶栏进入 `/big-screen`。默认一屏为指标、棚区平面、抓拍墙、告警与环境；可切抓拍墙或带时间轴的多区。时间轴跳到 `/growth-trends` 或识别记录的上海日筛选。夜色投屏皮肤 `data-skin=tb-night` 只在这一页。PR #59 已 rebase 到含 #60 的 main，未合，不关 Issue。
