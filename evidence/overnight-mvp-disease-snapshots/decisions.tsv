@@ -1,2 +1,3 @@
 time	phase	decision	reason	evidence	result
 2026-09-23T10:20:00Z	change	病害列表走 GET /diseases，内部强制 diseased=1；识别列表同时接受 diseased=1。抓拍用已登录的 GET /ingest/recognitions/:id/snapshot 代理字节：有 snapshotObjectKey 时读 MinIO，否则拉取 http(s) snapshotUrl。无图前端写「无抓拍」，不渲染 img。	F-R5-01 / F-R1-06 要真实列表和可打开的图。现有 list 已按 ShedScope 限棚，不另写一套隔离。生产管理员在 ShedScope 中与超管同为全场，种子账号 shedCodes 为空；若改成只放行超管，producer 会看不到任何棚。棚负责人与查看员仍按账号棚区隔离。	apps/api/src/common/shed-scope.ts	open
+2026-09-23T10:21:00Z	verify	保留	make test 与 make gates 退出码均为 0。API 19 passed，web vitest 31 passed，门禁 All deliverable gates passed。	make test && make gates	pass
