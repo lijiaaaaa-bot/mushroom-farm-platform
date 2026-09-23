@@ -40,15 +40,15 @@ function displayCoord(value: number | null) {
   return value === null || value === undefined ? '未配置' : String(value);
 }
 
+function draftText(event: Event) {
+  return (event.target as HTMLInputElement).value;
+}
+
 function parseCoord(value: string | number | null): number | null {
   if (value === null || value === undefined || value === '') return null;
-  if (typeof value === 'number') {
-    if (!Number.isFinite(value)) throw new Error('坐标须为数字');
-    return value;
-  }
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const parsed = Number(trimmed);
+  const raw = typeof value === 'number' ? String(value) : value.trim();
+  if (!raw.trim()) return null;
+  const parsed = Number(raw);
   if (!Number.isFinite(parsed)) throw new Error('坐标须为数字');
   return parsed;
 }
@@ -115,26 +115,28 @@ onMounted(load);
           <td>
             <input
               v-if="canWrite"
-              v-model="row.draftX"
+              :value="row.draftX"
               class="field w-24"
               type="number"
               min="0"
               max="100"
               step="any"
               :aria-label="`${row.name} 平面 X`"
+              @input="row.draftX = draftText($event)"
             />
             <span v-else class="font-mono">{{ displayCoord(row.mapX) }}</span>
           </td>
           <td>
             <input
               v-if="canWrite"
-              v-model="row.draftY"
+              :value="row.draftY"
               class="field w-24"
               type="number"
               min="0"
               max="100"
               step="any"
               :aria-label="`${row.name} 平面 Y`"
+              @input="row.draftY = draftText($event)"
             />
             <span v-else class="font-mono">{{ displayCoord(row.mapY) }}</span>
           </td>

@@ -57,10 +57,12 @@ describe('ShedsView', () => {
     expect(wrapper.text()).toContain('一号棚');
     await wrapper.get('input[aria-label="一号棚 平面 X"]').setValue('32');
     await wrapper.get('input[aria-label="一号棚 平面 Y"]').setValue('48');
-    await wrapper.get('button').trigger('click');
+    const save = wrapper.findAll('button').find((button) => button.text() === '保存坐标');
+    expect(save).toBeTruthy();
+    await save!.trigger('click');
     await flushPromises();
 
-    expect(httpPatch).toHaveBeenCalledWith('/sheds/shed-1', { mapX: 32, mapY: 48 });
+    expect(httpPatch, wrapper.text()).toHaveBeenCalledWith('/sheds/shed-1', { mapX: 32, mapY: 48 });
     expect(wrapper.get('input[aria-label="一号棚 平面 X"]').element).toHaveProperty('value', '32');
     expect(wrapper.get('input[aria-label="一号棚 平面 Y"]').element).toHaveProperty('value', '48');
     expect(wrapper.text()).toContain('一号棚');

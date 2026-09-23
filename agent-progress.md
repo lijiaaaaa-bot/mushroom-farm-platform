@@ -28,3 +28,4 @@
 | 2026-09-23 | #32 站内未读：GET /alerts/unread、POST /alerts/:id/read、POST /alerts/read-all。已读按用户记在 alert_reads，不改告警状态。顶栏 15 秒轮询。浏览器通知仅在授权后；拒绝不抛错 | `make test` 与 `make gates` 退出码 0 | PR #33 未合，不关 Issue #32 |
 | 2026-09-23 | #32 验收：API jest 30（alert-unread：创建后范围内计数上升、单条/全部已读、棚外 403）；web vitest 42（列表字段、计数下降、失败非空表、轮询、拒绝通知不抛错） | `make test` && `make gates` 退出码 0 | 本机无 Docker，未跑登录后的浏览器；PR #33 未合 |
 | 2026-09-23 | #27 棚区平面坐标：迁移 `map_x`/`map_y`，超管与生产管理员 PATCH，棚负责人与查看员只读且仍按棚隔离；大屏有坐标用配置、缺一轴则回退网格 | `make test` 与 `make gates` 退出码 0；浏览器保存 32/48 后大屏摘要仍在；PR #28 | 不自动合并，不关 Issue #27 |
+| 2026-09-23 | #27 CI：平面坐标输入改为保存输入框文本，点击「保存坐标」发出 PATCH。分支 rebase 到含 #29/#31/#33 的 main | `make test` 与 `make gates` 退出码 0（jest 35，vitest 45） | PR #28 仍不合并 |
