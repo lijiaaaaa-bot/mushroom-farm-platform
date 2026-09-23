@@ -3,8 +3,10 @@ import {
   Body,
   Controller,
   Get,
+  Param,
   Post,
   Query,
+  StreamableFile,
   UseGuards,
 } from '@nestjs/common';
 import { AuthUser } from '../common/auth-user';
@@ -36,5 +38,14 @@ export class IngestController {
   @Get('recognitions')
   list(@CurrentUser() user: AuthUser, @Query() query: ListQuery) {
     return this.ingest.list(user, query);
+  }
+
+  @Get('recognitions/:id/snapshot')
+  async snapshot(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    const file = await this.ingest.readSnapshot(user, id);
+    return new StreamableFile(file.body, {
+      type: file.contentType,
+      disposition: 'inline; filename="snapshot"',
+    });
   }
 }

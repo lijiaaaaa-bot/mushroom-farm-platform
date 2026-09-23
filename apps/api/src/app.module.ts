@@ -9,6 +9,7 @@ import { AuthModule } from './auth';
 import configuration from './config/configuration';
 import { JwtAuthGuard, RolesGuard, ShedIsolationGuard } from './common/guards';
 import { DashboardModule } from './dashboard';
+import { DiseasesModule } from './diseases';
 import { SnakeNamingStrategy } from './database/naming.strategy';
 import { DevicesModule } from './devices';
 import { HarvestModule } from './harvest';
@@ -47,6 +48,7 @@ import { StorageModule } from './storage';
     HarvestModule,
     ReportsModule,
     DashboardModule,
+    DiseasesModule,
     MaintenanceModule,
     Phase2Module,
     MetaModule,

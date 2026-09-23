@@ -12,6 +12,7 @@ const links = [
   { to: '/big-screen', label: '菇棚监测' },
   { to: '/devices', label: '设备' },
   { to: '/recognitions', label: '识别记录' },
+  { to: '/diseases', label: '病害' },
   { to: '/alerts', label: '告警' },
   { to: '/alert-rules', label: '阈值规则' },
   { to: '/harvest', label: '采摘' },

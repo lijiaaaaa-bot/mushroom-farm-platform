@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { ListQuery, parsePage } from '../common/pagination';
@@ -158,11 +158,45 @@ export class IngestService {
       qb.andWhere('r.recognizedAt >= :from', { from: new Date(query.from) });
     if (query.to)
       qb.andWhere('r.recognizedAt <= :to', { to: new Date(query.to) });
+    if (isDiseasedQuery(query.diseased)) qb.andWhere('r.diseaseCount > 0');
     const [items, total] = await qb
       .skip(page.skip)
       .take(page.pageSize)
       .getManyAndCount();
     return { items, total, page: page.page, pageSize: page.pageSize };
+  }
+
+  async readSnapshot(
+    user: AuthUser,
+    id: string,
+  ): Promise<{ body: Buffer; contentType: string }> {
+    const record = await this.records.findOne({ where: { id } });
+    if (!record) throw new NotFoundException('识别记录不存在');
+    ShedScope.fromUser(user).assert(record.shedCode);
+    const fromObject = record.snapshotObjectKey
+      ? await this.storage.readObject(record.snapshotObjectKey)
+      : null;
+    if (fromObject?.length) {
+      return {
+        body: fromObject,
+        contentType: snapshotContentType(
+          record.snapshotObjectKey,
+          record.snapshotUrl,
+        ),
+      };
+    }
+    if (record.snapshotUrl && isHttpUrl(record.snapshotUrl)) {
+      const bytes = await this.readImage(undefined, record.snapshotUrl);
+      if (bytes?.length) {
+        return {
+          body: bytes,
+          contentType: snapshotContentType(null, record.snapshotUrl),
+        };
+      }
+    }
+    throw new NotFoundException(
+      record.snapshotObjectKey || record.snapshotUrl ? '抓拍不可用' : '无抓拍',
+    );
   }
 
   private async readImage(
@@ -192,6 +226,27 @@ export class IngestService {
     const driver = error.driverError as { code?: string };
     return driver?.code === '23505';
   }
+}
+
+function isDiseasedQuery(value: string | undefined): boolean {
+  return value === '1' || value === 'true';
+}
+
+function isHttpUrl(value: string): boolean {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function snapshotContentType(key: string | null, url: string | null): string {
+  const name = `${key ?? ''} ${url ?? ''}`.toLowerCase();
+  if (name.includes('.png')) return 'image/png';
+  if (name.includes('.webp')) return 'image/webp';
+  if (name.includes('.gif')) return 'image/gif';
+  return 'image/jpeg';
 }
 
 function redactIngress(raw: unknown): unknown {
