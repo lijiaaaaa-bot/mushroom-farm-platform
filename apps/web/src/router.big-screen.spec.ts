@@ -23,7 +23,7 @@ describe('/big-screen route', () => {
     const route = router.getRoutes().find((record) => record.path === '/big-screen');
     expect(route).toBeTruthy();
     expect(route?.components?.default).toBe(BigScreenView);
-    expect(route?.meta.title).toBe('菇棚监测');
+    expect(route?.meta.title).toBe('基地大屏');
   });
 
   it('opens /big-screen after login and keeps it outside the admin shell', async () => {
@@ -55,6 +55,17 @@ describe('/big-screen route', () => {
     expect(hrefs).not.toContain('/phase2/wecom');
     expect(wrapper.get('nav').text()).not.toContain('二期槽位');
     expect(wrapper.get('nav').text()).not.toMatch(/phase-?2|槽位|企微/i);
+    const topbar = wrapper.get('.admin-topbar').findAll('a').find((anchor) => anchor.text() === '基地大屏');
+    expect(topbar?.attributes('href')).toBe('/big-screen');
+    expect(wrapper.text()).not.toContain('二期');
+    expect(wrapper.find('a[href="/phase2/big-screen"]').exists()).toBe(false);
     wrapper.unmount();
+  });
+
+  it('redirects the old big-screen placeholder to /big-screen', async () => {
+    localStorage.setItem('token', 'test-token');
+    await router.push('/phase2/big-screen');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/big-screen');
   });
 });

@@ -3,8 +3,8 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：PR #60 rebase 到 main。保留 #57 侧栏与 #58 企微，总览继续用 ThingsBoard 浅色运营台
-- 进行中文件：`apps/web/src/views/DashboardView.vue`、`STATUS.md`
+- 本会话目标：#55 rebase 到含 #60 的 main；总览保持浅色运营台，大屏夜色投屏
+- 进行中文件：`apps/web/src/views/BigScreenView.vue`、`STATUS.md`
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -45,8 +45,11 @@
 | 2026-09-23 | #50 病害同期环境：GET /diseases/:id/environment 按棚（可选传感器）对齐识别时间前后各 30 分钟。空窗说明，不用识别自带温湿度充数。/diseases 同屏。#49 产量：GET /harvest/yield-estimate，满 30 个上海自然日才线性外推未来 3 日并标注「估计」，不足则说明且 days 为空。棚隔离 | 待 `make test` 与 `make gates` | PR 未合，不关 Issue #50 / #49 |
 | 2026-09-23 | #50/#49 验收：环境窗含前后边界与他棚排除，空态不显示识别自带 22.5；产量平坦序列外推 15/1015，缺日 days 为空，棚负责人请求他棚 403。页面同屏与「估计」标注。jsdom 不初始化 ECharts | `make test` 退出码 0（API jest 72，web vitest 68）；`make gates` 退出码 0 | 未打开登录后的 /diseases 与 /harvest。PR #53 草稿未合，不关 Issue |
 | 2026-09-23 | #47 生长趋势日聚合：daily_aggregates 存棚/摄像头当日最新蘑菇数与菌盖直径均值；识别入库与蘑菇数修正后刷新，每小时回写昨日和当日；GET /growth-trends 仅 7/30 天且按棚隔离；/growth-trends 只画已有日点 | `make test` 退出码 0（API jest 72，web vitest 65）；`make gates` 退出码 0 | 未打开登录后的 /growth-trends。PR #52 未合，不关 Issue #47 |
+| 2026-09-23 | 管理端总览改成 ThingsBoard 浅色运营台：指标条、已配置坐标的棚区平面、棚区表、温度曲线（阈值只画已启用的温度规则）、近 7 日成熟/总数/病害、右侧告警表、最近识别表。/big-screen 加 data-skin=tb-night | `make test` 退出码 0（API jest 85，web vitest 81）；`make gates` 退出码 0 | 未打开登录后的总览。侧栏导航以 #57 为准 |
+| 2026-09-23 | PR #60 rebase 到含 #56/#57/#58 的 main。侧栏保留「基地大屏」徽标与绿色底，不恢复「二期槽位」，不把企微放回导航。总览仍是浅色运营台 | 待 `make test` 与 `make gates` | 不关未合并 Issue |
 | 2026-09-23 | 识别与环境补传窗口改为 90 天（`LIMITS.recognizedAtPastDays` = `TIMESERIES_RETENTION_DAYS`）。满 90 天整点仍收，超出 1ms 拒收并返回补传窗口错误。8 天前的报文可通过解析 | `make test` 退出码 0（contracts 8，API jest 85，web vitest 80）；`make gates` 退出码 0 | 不改幂等 TTL，不改大屏/报表的 7 日查询窗。PR #56 |
 | 2026-09-23 | #54 严重告警推送：WECOM_WEBHOOK_URL 与/或 DINGTALK_WEBHOOK_URL，可选 DINGTALK_WEBHOOK_SECRET。未配置不发送、不报错。webhook 失败只记日志。认领与关闭仍成功。/phase2/wecom 说明变量并显示通道是否启用 | `make test` 退出码 0（API jest 95，web vitest 82）；`make gates` 退出码 0 | 本机无 Docker，未打开登录后的 /phase2/wecom。PR #58 未合，不关 Issue #54 |
 | 2026-09-23 | #54 rebase 到 main（含 #56/#57）。侧栏不放企微入口、不写「二期槽位」。告警页「企微/钉钉推送」链到 `/phase2/wecom` | `make test` 退出码 0（API jest 95，web vitest 82）；`make gates` 退出码 0 | PR #58 待标为可审。不关 Issue #54 |
-| 2026-09-23 | 管理端总览改成 ThingsBoard 浅色运营台：指标条、已配置坐标的棚区平面、棚区表、温度曲线（阈值只画已启用的温度规则）、近 7 日成熟/总数/病害、右侧告警表、最近识别表。/big-screen 加 data-skin=tb-night | `make test` 退出码 0（API jest 85，web vitest 81）；`make gates` 退出码 0 | 未打开登录后的总览。侧栏导航以 #57 为准 |
-| 2026-09-23 | PR #60 rebase 到含 #56/#57/#58 的 main。侧栏保留「基地大屏」徽标与绿色底，不恢复「二期槽位」，不把企微放回导航。总览仍是浅色运营台 | 待 `make test` 与 `make gates` | 不关未合并 Issue |
+| 2026-09-23 | #55 `/big-screen` 增加抓拍墙、多区布局和对比时间轴。时间轴链到 `/growth-trends` 与识别记录的 from/to。暗色只挂在大屏根节点，默认浅色 | `make test` 退出码 0（API jest 85，web vitest 89）；`make gates` 退出码 0 | 未打开登录后的 /big-screen。PR #59 未合，不关 Issue #55 |
+| 2026-09-23 | #55 管理端侧栏卡片和顶栏按钮进入基地大屏，去掉占位入口。默认一屏以抓拍墙为中部，平面与告警收在两侧。暗色只加在大屏根节点 | `make test` 退出码 0（API jest 85，web vitest 90）；`make gates` 退出码 0 | 未打开登录后的页面。PR #59 未合，不关 Issue #55 |
+| 2026-09-23 | #55 rebase 到含 #60 的 main。总览浅色运营台不动。`/big-screen` 保留抓拍墙、多区与时间轴，根节点 `data-skin=tb-night` | `make test` 退出码 0（API jest 95，web vitest 93）；`make gates` 退出码 0 | 未打开登录后的页面。PR #59 标为可审，未合，不关 Issue #55 |
