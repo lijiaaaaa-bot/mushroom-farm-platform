@@ -9,9 +9,9 @@
 - Day-1 硬墙 + HTTP 接入 + 告警确认（smoke）
 - 公开 GitHub main；`bid-sample/`、`docs/` 在仓内
 - #7 squash 合入 main、#6 已关闭：接入墙与 CI 门禁在 main
+- #5 squash 合入 main（4dd50a1）、#1 已关闭：MQTT recognition 与 HTTP 同管道
 
 ## 进行中
-- #1 MQTT：https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/5 已 ready（非 draft）；与 main 冲突且 CI checks 未上报，解冲突后 CI 绿再合并
 - #2 大屏：暗色指挥页路由 + 五区布局接现有 API（#2，`status:doing`）
 
 ## 待开
