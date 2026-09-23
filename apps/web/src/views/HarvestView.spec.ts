@@ -45,6 +45,45 @@ function daily(summary = harvestSummary, items = [harvestItem]) {
   };
 }
 
+const thinEstimate = {
+  label: '估计',
+  sufficient: false,
+  requiredDays: 30,
+  historyDays: 2,
+  method: '近 30 日各摄像头当日最新成熟数之和，按日序线性外推',
+  message: '有效历史不足：近 30 个自然日仅有 2 天有成熟识别，满 30 天后才给出近 2–3 日产量估计。',
+  days: [],
+};
+
+const fullEstimate = {
+  label: '估计',
+  sufficient: true,
+  requiredDays: 30,
+  historyDays: 30,
+  method: '近 30 日各摄像头当日最新成熟数之和，按日序线性外推',
+  message: null,
+  days: [
+    { date: '2026-09-24', offsetDays: 1, matureCount: 41 },
+    { date: '2026-09-25', offsetDays: 2, matureCount: 42 },
+    { date: '2026-09-26', offsetDays: 3, matureCount: 43 },
+  ],
+};
+
+function routeGets(
+  dailyResponses: Array<ReturnType<typeof daily>>,
+  estimate: typeof thinEstimate | typeof fullEstimate = thinEstimate,
+) {
+  let index = 0;
+  httpGet.mockImplementation((url: string) => {
+    if (String(url).includes('yield-estimate')) {
+      return Promise.resolve({ data: estimate });
+    }
+    const next = dailyResponses[Math.min(index, dailyResponses.length - 1)];
+    index += 1;
+    return Promise.resolve(next);
+  });
+}
+
 async function mountView() {
   const wrapper = mount(HarvestView);
   await flushPromises();
@@ -74,14 +113,13 @@ describe('HarvestView correction', () => {
         ...harvestItem,
         matureCount: 6,
       };
-      httpGet
-        .mockResolvedValueOnce(daily())
-        .mockResolvedValueOnce(
-          daily(
-            { matureCount: 6, mushroomCount: 10, harvestableCameras: 1 },
-            [updated],
-          ),
-        );
+      routeGets([
+        daily(),
+        daily(
+          { matureCount: 6, mushroomCount: 10, harvestableCameras: 1 },
+          [updated],
+        ),
+      ]);
       httpPatch.mockResolvedValue({ data: updated });
       const wrapper = await mountView();
 
@@ -93,7 +131,9 @@ describe('HarvestView correction', () => {
       expect(httpPatch).toHaveBeenCalledWith('/harvest/daily/rec-1', {
         matureCount: 6,
       });
-      expect(httpGet).toHaveBeenCalledTimes(2);
+      expect(
+        httpGet.mock.calls.filter((call) => call[0] === '/harvest/daily'),
+      ).toHaveLength(2);
       expect(matureText(wrapper)).toContain('6');
       expect(wrapper.text()).not.toContain('当日无识别记录');
       expect(wrapper.find('table').exists()).toBe(true);
@@ -103,7 +143,7 @@ describe('HarvestView correction', () => {
 
   it('keeps the table when saving fails', async () => {
     asUser('production_admin');
-    httpGet.mockResolvedValue(daily());
+    routeGets([daily()]);
     httpPatch.mockRejectedValue(new Error('down'));
     const wrapper = await mountView();
 
@@ -121,7 +161,7 @@ describe('HarvestView correction', () => {
 
   it('hides the save control for a viewer', async () => {
     asUser('viewer');
-    httpGet.mockResolvedValue(daily());
+    routeGets([daily()]);
     const wrapper = await mountView();
 
     expect(wrapper.text()).toContain('当前角色不能修正采摘清单。');
@@ -131,6 +171,51 @@ describe('HarvestView correction', () => {
       .findAll('button')
       .some((button) => button.text() === '保存');
     expect(save).toBe(false);
+    expect(wrapper.find('table').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it('shows the next three days marked 估计 when history is sufficient', async () => {
+    asUser('production_admin');
+    routeGets([daily()], fullEstimate);
+    const wrapper = await mountView();
+    const panel = wrapper.get('[data-testid="yield-estimate"]');
+
+    expect(httpGet).toHaveBeenCalledWith('/harvest/yield-estimate');
+    expect(panel.text()).toContain('估计');
+    expect(panel.get('[data-testid="yield-day"]').text()).toContain('估计 41');
+    expect(panel.text()).toContain('估计 42');
+    expect(panel.text()).toContain('估计 43');
+    expect(panel.text()).toContain('2026-09-24');
+    wrapper.unmount();
+  });
+
+  it('explains thin history and does not render estimate numbers', async () => {
+    asUser('shed_manager');
+    routeGets([daily()], thinEstimate);
+    const wrapper = await mountView();
+    const panel = wrapper.get('[data-testid="yield-estimate"]');
+
+    expect(panel.text()).toContain('估计');
+    expect(panel.text()).toContain('有效历史不足');
+    expect(panel.text()).toContain('2');
+    expect(panel.text()).toContain('30');
+    expect(panel.find('[data-testid="yield-day"]').exists()).toBe(false);
+    expect(panel.text()).not.toContain('估计 41');
+    wrapper.unmount();
+  });
+
+  it('keeps the daily table when the yield request fails', async () => {
+    asUser('viewer');
+    httpGet.mockImplementation((url: string) => {
+      if (String(url).includes('yield-estimate')) return Promise.reject(new Error('down'));
+      return Promise.resolve(daily());
+    });
+    const wrapper = await mountView();
+
+    expect(wrapper.get('[data-testid="yield-estimate"]').text()).toContain('请求失败');
+    expect(wrapper.text()).toContain('CAM-S01');
+    expect(wrapper.text()).not.toContain('当日无识别记录');
     expect(wrapper.find('table').exists()).toBe(true);
     wrapper.unmount();
   });

@@ -33,6 +33,14 @@ export class HarvestController {
     private readonly audit: AuditService,
   ) {}
 
+  @Get('yield-estimate')
+  yieldEstimate(
+    @CurrentUser() user: AuthUser,
+    @Query('shedCode') shedCode?: string,
+  ) {
+    return this.harvest.yieldEstimate(user, shedCode);
+  }
+
   @Get('daily')
   daily(@CurrentUser() user: AuthUser, @Query('date') date?: string) {
     return this.harvest.daily(user, date);

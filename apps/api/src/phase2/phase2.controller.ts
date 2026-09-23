@@ -21,12 +21,6 @@ export class Phase2Controller {
   }
 
   @Public()
-  @Get('yield-estimate')
-  yieldEstimate() {
-    return slot('yield-estimate', '2–3 天产量预估');
-  }
-
-  @Public()
   @Get('wecom')
   wecom() {
     return slot('wecom', '企微/钉钉推送');

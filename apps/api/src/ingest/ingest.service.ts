@@ -4,6 +4,7 @@ import { ObjectLiteral, QueryFailedError, Repository } from 'typeorm';
 import { ListQuery, parsePage } from '../common/pagination';
 import { ShedScope } from '../common/shed-scope';
 import {
+  DISEASE_ENV_WINDOW_MINUTES,
   IDEMPOTENCY_TTL_SECONDS,
   averageDiameter,
   buildEnvironmentIdempotencyKey,
@@ -463,6 +464,62 @@ export class IngestService {
       .take(page.pageSize)
       .getManyAndCount();
     return { items, total, page: page.page, pageSize: page.pageSize };
+  }
+
+  async diseaseEnvironment(
+    user: AuthUser,
+    id: string,
+    options: {
+      beforeMinutes?: number;
+      afterMinutes?: number;
+      sensorCode?: string;
+    },
+  ) {
+    const record = await this.records.findOne({ where: { id } });
+    if (!record) throw new NotFoundException('病害记录不存在');
+    ShedScope.fromUser(user).assert(record.shedCode);
+
+    const beforeMinutes = options.beforeMinutes ?? DISEASE_ENV_WINDOW_MINUTES;
+    const afterMinutes = options.afterMinutes ?? DISEASE_ENV_WINDOW_MINUTES;
+    const recognizedAt = new Date(record.recognizedAt);
+    const start = new Date(recognizedAt.getTime() - beforeMinutes * 60_000);
+    const end = new Date(recognizedAt.getTime() + afterMinutes * 60_000);
+    const sensorCode = options.sensorCode?.trim() || null;
+
+    const qb = this.readings
+      .createQueryBuilder('e')
+      .where('e.shedCode = :shedCode', { shedCode: record.shedCode })
+      .andWhere('e.observedAt >= :start', { start })
+      .andWhere('e.observedAt <= :end', { end })
+      .orderBy('e.observedAt', 'ASC');
+    if (sensorCode) {
+      qb.andWhere('e.sensorCode = :sensorCode', { sensorCode });
+    }
+    const readings = await qb.getMany();
+    return {
+      recognition: {
+        id: record.id,
+        shedCode: record.shedCode,
+        cameraCode: record.cameraCode,
+        recognizedAt,
+        diseaseLevel: record.diseaseLevel,
+        diseaseCount: record.diseaseCount,
+      },
+      window: { start, end, beforeMinutes, afterMinutes },
+      alignment: { shedCode: record.shedCode, sensorCode },
+      readings: readings.map((item) => ({
+        id: item.id,
+        shedCode: item.shedCode,
+        sensorCode: item.sensorCode,
+        observedAt: item.observedAt,
+        temperature: item.temperature,
+        humidity: item.humidity,
+        co2: item.co2,
+        substrateMoisture: item.substrateMoisture,
+      })),
+      empty: readings.length === 0,
+      emptyReason: readings.length === 0 ? '该时间窗内无环境读数' : null,
+    };
   }
 
   async readSnapshot(
