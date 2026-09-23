@@ -76,6 +76,22 @@ export class MqttIngestAdapter implements OnModuleInit, OnModuleDestroy {
           body = parsed as Record<string, unknown>;
         }
       } catch {
+        const channel =
+          kind === 'environment' ||
+          kind === 'heartbeat' ||
+          kind === 'recognition'
+            ? kind
+            : null;
+        if (channel) {
+          await this.ingest.recordReject({
+            source: 'mqtt',
+            channel,
+            code: 'VALIDATION_FAILED',
+            errors: ['载荷不是 JSON'],
+            shedCode: shedFromTopic,
+            payload: null,
+          });
+        }
         this.logger.warn(`MQTT 载荷不是 JSON：${topic}`);
         return;
       }
@@ -110,28 +126,41 @@ export class MqttIngestAdapter implements OnModuleInit, OnModuleDestroy {
         body.deviceCode = deviceFromTopic;
       const parsed = parseHeartbeatIngress(body);
       if (!parsed.ok) {
+        await this.ingest.recordReject({
+          source: 'mqtt',
+          channel: 'heartbeat',
+          code: parsed.code,
+          errors: parsed.errors,
+          payload: body,
+          shedCode: shedFromTopic,
+        });
         this.logger.warn(
           `MQTT 心跳被拒绝 ${topic}：${parsed.code} ${parsed.errors.join('；')}`,
         );
         return;
       }
       const beat = parsed.value;
-      if (beat.reportedAt) {
-        await this.devices.heartbeat(
-          beat.shedCode,
-          beat.deviceCode,
-          beat.deviceType,
-          beat.online,
-          beat.reportedAt,
-        );
-      } else {
-        await this.devices.heartbeat(
-          beat.shedCode,
-          beat.deviceCode,
-          beat.deviceType,
-          beat.online,
-        );
-      }
+      const result = beat.reportedAt
+        ? await this.devices.heartbeat(
+            beat.shedCode,
+            beat.deviceCode,
+            beat.deviceType,
+            beat.online,
+            beat.reportedAt,
+          )
+        : await this.devices.heartbeat(
+            beat.shedCode,
+            beat.deviceCode,
+            beat.deviceType,
+            beat.online,
+          );
+      await this.ingest.recordHeartbeat({
+        source: 'mqtt',
+        shedCode: beat.shedCode,
+        deviceCode: beat.deviceCode,
+        duplicate: result?.duplicate === true,
+        reportedAt: beat.reportedAt,
+      });
     }
   }
 }

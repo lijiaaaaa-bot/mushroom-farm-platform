@@ -62,6 +62,13 @@ export class IngestController {
   async heartbeat(@Body() body: unknown) {
     const parsed = parseHeartbeatIngress(body);
     if (!parsed.ok) {
+      await this.ingest.recordReject({
+        source: 'http',
+        channel: 'heartbeat',
+        code: parsed.code,
+        errors: parsed.errors,
+        payload: body,
+      });
       throw new BadRequestException({
         accepted: false,
         code: parsed.code,
@@ -70,21 +77,36 @@ export class IngestController {
       });
     }
     const beat = parsed.value;
-    if (beat.reportedAt) {
-      return this.devices.heartbeat(
-        beat.shedCode,
-        beat.deviceCode,
-        beat.deviceType,
-        beat.online,
-        beat.reportedAt,
-      );
-    }
-    return this.devices.heartbeat(
-      beat.shedCode,
-      beat.deviceCode,
-      beat.deviceType,
-      beat.online,
-    );
+    const result = beat.reportedAt
+      ? await this.devices.heartbeat(
+          beat.shedCode,
+          beat.deviceCode,
+          beat.deviceType,
+          beat.online,
+          beat.reportedAt,
+        )
+      : await this.devices.heartbeat(
+          beat.shedCode,
+          beat.deviceCode,
+          beat.deviceType,
+          beat.online,
+        );
+    await this.ingest.recordHeartbeat({
+      source: 'http',
+      shedCode: beat.shedCode,
+      deviceCode: beat.deviceCode,
+      duplicate: result.duplicate,
+      reportedAt: beat.reportedAt,
+    });
+    return result;
+  }
+
+  @Get('observability')
+  observability(
+    @CurrentUser() user: AuthUser,
+    @Query('windowMinutes') windowMinutes?: string,
+  ) {
+    return this.ingest.observability(user, windowMinutes);
   }
 
   @Get('recognitions')

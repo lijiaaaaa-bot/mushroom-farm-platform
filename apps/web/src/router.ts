@@ -8,6 +8,7 @@ import DiseasesView from './views/DiseasesView.vue';
 import DevicesView from './views/DevicesView.vue';
 import EnvironmentView from './views/EnvironmentView.vue';
 import HarvestView from './views/HarvestView.vue';
+import IngestObservabilityView from './views/IngestObservabilityView.vue';
 import LoginView from './views/LoginView.vue';
 import Phase2View from './views/phase2/Phase2View.vue';
 import RecognitionsView from './views/RecognitionsView.vue';
@@ -28,6 +29,7 @@ const router = createRouter({
         { path: 'devices', component: DevicesView, meta: { title: '设备' } },
         { path: 'recognitions', component: RecognitionsView, meta: { title: '识别记录' } },
         { path: 'environment', component: EnvironmentView, meta: { title: '环境读数' } },
+        { path: 'ingest-observability', component: IngestObservabilityView, meta: { title: '接入观测' } },
         { path: 'diseases', component: DiseasesView, meta: { title: '病害' } },
         { path: 'alerts', component: AlertsView, meta: { title: '告警' } },
         { path: 'alert-rules', component: RulesView, meta: { title: '阈值规则' } },

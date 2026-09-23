@@ -10,6 +10,7 @@ import { IngestTokenGuard } from '../common/guards';
 import { configureApp } from '../configure-app';
 import { DevicesService } from '../devices';
 import { EnvironmentReading } from '../entities/environment-reading.entity';
+import { HeartbeatReceipt } from '../entities/heartbeat-receipt.entity';
 import { IngestReject } from '../entities/ingest-reject.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { RedisService } from '../redis';
@@ -57,6 +58,10 @@ describe('ingest wall', () => {
           useValue: { create: jest.fn(), save: jest.fn(), findOne: jest.fn() },
         },
         { provide: getRepositoryToken(IngestReject), useValue: rejectRepo },
+        {
+          provide: getRepositoryToken(HeartbeatReceipt),
+          useValue: { create: jest.fn(), save: jest.fn() },
+        },
         { provide: RedisService, useValue: {} },
         { provide: MinioStorageService, useValue: {} },
         { provide: DevicesService, useValue: { heartbeat: jest.fn() } },

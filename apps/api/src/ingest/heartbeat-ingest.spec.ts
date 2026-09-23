@@ -111,7 +111,12 @@ describe('HTTP heartbeat ingest', () => {
         { provide: getRepositoryToken(Alert), useValue: memoryAlerts() },
         {
           provide: IngestService,
-          useValue: { handle: jest.fn(), handleEnvironment: jest.fn() },
+          useValue: {
+            handle: jest.fn(),
+            handleEnvironment: jest.fn(),
+            recordReject: jest.fn(),
+            recordHeartbeat: jest.fn(),
+          },
         },
         {
           provide: ConfigService,

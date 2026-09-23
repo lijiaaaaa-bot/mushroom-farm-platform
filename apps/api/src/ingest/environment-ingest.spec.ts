@@ -14,6 +14,7 @@ import { IngestTokenGuard } from '../common/guards';
 import { configureApp } from '../configure-app';
 import { DevicesService } from '../devices';
 import { EnvironmentReading } from '../entities/environment-reading.entity';
+import { HeartbeatReceipt } from '../entities/heartbeat-receipt.entity';
 import { IngestReject } from '../entities/ingest-reject.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { RedisService } from '../redis';
@@ -196,6 +197,10 @@ describe('environment ingest', () => {
           },
         },
         { provide: getRepositoryToken(EnvironmentReading), useValue: readings },
+        {
+          provide: getRepositoryToken(HeartbeatReceipt),
+          useValue: { create: jest.fn(), save: jest.fn() },
+        },
         {
           provide: getRepositoryToken(IngestReject),
           useValue: {
