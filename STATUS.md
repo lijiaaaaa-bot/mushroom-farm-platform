@@ -16,13 +16,13 @@
 - #3 admin devices/alerts/harvest/reports wired to existing API + vitest + Family B Light; PR #19; Issue closed.
 
 ## 进行中
-- 无
+- #4 指挥台 `status.json` 对齐（仓：https://github.com/lijiaaaaa-bot/mushroom-project-console）：console overnight agent 正在对齐 `public/status.json`。验收：该仓 PR 合入后 `public/status.json` 与本仓 Issues / PR / STATUS 一致可读，再关 Issue #4。尚无 PR 号。
 
 ## 规范
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18
 
 ## 待开
-- #4 指挥台 `status.json` 对齐（仓：https://github.com/lijiaaaaa-bot/mushroom-project-console）
+- 无
 
 ## 阻塞
 - 无
