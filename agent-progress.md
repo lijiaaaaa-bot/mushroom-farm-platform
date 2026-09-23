@@ -3,8 +3,8 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：#55 基地大屏作为管理端主入口，默认布局突出抓拍墙
-- 进行中文件：`apps/web/src/views/BigScreenView.vue`、`GrowthTrendsView.vue`、`RecognitionsView.vue`、`STATUS.md`
+- 本会话目标：#55 rebase 到含 #60 的 main；总览保持浅色运营台，大屏夜色投屏
+- 进行中文件：`apps/web/src/views/BigScreenView.vue`、`STATUS.md`
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -52,3 +52,4 @@
 | 2026-09-23 | #54 rebase 到 main（含 #56/#57）。侧栏不放企微入口、不写「二期槽位」。告警页「企微/钉钉推送」链到 `/phase2/wecom` | `make test` 退出码 0（API jest 95，web vitest 82）；`make gates` 退出码 0 | PR #58 待标为可审。不关 Issue #54 |
 | 2026-09-23 | #55 `/big-screen` 增加抓拍墙、多区布局和对比时间轴。时间轴链到 `/growth-trends` 与识别记录的 from/to。暗色只挂在大屏根节点，默认浅色 | `make test` 退出码 0（API jest 85，web vitest 89）；`make gates` 退出码 0 | 未打开登录后的 /big-screen。PR #59 未合，不关 Issue #55 |
 | 2026-09-23 | #55 管理端侧栏卡片和顶栏按钮进入基地大屏，去掉占位入口。默认一屏以抓拍墙为中部，平面与告警收在两侧。暗色只加在大屏根节点 | `make test` 退出码 0（API jest 85，web vitest 90）；`make gates` 退出码 0 | 未打开登录后的页面。PR #59 未合，不关 Issue #55 |
+| 2026-09-23 | #55 rebase 到含 #60 的 main。总览浅色运营台不动。`/big-screen` 保留抓拍墙、多区与时间轴，根节点 `data-skin=tb-night` | `make test` 退出码 0（API jest 95，web vitest 93）；`make gates` 退出码 0 | 未打开登录后的页面。PR #59 标为可审，未合，不关 Issue #55 |
