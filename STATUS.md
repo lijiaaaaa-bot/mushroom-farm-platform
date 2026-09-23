@@ -31,7 +31,7 @@
 - #60 管理端总览改为 ThingsBoard 浅色运营台：指标条、已配置坐标的棚区平面、棚区表、温度图（阈值来自已启用规则）、近 7 日成熟/总数/病害、右侧告警表。侧栏沿用 #57。PR #60 squash 合入 main（af813be）。
 
 ## 进行中
-- #55 F-R2-04 基地大屏：管理端侧栏与顶栏进入 `/big-screen`。默认一屏为指标、棚区平面、抓拍墙、告警与环境；可切抓拍墙或带时间轴的多区。时间轴跳到 `/growth-trends` 或识别记录的上海日筛选。默认浅色，暗色仅这一页。PR #59 未合，不关 Issue。
+- #55 F-R2-04 基地大屏：管理端侧栏与顶栏进入 `/big-screen`。默认一屏为指标、棚区平面、抓拍墙、告警与环境；可切抓拍墙或带时间轴的多区。时间轴跳到 `/growth-trends` 或识别记录的上海日筛选。夜色投屏皮肤 `data-skin=tb-night` 只在这一页。PR #59 已 rebase 到含 #60 的 main，未合，不关 Issue。
 - #48 管理端 Family B 轻量农事风落地（对照调查 04/06 样张；云端改代码中）
 - #47 F-R4-01 / F-R4-02 生长趋势日聚合：`daily_aggregates` 按棚与摄像头保存当日最新蘑菇数和菌盖直径均值；识别入库后刷新，每小时回写昨日与当日；`GET /api/v1/growth-trends?days=7|30` 按棚隔离；`/growth-trends` 只画已有日点。PR #52 未合，不关 Issue。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/52
 - #49 F-R6-03 近 2–3 日产量估计：`GET /api/v1/harvest/yield-estimate` 用近 30 个上海自然日、各摄像头当日最新成熟数之和做线性外推，响应与 `/harvest` 标注「估计」。不满 30 天只返回说明、`days` 为空。棚隔离；棚外 `shedCode` 403。PR #53 未合，不关 Issue。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/53
