@@ -12,6 +12,7 @@ import { IngestTokenGuard } from '../common/guards';
 import { configureApp } from '../configure-app';
 import { DevicesService } from '../devices';
 import { DiseasesController } from '../diseases/diseases.controller';
+import { EnvironmentReading } from '../entities/environment-reading.entity';
 import { IngestReject } from '../entities/ingest-reject.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { RedisService } from '../redis';
@@ -175,6 +176,7 @@ describe('disease list and snapshot access', () => {
           useValue: { get: () => undefined },
         },
         { provide: getRepositoryToken(RecognitionRecord), useValue: records },
+        { provide: getRepositoryToken(EnvironmentReading), useValue: {} },
         { provide: getRepositoryToken(IngestReject), useValue: {} },
         { provide: RedisService, useValue: {} },
         {

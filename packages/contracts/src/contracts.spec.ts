@@ -6,6 +6,7 @@ import {
   buildSnapshotObjectKey,
   parseAlertNote,
   parseCreateAlert,
+  parseEnvironmentIngress,
   parseRecognitionIngress,
   transitionError,
 } from './index';
@@ -59,6 +60,21 @@ describe('golden fixtures', () => {
     for (const item of fixture.cases || []) {
       const error = transitionError(item.from, item.to);
       assert.equal(error === null, item.ok);
+    }
+  });
+
+  it('parses environment fixtures apart from recognition payloads', () => {
+    for (const name of ['environment.golden.json', 'environment.unknown-field.json']) {
+      const fixture = load(name);
+      const result = parseEnvironmentIngress(fixture.body, new Date(String(fixture.clock)));
+      if (fixture.expect === 'ok') {
+        assert.equal(result.ok, true, name);
+      } else {
+        assert.equal(result.ok, false, name);
+        if (!result.ok) assert.equal(result.code, fixture.expect, name);
+      }
+      const asRecognition = parseRecognitionIngress(fixture.body, new Date(String(fixture.clock)));
+      assert.equal(asRecognition.ok, false, name);
     }
   });
 

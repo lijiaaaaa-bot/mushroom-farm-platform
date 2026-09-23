@@ -7,13 +7,14 @@ import {
 import { ConfigService } from '@nestjs/config';
 import mqtt, { MqttClient } from 'mqtt';
 import {
+  MQTT_ENVIRONMENT_TOPIC,
   MQTT_HEARTBEAT_TOPIC,
   MQTT_RECOGNITION_TOPIC,
 } from '@mushroom/contracts';
 import { DevicesService } from '../devices';
 import { IngestService } from './ingest.service';
 
-/** MQTT 适配器：只解析 topic，然后交给与 HTTP 相同的规范 DTO 管道。 */
+/** MQTT 适配器：只解析 topic。识别与环境各自进入对应的规范报文管道。 */
 @Injectable()
 export class MqttIngestAdapter implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MqttIngestAdapter.name);
@@ -35,11 +36,14 @@ export class MqttIngestAdapter implements OnModuleInit, OnModuleDestroy {
     });
     this.client.on('connect', () => {
       this.client?.subscribe(
-        [MQTT_RECOGNITION_TOPIC, MQTT_HEARTBEAT_TOPIC],
+        [MQTT_RECOGNITION_TOPIC, MQTT_HEARTBEAT_TOPIC, MQTT_ENVIRONMENT_TOPIC],
         { qos: 1 },
         (error) => {
           if (error) this.logger.warn(`MQTT 订阅失败：${error.message}`);
-          else this.logger.log(`MQTT 已订阅 ${MQTT_RECOGNITION_TOPIC}`);
+          else
+            this.logger.log(
+              `MQTT 已订阅 ${MQTT_RECOGNITION_TOPIC} ${MQTT_ENVIRONMENT_TOPIC}`,
+            );
         },
       );
     });
@@ -83,6 +87,18 @@ export class MqttIngestAdapter implements OnModuleInit, OnModuleDestroy {
       if (!result.accepted) {
         this.logger.warn(
           `MQTT 识别被拒绝 ${topic}：${result.code || ''} ${(result.errors || []).join('；')}`,
+        );
+      }
+      return;
+    }
+    if (kind === 'environment') {
+      if (!body.shedCode && !body['棚区编号']) body.shedCode = shedFromTopic;
+      if (!body.sensorCode && !body['传感器编号'])
+        body.sensorCode = deviceFromTopic;
+      const result = await this.ingest.handleEnvironment(body, 'mqtt');
+      if (!result.accepted) {
+        this.logger.warn(
+          `MQTT 环境报文被拒绝 ${topic}：${result.code || ''} ${(result.errors || []).join('；')}`,
         );
       }
       return;

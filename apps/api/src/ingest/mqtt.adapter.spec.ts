@@ -16,12 +16,13 @@ function loadFixture(name: string): { body: Record<string, unknown> } {
 
 describe('MqttIngestAdapter', () => {
   const handle = jest.fn();
+  const handleEnvironment = jest.fn();
   const heartbeat = jest.fn();
 
   function adapter() {
     return new MqttIngestAdapter(
       { get: () => false } as unknown as ConfigService,
-      { handle } as unknown as IngestService,
+      { handle, handleEnvironment } as unknown as IngestService,
       { heartbeat } as unknown as DevicesService,
     );
   }
@@ -34,8 +35,10 @@ describe('MqttIngestAdapter', () => {
 
   beforeEach(() => {
     handle.mockReset();
+    handleEnvironment.mockReset();
     heartbeat.mockReset();
     handle.mockResolvedValue({ accepted: true });
+    handleEnvironment.mockResolvedValue({ accepted: true });
     heartbeat.mockResolvedValue(undefined);
   });
 
@@ -44,6 +47,7 @@ describe('MqttIngestAdapter', () => {
     const topic = `mushroom/${String(fixture.body.shedCode)}/${String(fixture.body.cameraCode)}/recognition`;
     await deliver(topic, fixture.body);
     expect(handle).toHaveBeenCalledWith(fixture.body, 'mqtt');
+    expect(handleEnvironment).not.toHaveBeenCalled();
     expect(heartbeat).not.toHaveBeenCalled();
   });
 
@@ -83,6 +87,32 @@ describe('MqttIngestAdapter', () => {
       online: true,
     });
     expect(handle).not.toHaveBeenCalled();
+    expect(handleEnvironment).not.toHaveBeenCalled();
     expect(heartbeat).toHaveBeenCalledWith('S01', 'BOX-1', 'ai_box', true);
+  });
+
+  it('routes environment topics away from recognition ingest', async () => {
+    const body = {
+      observedAt: '2026-09-23T01:40:00.000Z',
+      temperature: 19.2,
+      humidity: 90,
+    };
+    await deliver('mushroom/S03/SENSOR-S03/environment', body);
+    expect(handle).not.toHaveBeenCalled();
+    expect(heartbeat).not.toHaveBeenCalled();
+    expect(handleEnvironment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        ...body,
+        shedCode: 'S03',
+        sensorCode: 'SENSOR-S03',
+      }),
+      'mqtt',
+    );
+  });
+
+  it('does not ingest an environment payload that is not JSON', async () => {
+    await deliver('mushroom/S01/SENSOR-S01/environment', '{');
+    expect(handle).not.toHaveBeenCalled();
+    expect(handleEnvironment).not.toHaveBeenCalled();
   });
 });

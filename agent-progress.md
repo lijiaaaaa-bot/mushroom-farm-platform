@@ -3,8 +3,8 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：Issue #27 棚区平面坐标可配置，大屏点位读取 mapX/mapY，缺省回退
-- 进行中文件：无。PR #28 未合并，不关 Issue #27
+- 本会话目标：#34 环境报文接入与管理端观测（进行中，PR 未合则不关 Issue）
+- 进行中文件：`apps/api/src/ingest/`、`apps/web/src/views/EnvironmentView.vue`、`evidence/overnight-mvp-env-ingest-observe/decisions.tsv`
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -29,3 +29,4 @@
 | 2026-09-23 | #32 验收：API jest 30（alert-unread：创建后范围内计数上升、单条/全部已读、棚外 403）；web vitest 42（列表字段、计数下降、失败非空表、轮询、拒绝通知不抛错） | `make test` && `make gates` 退出码 0 | 本机无 Docker，未跑登录后的浏览器；PR #33 未合 |
 | 2026-09-23 | #27 棚区平面坐标：迁移 `map_x`/`map_y`，超管与生产管理员 PATCH，棚负责人与查看员只读且仍按棚隔离；大屏有坐标用配置、缺一轴则回退网格 | `make test` 与 `make gates` 退出码 0；浏览器保存 32/48 后大屏摘要仍在；PR #28 | 不自动合并，不关 Issue #27 |
 | 2026-09-23 | #27 CI：平面坐标输入改为保存输入框文本，点击「保存坐标」发出 PATCH。分支 rebase 到含 #29/#31/#33 的 main | `make test` 与 `make gates` 退出码 0（jest 35，vitest 45） | PR #28 仍不合并 |
+| 2026-09-23 | #34 环境报文：HTTP POST /ingest/environment 与 MQTT mushroom/+/+/environment 写入 environment_readings。幂等键优先，否则按棚、传感器、观测时间哈希；Redis 与唯一约束双保险。/environment 列出最近读数，失败不显示空表。棚隔离沿用 ShedScope | 待 `make test` 与 `make gates` | PR 未合，不关 Issue #34 |
