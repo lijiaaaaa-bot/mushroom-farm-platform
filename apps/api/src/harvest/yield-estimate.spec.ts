@@ -75,7 +75,8 @@ function memoryRecords() {
   return {
     rows,
     query: async (sql: string, params: unknown[]) => {
-      if (!sql.includes('yield_daily')) throw new Error(`unexpected sql: ${sql}`);
+      if (!sql.includes('yield_daily'))
+        throw new Error(`unexpected sql: ${sql}`);
       const start = new Date(params[0] as string | Date).getTime();
       const end = new Date(params[1] as string | Date).getTime();
       const shedCodes = params[2] as string[] | null;
@@ -90,7 +91,8 @@ function memoryRecords() {
       const latest = new Map<string, RecognitionRecord>();
       const ordered = [...inRange].sort(
         (a, b) =>
-          new Date(b.recognizedAt).getTime() - new Date(a.recognizedAt).getTime(),
+          new Date(b.recognizedAt).getTime() -
+          new Date(a.recognizedAt).getTime(),
       );
       for (const row of ordered) {
         const key = `${row.shedCode}|${row.cameraCode}|${shanghaiDate(new Date(row.recognizedAt))}`;
@@ -133,13 +135,16 @@ function sample(
   };
 }
 
-function fillShed(records: { rows: RecognitionRecord[] }, input: {
-  shedCode: string;
-  cameraCode: string;
-  matureCount: number;
-  earlierMature?: number;
-  days?: number;
-}) {
+function fillShed(
+  records: { rows: RecognitionRecord[] },
+  input: {
+    shedCode: string;
+    cameraCode: string;
+    matureCount: number;
+    earlierMature?: number;
+    days?: number;
+  },
+) {
   const today = todayShanghai();
   const days = input.days ?? 30;
   for (let ago = days - 1; ago >= 0; ago -= 1) {
@@ -255,13 +260,13 @@ describe('yield estimate HTTP', () => {
     expect(manager.body.label).toBe('估计');
     expect(manager.body.sufficient).toBe(true);
     expect(manager.body.historyDays).toBe(30);
-    expect(manager.body.days.map((day: { matureCount: number }) => day.matureCount)).toEqual([
-      15, 15, 15,
-    ]);
+    expect(
+      manager.body.days.map((day: { matureCount: number }) => day.matureCount),
+    ).toEqual([15, 15, 15]);
     expect(JSON.stringify(manager.body.days)).not.toContain('1000');
-    expect(admin.body.days.map((day: { matureCount: number }) => day.matureCount)).toEqual([
-      1015, 1015, 1015,
-    ]);
+    expect(
+      admin.body.days.map((day: { matureCount: number }) => day.matureCount),
+    ).toEqual([1015, 1015, 1015]);
     expect(denied.status).toBe(403);
   });
 

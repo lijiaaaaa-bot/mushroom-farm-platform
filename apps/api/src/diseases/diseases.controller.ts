@@ -1,5 +1,12 @@
 import { Controller, Get, Param, Query } from '@nestjs/common';
-import { IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 import { AuthUser } from '../common/auth-user';
 import { CurrentUser } from '../common/decorators';
 import { ListQuery } from '../common/pagination';

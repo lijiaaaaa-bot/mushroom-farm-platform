@@ -14,7 +14,11 @@ import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { HarvestController } from './harvest.controller';
 import { HarvestService } from './harvest.service';
 
-const WRITE_ROLES = ['super_admin', 'production_admin', 'shed_manager'] as const;
+const WRITE_ROLES = [
+  'super_admin',
+  'production_admin',
+  'shed_manager',
+] as const;
 
 function memoryRecords() {
   const rows: RecognitionRecord[] = [];

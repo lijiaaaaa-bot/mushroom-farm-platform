@@ -257,18 +257,12 @@ describe('disease environment alignment', () => {
     expect(response.body.window.afterMinutes).toBe(30);
     expect(response.body.empty).toBe(false);
     expect(response.body.emptyReason).toBeNull();
-    expect(response.body.readings.map((item: { id: string }) => item.id)).toEqual([
-      'edge-before',
-      'inside',
-      'other-sensor',
-      'edge-after',
-    ]);
-    expect(response.body.readings.map((item: { shedCode: string }) => item.shedCode)).toEqual([
-      'S01',
-      'S01',
-      'S01',
-      'S01',
-    ]);
+    expect(
+      response.body.readings.map((item: { id: string }) => item.id),
+    ).toEqual(['edge-before', 'inside', 'other-sensor', 'edge-after']);
+    expect(
+      response.body.readings.map((item: { shedCode: string }) => item.shedCode),
+    ).toEqual(['S01', 'S01', 'S01', 'S01']);
     const inside = response.body.readings.find(
       (item: { id: string }) => item.id === 'inside',
     );
@@ -289,9 +283,9 @@ describe('disease environment alignment', () => {
 
     expect(response.status).toBe(200);
     expect(response.body.alignment.sensorCode).toBe('SEN-2');
-    expect(response.body.readings.map((item: { id: string }) => item.id)).toEqual([
-      'other-sensor',
-    ]);
+    expect(
+      response.body.readings.map((item: { id: string }) => item.id),
+    ).toEqual(['other-sensor']);
   });
 
   it('returns an explainable empty state and does not reuse the recognition payload', async () => {
@@ -315,12 +309,14 @@ describe('disease environment alignment', () => {
       .set('x-test-role', 'shed_manager');
 
     expect(own.status).toBe(200);
-    expect(own.body.readings.every((item: { shedCode: string }) => item.shedCode === 'S01')).toBe(
-      true,
-    );
-    expect(own.body.readings.map((item: { id: string }) => item.id)).not.toContain(
-      'other-shed',
-    );
+    expect(
+      own.body.readings.every(
+        (item: { shedCode: string }) => item.shedCode === 'S01',
+      ),
+    ).toBe(true);
+    expect(
+      own.body.readings.map((item: { id: string }) => item.id),
+    ).not.toContain('other-shed');
     expect(other.status).toBe(403);
   });
 

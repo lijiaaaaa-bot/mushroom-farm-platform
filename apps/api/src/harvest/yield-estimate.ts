@@ -26,7 +26,10 @@ export interface YieldProjection {
   days: YieldDay[];
 }
 
-export function thinHistoryMessage(requiredDays: number, historyDays: number): string {
+export function thinHistoryMessage(
+  requiredDays: number,
+  historyDays: number,
+): string {
   return `有效历史不足：近 ${requiredDays} 个自然日仅有 ${historyDays} 天有成熟识别，满 ${requiredDays} 天后才给出近 2–3 日产量估计。`;
 }
 

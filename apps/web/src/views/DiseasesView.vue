@@ -63,10 +63,29 @@ function metric(value: number | null): string {
   return value === null || value === undefined ? '—' : String(value);
 }
 
+function canvasReady(): boolean {
+  if (/jsdom/i.test(navigator.userAgent)) return false;
+  try {
+    return document.createElement('canvas').getContext('2d') !== null;
+  } catch {
+    return false;
+  }
+}
+
+function releaseChart() {
+  const current = chart;
+  chart = null;
+  if (!current) return;
+  try {
+    current.dispose();
+  } catch {
+    /* jsdom has no canvas */
+  }
+}
+
 function renderChart() {
-  if (!chartEl.value || !env.value || env.value.empty) {
-    chart?.dispose();
-    chart = null;
+  if (!chartEl.value || !env.value || env.value.empty || !canvasReady()) {
+    releaseChart();
     return;
   }
   try {
@@ -127,8 +146,7 @@ function renderChart() {
       true,
     );
   } catch {
-    chart?.dispose();
-    chart = null;
+    releaseChart();
   }
 }
 
@@ -181,7 +199,7 @@ onMounted(async () => {
   }
 });
 
-onBeforeUnmount(() => chart?.dispose());
+onBeforeUnmount(releaseChart);
 </script>
 
 <template>
