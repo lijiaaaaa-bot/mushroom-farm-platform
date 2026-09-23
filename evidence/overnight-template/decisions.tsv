@@ -1,0 +1,5 @@
+time	phase	decision	reason	evidence	result
+2026-09-23T07:57:00Z	scope	只改文档、Issue 模板与三处一行指针，不改产品代码	用户约束为 docs/gates/template only；完成谓词不含业务功能	docs/OVERNIGHT_TICKET.md	accepted
+2026-09-23T07:57:10Z	form	用 GitHub Issue Form YAML，谓词、隔离、日志路径、逃生口设为必填	缺谓词的工单应在开单时被拦住；正文模板仍放在文档里供复制	.github/ISSUE_TEMPLATE/overnight_task.yml	accepted
+2026-09-23T07:57:20Z	scope	模板正文留在本仓；AGENTS.md、APPLY_MAP、SESSION_PROTOCOL 各加一行链接	本仓要能直接开 Overnight Issue；门禁与协议大段仍归 harness，此处不搬故事	docs/OVERNIGHT_TICKET.md	accepted
+2026-09-23T07:57:30Z	escape	开 PR 且不合并；谓词保持为文件存在且 make gates 不因此变红	卡住或做完都只推 PR；禁止放宽谓词，禁止自动合并	STATUS.md	accepted
