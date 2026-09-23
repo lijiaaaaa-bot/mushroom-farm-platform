@@ -19,7 +19,10 @@ import { MqttIngestAdapter } from './mqtt.adapter';
 
 const fixture = JSON.parse(
   readFileSync(
-    join(__dirname, '../../../../packages/contracts/fixtures/recognition.unknown-field.json'),
+    join(
+      __dirname,
+      '../../../../packages/contracts/fixtures/recognition.unknown-field.json',
+    ),
     'utf8',
   ),
 ) as { expect: string; body: Record<string, unknown> };
@@ -40,7 +43,8 @@ describe('ingest wall', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: (key: string) => (key === 'ingestToken' ? 'dev-ingest-token' : undefined),
+            get: (key: string) =>
+              key === 'ingestToken' ? 'dev-ingest-token' : undefined,
           },
         },
         {
