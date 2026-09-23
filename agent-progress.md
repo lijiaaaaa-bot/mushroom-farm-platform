@@ -3,7 +3,7 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：#3 管理端 `/devices` `/alerts` `/harvest` `/reports` 接通现有 API，补 vitest 与浅色令牌
+- 本会话目标：STATUS 将 #3 标为已完成（PR #19 已合、Issue #3 已关）
 - 进行中文件：无
 
 ## 日志
@@ -18,3 +18,4 @@
 | 2026-09-23 | Overnight 工单模板：谓词 / 隔离 / decisions.tsv / 逃生口；Issue Form | `make gates`；`docs/OVERNIGHT_TICKET.md` | PR #18 未合并 |
 | 2026-09-23 | Overnight 正文改到 harness；本仓 `docs/OVERNIGHT_TICKET.md` 只留指针。Issue 表单仍在 | `make gates`；PR #18 | 不在本仓维护第二份协议 |
 | 2026-09-23 | #3 四页已有 API 调用；补告警失败不显示空态、采摘失败清空旧数据、报表空 Blob 空态、管理端浅色令牌、路由与页面 vitest | `npm --prefix apps/web test` 20 passed；`make gates` 通过 | PR #19 未合，不关 Issue #3 |
+| 2026-09-23 | #19/#3 done：PR #19 squash 合入 main（506427d），Issue #3 已关闭；STATUS 已完成一行 | `gh pr view 19` MERGED；`gh issue view 3` CLOSED | 无 |
