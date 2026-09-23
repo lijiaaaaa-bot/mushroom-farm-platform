@@ -2,6 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import AdminLayout from './layouts/AdminLayout.vue';
 import AlertsView from './views/AlertsView.vue';
 import AuditView from './views/AuditView.vue';
+import BigScreenView from './views/BigScreenView.vue';
 import DashboardView from './views/DashboardView.vue';
 import DevicesView from './views/DevicesView.vue';
 import HarvestView from './views/HarvestView.vue';
@@ -16,6 +17,7 @@ const router = createRouter({
   history: createWebHistory(),
   routes: [
     { path: '/login', component: LoginView, meta: { public: true, title: '登录' } },
+    { path: '/big-screen', component: BigScreenView, meta: { title: '菇棚监测' } },
     {
       path: '/',
       component: AdminLayout,

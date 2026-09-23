@@ -27,6 +27,8 @@ make gates   # 交付物门禁（与 test 分开；CI 的 deliverable-gates 跑�
 
 开发种子账号：`admin` / `Admin@123456`。接入令牌请求头：`X-Ingest-Token: dev-ingest-token`。
 
+登录后打开 `/big-screen`：顶栏、左指标与告警、中部棚区平面点位、右侧设备与环境、底部滚动条。数据来自现有总览、棚区、告警、设备和识别列表接口。
+
 ## 假设
 
 - MQTT 主题：`mushroom/+/+/recognition`，心跳 `mushroom/+/+/heartbeat`

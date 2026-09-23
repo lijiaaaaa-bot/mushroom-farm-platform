@@ -9,6 +9,7 @@ const router = useRouter();
 const open = ref(false);
 const links = [
   { to: '/', label: '总览' },
+  { to: '/big-screen', label: '菇棚监测' },
   { to: '/devices', label: '设备' },
   { to: '/recognitions', label: '识别记录' },
   { to: '/alerts', label: '告警' },
