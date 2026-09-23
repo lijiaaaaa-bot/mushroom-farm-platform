@@ -22,7 +22,8 @@ function memoryAggregates(initial: DailyAggregate[] = []) {
   let seq = rows.length;
   return {
     rows,
-    create: (input: Partial<DailyAggregate>) => ({ ...input }) as DailyAggregate,
+    create: (input: Partial<DailyAggregate>) =>
+      ({ ...input }) as DailyAggregate,
     find: async (options?: { where?: { day?: string } }) => {
       const day = options?.where?.day;
       const found = day ? rows.filter((row) => row.day === day) : rows;
@@ -120,7 +121,8 @@ function point(
     Pick<DailyAggregate, 'day' | 'grain' | 'shedCode' | 'cameraCode'>,
 ): DailyAggregate {
   return {
-    id: partial.id ?? `${partial.shedCode}-${partial.cameraCode}-${partial.day}`,
+    id:
+      partial.id ?? `${partial.shedCode}-${partial.cameraCode}-${partial.day}`,
     mushroomCount: partial.mushroomCount ?? 1,
     capDiameterMean: partial.capDiameterMean ?? 4,
     sampleCount: partial.sampleCount ?? 1,
@@ -367,10 +369,9 @@ describe('growth trend API', () => {
       today,
     ]);
     expect(s01.points).toHaveLength(2);
-    expect(s01.cameras.map((row: { cameraCode: string }) => row.cameraCode)).toEqual([
-      'CAM-1',
-      'CAM-2',
-    ]);
+    expect(
+      s01.cameras.map((row: { cameraCode: string }) => row.cameraCode),
+    ).toEqual(['CAM-1', 'CAM-2']);
   });
 
   it('includes a 20-day-old point in the 30-day window and omits older days', async () => {
@@ -403,9 +404,9 @@ describe('growth trend API', () => {
         .get('/api/v1/growth-trends')
         .set('x-test-role', role);
       expect(listed.status).toBe(200);
-      expect(listed.body.sheds.map((row: { shedCode: string }) => row.shedCode)).toEqual([
-        'S01',
-      ]);
+      expect(
+        listed.body.sheds.map((row: { shedCode: string }) => row.shedCode),
+      ).toEqual(['S01']);
 
       const denied = await request(app.getHttpServer())
         .get('/api/v1/growth-trends?shedCode=S02')
@@ -458,9 +459,12 @@ describe('growth trend write path', () => {
       findOne: async () => record,
       save: async (input: RecognitionRecord) => input,
     };
-    const harvest = new HarvestService(records as never, {
-      refreshDay,
-    } as never);
+    const harvest = new HarvestService(
+      records as never,
+      {
+        refreshDay,
+      } as never,
+    );
     const user: AuthUser = {
       id: 'admin',
       username: 'admin',

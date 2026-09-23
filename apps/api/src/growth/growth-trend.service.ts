@@ -167,19 +167,19 @@ function blank(value?: string): string | undefined {
   return text ? text : undefined;
 }
 
+interface ShedBucket {
+  points: GrowthPoint[];
+  cameras: Map<string, GrowthPoint[]>;
+}
+
+function emptyBucket(): ShedBucket {
+  return { points: [], cameras: new Map<string, GrowthPoint[]>() };
+}
+
 function groupSheds(rows: DailyAggregate[]): GrowthTrendSeries['sheds'] {
-  const sheds = new Map<
-    string,
-    {
-      points: GrowthPoint[];
-      cameras: Map<string, GrowthPoint[]>;
-    }
-  >();
+  const sheds = new Map<string, ShedBucket>();
   for (const row of rows) {
-    const bucket = sheds.get(row.shedCode) ?? {
-      points: [],
-      cameras: new Map(),
-    };
+    const bucket = sheds.get(row.shedCode) ?? emptyBucket();
     const point: GrowthPoint = {
       day: row.day,
       mushroomCount: row.mushroomCount,

@@ -6,10 +6,7 @@ import { HarvestController } from './harvest.controller';
 import { HarvestService } from './harvest.service';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([RecognitionRecord]),
-    GrowthTrendModule,
-  ],
+  imports: [TypeOrmModule.forFeature([RecognitionRecord]), GrowthTrendModule],
   controllers: [HarvestController],
   providers: [HarvestService],
   exports: [HarvestService],

@@ -128,7 +128,9 @@ export class HarvestService {
       await this.records.save(record);
       if (changes.mushroomCount) {
         try {
-          await this.growth?.refreshDay(shanghaiDate(new Date(record.recognizedAt)));
+          await this.growth?.refreshDay(
+            shanghaiDate(new Date(record.recognizedAt)),
+          );
         } catch (error) {
           this.logger.warn(
             `日聚合刷新失败，采摘修正已保存：${(error as Error).message}`,

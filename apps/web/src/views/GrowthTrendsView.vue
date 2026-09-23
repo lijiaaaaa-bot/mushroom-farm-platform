@@ -159,6 +159,11 @@ async function loadTrends() {
   data.value = response.data;
 }
 
+async function paint() {
+  await nextTick();
+  render();
+}
+
 async function reload() {
   loading.value = true;
   error.value = '';
@@ -175,6 +180,7 @@ async function reload() {
   } finally {
     loading.value = false;
   }
+  await paint();
 }
 
 async function setDays(next: WindowDays) {
@@ -190,6 +196,7 @@ async function setDays(next: WindowDays) {
   } finally {
     loading.value = false;
   }
+  await paint();
 }
 
 async function onShedChange() {
@@ -203,6 +210,7 @@ async function onShedChange() {
   } finally {
     loading.value = false;
   }
+  await paint();
 }
 
 function diameterText(value: number | null) {
@@ -213,9 +221,8 @@ onMounted(() => {
   void reload();
 });
 
-watch([data, mode, lines], async () => {
-  await nextTick();
-  render();
+watch(mode, () => {
+  void paint();
 });
 
 onBeforeUnmount(() => {

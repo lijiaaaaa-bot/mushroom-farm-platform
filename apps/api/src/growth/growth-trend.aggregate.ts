@@ -95,6 +95,8 @@ function latest(records: AggregateSource[]): AggregateSource {
 function meanDiameter(records: AggregateSource[]): number | null {
   const values = records
     .map((record) => record.avgCapDiameter)
-    .filter((value): value is number => value !== null && Number.isFinite(value));
+    .filter(
+      (value): value is number => value !== null && Number.isFinite(value),
+    );
   return averageDiameter(values);
 }

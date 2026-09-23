@@ -30,7 +30,11 @@ const golden = JSON.parse(
   ),
 ) as { body: Record<string, unknown> };
 
-function ingestProviders(refreshDay: jest.Mock, records: object, redis: object) {
+function ingestProviders(
+  refreshDay: jest.Mock,
+  records: object,
+  redis: object,
+) {
   return [
     IngestService,
     IngestTokenGuard,
@@ -77,10 +81,7 @@ describe('ingest refreshes daily aggregates', () => {
           findOne: async () => (saved[0] ? saved[0] : null),
         },
         {
-          setNx: jest
-            .fn()
-            .mockResolvedValueOnce(true)
-            .mockResolvedValue(false),
+          setNx: jest.fn().mockResolvedValueOnce(true).mockResolvedValue(false),
         },
       ),
     }).compile();
