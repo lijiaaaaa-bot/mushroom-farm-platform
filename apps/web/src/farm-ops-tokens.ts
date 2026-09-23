@@ -1,4 +1,4 @@
-/** Light ops page. Nav rail is white; green stays on the active item and buttons. */
+/** Light ops page. Nav rail is white; status green is for dots and short labels. */
 export const farmOpsTokens = {
   canvas: '#F5F7FA',
   canvasAlt: '#F0F2F5',
@@ -7,7 +7,7 @@ export const farmOpsTokens = {
   mist: '#646A73',
   line: '#E5E6EB',
   sidebar: '#FFFFFF',
-  sidebarActive: '#E7F6EC',
+  sidebarActive: '#F4F6F8',
   accent: '#2F9E44',
   press: '#1B7A4E',
   grid: '#E4E9EE',

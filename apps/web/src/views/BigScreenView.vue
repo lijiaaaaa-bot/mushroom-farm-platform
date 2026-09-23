@@ -5,7 +5,6 @@ import { useRouter } from 'vue-router';
 import {
   ALERT_LEVEL_LABEL,
   ALERT_STATUS_LABEL,
-  DEVICE_OFFLINE_AFTER_MS,
   DEVICE_TYPE_LABEL,
   ROLE_LABEL,
   shanghaiDate,
@@ -113,7 +112,6 @@ type PointTone = 'severe' | 'warning' | 'info' | 'online' | 'idle';
 
 const REFRESH_MS = 30_000;
 const SKIN_KEY = 'big-screen-skin';
-const offlineMinutes = DEVICE_OFFLINE_AFTER_MS / 60_000;
 const timelinePalette = ['#2F9E44', '#1B7A4E', '#F59E0B', '#6B8F71', '#E03131', '#8C6A43'];
 
 const router = useRouter();
@@ -176,21 +174,21 @@ const metricTiles = computed(() => {
       key: 'sheds',
       label: '棚区',
       value: String(summary?.shedCount ?? sheds.value.length),
-      hint: '当前账号可见',
+      hint: '',
       hot: false,
     },
     {
       key: 'devices',
       label: '设备在线',
       value: `${summary?.deviceOnline ?? online}/${summary?.deviceTotal ?? devices.value.length}`,
-      hint: `离线判定 ${offlineMinutes} 分钟`,
+      hint: '',
       hot: false,
     },
     {
       key: 'mature',
       label: '今日成熟',
       value: summary ? String(summary.todayMature) : '—',
-      hint: summary ? `菇数 ${summary.todayMushroom}` : '汇总未返回',
+      hint: '',
       hot: false,
     },
     {
@@ -220,13 +218,6 @@ const points = computed(() =>
     };
   }),
 );
-
-const aisle = computed(() => {
-  if (points.value.length < 2) return '';
-  return points.value
-    .map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`)
-    .join(' ');
-});
 
 const selectedPoint = computed(
   () => points.value.find((point) => point.shed.code === selectedCode.value) ?? null,
@@ -530,7 +521,7 @@ async function load() {
   }
 
   if (shedsResult.status === 'fulfilled') {
-    sheds.value = shedsResult.value.data;
+    sheds.value = Array.isArray(shedsResult.value.data) ? shedsResult.value.data : [];
     zoneError.sheds = '';
     if (selectedCode.value && !sheds.value.some((row) => row.code === selectedCode.value)) {
       selectedCode.value = null;
@@ -617,11 +608,7 @@ onBeforeUnmount(() => {
   <div class="screen" :data-layout="layout" data-skin="tb-night" :class="{ 'skin-dark': skin === 'dark' }">
     <header class="zone top">
       <div class="brand">
-        <span class="mark" aria-hidden="true"></span>
-        <div>
-          <p class="eyebrow">食用菌基地</p>
-          <h1>基地大屏</h1>
-        </div>
+        <h1>基地大屏</h1>
       </div>
       <p class="clock">{{ clockText }}</p>
       <div class="top-side">
@@ -646,7 +633,7 @@ onBeforeUnmount(() => {
       <article v-for="tile in metricTiles" :key="tile.key" class="tile" :class="{ hot: tile.hot }">
         <p class="tile-label">{{ tile.label }}</p>
         <p class="tile-value">{{ tile.value }}</p>
-        <p class="tile-hint">{{ tile.hint }}</p>
+        <p v-if="tile.hint" class="tile-hint">{{ tile.hint }}</p>
       </article>
       <p v-if="zoneError.overview" class="zone-error metric-error">{{ zoneError.overview }}</p>
     </section>
@@ -663,9 +650,6 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <div class="floor">
-        <svg v-if="aisle" class="aisle" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
-          <path :d="aisle" />
-        </svg>
         <p v-if="zoneError.sheds" class="floor-empty">{{ zoneError.sheds }}</p>
         <p v-else-if="loading && !points.length" class="floor-empty">加载中…</p>
         <p v-else-if="!points.length" class="floor-empty">当前账号没有可见棚区。</p>
@@ -682,7 +666,6 @@ onBeforeUnmount(() => {
           <span class="dot"></span>
           <span class="point-code">{{ point.shed.code }}</span>
           <span class="point-name">{{ point.shed.name }}</span>
-          <span class="point-meta">设备 {{ point.online }}/{{ point.totalDevices }} · 告警 {{ point.openAlerts }}</span>
         </button>
       </div>
       <section v-if="selectedPoint" class="detail">
@@ -708,10 +691,7 @@ onBeforeUnmount(() => {
     <main class="zone center wall">
       <div class="zone-head split">
         <h2>抓拍墙</h2>
-        <span>
-          各摄像头最近一张 · 最近 {{ recognitions.length }} 条
-          <template v-if="recognitionTotal > recognitions.length"> / 共 {{ recognitionTotal }}</template>
-        </span>
+        <span>{{ wallCells.length }}</span>
       </div>
       <p v-if="zoneError.recognitions" class="zone-error">{{ zoneError.recognitions }}</p>
       <p v-else-if="loading && !wallCells.length" class="muted">加载中…</p>
@@ -725,6 +705,7 @@ onBeforeUnmount(() => {
         >
           <ResultCard
             :id="cell.id"
+            empty-label="无图"
             :snapshot-object-key="cell.snapshotObjectKey"
             :snapshot-url="cell.snapshotUrl"
           >
@@ -897,7 +878,7 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 12px;
   padding: 8px 12px;
-  border-top: 3px solid var(--bg-sidebar);
+  border-top: 1px solid var(--line);
 }
 
 .metrics {
@@ -1018,9 +999,8 @@ onBeforeUnmount(() => {
 }
 
 .zone-head h2 {
-  padding-left: 8px;
-  border-left: 3px solid #1f6b4a;
   font-size: 13px;
+  font-weight: 600;
   color: var(--text-primary);
 }
 
@@ -1101,7 +1081,7 @@ onBeforeUnmount(() => {
 
 .row {
   border: 1px solid var(--line);
-  border-left: 3px solid var(--bg-sidebar);
+  border-left: 3px solid #5c6b7a;
   border-radius: 6px;
   padding: 6px 8px;
   background: var(--bg-card);
@@ -1135,7 +1115,7 @@ onBeforeUnmount(() => {
   display: inline-block;
   flex: none;
   margin-top: 5px;
-  background: var(--bg-sidebar);
+  background: #5c6b7a;
 }
 
 .row[data-level='warning'] .pip,
@@ -1157,12 +1137,12 @@ onBeforeUnmount(() => {
 .swatch.online,
 .status-dot.on,
 .tone-online .dot {
-  background: var(--bg-sidebar);
+  background: #1b7a4e;
 }
 
 .status-dot.off,
 .tone-idle .dot {
-  background: var(--idle);
+  background: #8b939e;
 }
 
 .legend {
@@ -1184,24 +1164,11 @@ onBeforeUnmount(() => {
   overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background:
-    linear-gradient(var(--line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line) 1px, transparent 1px),
-    var(--bg-app-alt);
-  background-size: 40px 40px, 40px 40px, auto;
-}
-
-.aisle {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.aisle path {
-  fill: none;
-  stroke: var(--line);
-  stroke-width: 0.6;
+  background-color: #f7f8fa;
+  background-image:
+    linear-gradient(rgb(228 233 238 / 65%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(228 233 238 / 65%) 1px, transparent 1px);
+  background-size: 28px 28px, 28px 28px;
 }
 
 .floor-empty {
@@ -1215,32 +1182,37 @@ onBeforeUnmount(() => {
 
 .point {
   position: absolute;
-  transform: translate(-50%, -50%);
-  width: 132px;
-  padding: 8px 10px 8px 22px;
+  transform: translate(-50%, -100%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: auto;
+  padding: 0;
   text-align: left;
   color: var(--text-primary);
   cursor: pointer;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--bg-card);
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .point.on,
 .point:hover {
-  border-color: var(--bg-sidebar);
-  background: var(--bg-app);
   z-index: 1;
+  background: transparent;
 }
 
 .point .dot {
-  position: absolute;
-  left: 8px;
-  top: 12px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  position: static;
+  width: 14px;
+  height: 14px;
+  flex: none;
+  margin: 0;
+  border: 2px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  box-shadow: 0 1px 2px rgb(31 35 41 / 18%);
+  transform: rotate(-45deg);
 }
 
 .tone-warning .dot {
@@ -1254,26 +1226,27 @@ onBeforeUnmount(() => {
   display: block;
 }
 
+.point-code,
+.point-name {
+  display: inline;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  background: var(--bg-card);
+  font-size: 12px;
+  line-height: 18px;
+}
+
 .point-code {
-  font-size: 13px;
+  border-radius: 4px 0 0 4px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.point-name,
-.point-meta {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
 .point-name {
-  font-size: 12px;
-}
-
-.point-meta {
+  border-left: 0;
+  border-radius: 0 4px 4px 0;
   color: var(--text-secondary);
-  font-size: 11px;
+  font-weight: 400;
 }
 
 .detail {
@@ -1492,9 +1465,16 @@ onBeforeUnmount(() => {
 }
 
 .wall-cell :deep(.result-card-media) {
-  min-height: 148px;
-  align-items: stretch;
-  background: #dfe6ea;
+  min-height: 0;
+  aspect-ratio: 16 / 10;
+  align-items: center;
+  justify-content: center;
+  margin: 8px 8px 0;
+  border: 1px solid #d5dbe3;
+  border-radius: 4px;
+  background: #f7f8fa;
+  color: #8b939e;
+  font-size: 12px;
 }
 
 .wall-cell :deep(.result-card-media img) {
@@ -1505,11 +1485,14 @@ onBeforeUnmount(() => {
 }
 
 .wall-cell :deep(.result-card-media span) {
-  margin: auto;
-  padding: 6px 10px;
-  border: 1px dashed #8aa0b0;
-  border-radius: 6px;
-  background: rgb(255 255 255 / 72%);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #8b939e;
+  font-size: 12px;
+  line-height: 1;
 }
 
 .wall-counts {
@@ -1637,16 +1620,11 @@ onBeforeUnmount(() => {
 
 .screen[data-skin='tb-night'] .floor {
   border-color: #1e4a6e;
-  background:
-    linear-gradient(#1e4666 1px, transparent 1px),
-    linear-gradient(90deg, #1e4666 1px, transparent 1px),
-    #0e2942;
-  background-size: 40px 40px, 40px 40px, auto;
-}
-
-.screen[data-skin='tb-night'] .mark {
-  background: #1f6b4a;
-  border-color: #1f6b4a;
+  background-color: #0e2942;
+  background-image:
+    linear-gradient(rgb(30 70 102 / 55%) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(30 70 102 / 55%) 1px, transparent 1px);
+  background-size: 28px 28px, 28px 28px;
 }
 
 .screen[data-skin='tb-night'] .tile-value,
@@ -1656,15 +1634,23 @@ onBeforeUnmount(() => {
   color: #6fce8a;
 }
 
+.screen[data-skin='tb-night'] .point,
 .screen[data-skin='tb-night'] .point.on,
-.screen[data-skin='tb-night'] .point:hover,
+.screen[data-skin='tb-night'] .point:hover {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+}
+
+.screen[data-skin='tb-night'] .point-code,
+.screen[data-skin='tb-night'] .point-name {
+  background: #12304a;
+  border-color: #1e4a6e;
+}
+
 .screen[data-skin='tb-night'] .text-btn:hover {
   background: #184060;
   border-color: #6fce8a;
-}
-
-.screen[data-skin='tb-night'] .aisle path {
-  stroke: #2a5a80;
 }
 
 .screen[data-skin='tb-night'] .wall-cell {
@@ -1681,12 +1667,13 @@ onBeforeUnmount(() => {
 
 .screen[data-skin='tb-night'] .wall-cell :deep(.result-card-media) {
   color: #9fb3c8;
-  background: #0c2236;
+  background: transparent;
+  border-color: #2c4d6e;
 }
 
 .screen[data-skin='tb-night'] .wall-cell :deep(.result-card-media span) {
-  border-color: #1c4564;
-  background: rgb(16 40 63 / 88%);
+  border: 0;
+  background: transparent;
   color: #9fb3c8;
 }
 
@@ -1707,7 +1694,7 @@ onBeforeUnmount(() => {
 }
 
 .screen[data-skin='tb-night'] .zone-head h2 {
-  border-left-color: #1f6b4a;
+  color: #e7eef6;
 }
 
 .screen[data-skin='tb-night'] .metrics .tile {

@@ -46,10 +46,8 @@ describe('/big-screen route', () => {
     expect(navLinks[0]?.text()).toBe('总览');
     const screenLink = navLinks[1];
     expect(screenLink?.attributes('href')).toBe('/big-screen');
-    expect(screenLink?.classes()).toContain('font-semibold');
-    const marks = screenLink?.findAll('span') ?? [];
-    expect(marks[0]?.text()).toBe('基地大屏');
-    expect(marks[1]?.text()).toBe('大屏');
+    expect(screenLink?.text()).toBe('基地大屏');
+    expect(screenLink?.findAll('span')).toHaveLength(1);
     const hrefs = navLinks.map((anchor) => anchor.attributes('href'));
     expect(hrefs).not.toContain('/phase2/big-screen');
     expect(hrefs).not.toContain('/phase2/wecom');

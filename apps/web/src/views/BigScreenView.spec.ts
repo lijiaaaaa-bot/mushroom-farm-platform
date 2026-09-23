@@ -184,7 +184,7 @@ describe('BigScreenView', () => {
     expect(screen.left.text()).toContain('一号棚');
     expect(screen.center.text()).toContain('抓拍墙');
     expect(screen.center.text()).toContain('CAM-S01');
-    expect(screen.center.text()).toContain('无抓拍');
+    expect(screen.center.text()).toContain('无图');
     expect(screen.right.text()).toContain('告警');
     expect(screen.right.text()).toContain('高温');
     const point = wrapper.get('button.point');
@@ -325,7 +325,7 @@ describe('BigScreenView', () => {
     expect(wall.text()).toContain('成熟 4/10');
     expect(wall.text()).not.toContain('成熟 1/3');
     expect(wall.text()).toContain('CAM-S02');
-    expect(wall.text()).toContain('无抓拍');
+    expect(wall.text()).toContain('无图');
     expect(wall.text()).not.toContain('暂无识别记录');
     const cells = wall.findAll('.wall-cell');
     expect(cells).toHaveLength(2);
@@ -402,6 +402,8 @@ describe('BigScreenView', () => {
     expect(source).not.toMatch(/雪亮|#00e5ff|#0b1220|#00fff/i);
     expect(source).toContain('data-skin');
     expect(source).toContain('tb-night');
+    expect(source).toContain('empty-label="无图"');
+    expect(source).not.toMatch(/result-card-media[\s\S]{0,180}background:\s*#(1f6b4a|1b7a4e|2f9e44)/i);
     expect(source).toContain('skin-dark');
 
     const wrapper = await mountScreen();
