@@ -23,6 +23,12 @@ NestJS + Vue3/TS/Vite/Tailwind + PostgreSQL/Redis/MinIO + MQTT；契约 `package
 - 把需求原文（如 110 路摄像头）标成假定
 - 无证据的完成百分比
 
+## 会话协议
+- 开场 / 进行 / 收工：`docs/SESSION_PROTOCOL.md`
+- 研究对照（做 / 不做）：`docs/APPLY_MAP.md`
+- 增量条目：`docs/CONTEXT_PLAYBOOK.md`
+- 窗外记忆（只追加）：`agent-progress.md`
+
 ## 延伸阅读（仓内）
 - `docs/CONTEXT_ENGINEERING_2026_Jun-Sep.md`
 - `docs/PROJECT_DELIVERABLE_NORMS.md`
