@@ -27,6 +27,7 @@ lint:
 
 test: contracts lint
 	npm --prefix packages/contracts test
+	node --test scripts/boundaries.spec.mjs
 	npm --prefix apps/api test
 	npm --prefix apps/web run typecheck
 
