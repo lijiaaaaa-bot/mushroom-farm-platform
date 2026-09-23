@@ -717,7 +717,12 @@ onBeforeUnmount(() => {
       <p v-else-if="loading && !wallCells.length" class="muted">加载中…</p>
       <p v-else-if="!wallCells.length" class="muted">暂无识别记录，抓拍墙没有画面。</p>
       <div v-else class="wall-grid">
-        <article v-for="cell in wallCells" :key="cell.id" class="wall-cell" :class="{ on: pinnedId === cell.id }">
+        <article
+          v-for="cell in wallCells"
+          :key="cell.id"
+          class="wall-cell"
+          :class="{ on: pinnedId === cell.id, disease: cell.diseaseCount > 0 }"
+        >
           <ResultCard
             :id="cell.id"
             :snapshot-object-key="cell.snapshotObjectKey"
@@ -725,9 +730,12 @@ onBeforeUnmount(() => {
           >
             <p class="wall-title">{{ cell.cameraCode }}</p>
             <p class="wall-meta">{{ cell.shedCode }} · {{ shortTime(cell.recognizedAt) }}</p>
-            <p class="wall-counts">成熟 {{ cell.matureCount }}/{{ cell.mushroomCount }} · 病害 {{ cell.diseaseCount }}</p>
+            <p class="wall-counts">
+              <span>成熟 {{ cell.matureCount }}/{{ cell.mushroomCount }}</span>
+              <span class="wall-disease">病害 {{ cell.diseaseCount }}</span>
+            </p>
           </ResultCard>
-          <button type="button" class="text-btn" @click="pinRecognition(cell.id)">对比此时段</button>
+          <button type="button" class="text-btn wall-pin" @click="pinRecognition(cell.id)">对比此时段</button>
         </article>
       </div>
     </main>
@@ -841,8 +849,8 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: minmax(240px, 20vw) minmax(0, 1.45fr) minmax(280px, 24vw);
   grid-template-rows: auto auto minmax(0, 1fr) auto;
-  gap: 8px;
-  padding: 10px;
+  gap: 6px;
+  padding: 8px;
   color: var(--text-primary);
   color-scheme: light;
   background: var(--bg-app);
@@ -887,8 +895,8 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) auto minmax(180px, 1fr);
   align-items: center;
-  gap: 16px;
-  padding: 10px 16px;
+  gap: 12px;
+  padding: 8px 12px;
   border-top: 3px solid var(--bg-sidebar);
 }
 
@@ -918,9 +926,9 @@ onBeforeUnmount(() => {
 }
 
 .mark {
-  width: 36px;
-  height: 36px;
-  border-radius: 8px;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
   background: var(--bg-sidebar);
   border: 1px solid var(--bg-sidebar);
 }
@@ -1010,7 +1018,9 @@ onBeforeUnmount(() => {
 }
 
 .zone-head h2 {
-  font-size: 15px;
+  padding-left: 8px;
+  border-left: 3px solid #1f6b4a;
+  font-size: 13px;
   color: var(--text-primary);
 }
 
@@ -1031,9 +1041,9 @@ onBeforeUnmount(() => {
 .env-tile,
 .detail {
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--bg-card);
-  padding: 8px 10px;
+  padding: 6px 8px;
 }
 
 .tile-label {
@@ -1466,13 +1476,60 @@ onBeforeUnmount(() => {
   color: var(--text-secondary);
 }
 
-.wall-cell.on {
-  outline: 2px solid var(--accent);
-  border-radius: var(--radius-card);
+.wall-cell {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-card);
 }
 
-.wall-cell .text-btn {
-  margin-top: 8px;
+.wall-cell :deep(.result-card) {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.wall-cell :deep(.result-card-media) {
+  min-height: 148px;
+  align-items: stretch;
+  background: #dfe6ea;
+}
+
+.wall-cell :deep(.result-card-media img) {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  object-fit: cover;
+}
+
+.wall-cell :deep(.result-card-media span) {
+  margin: auto;
+  padding: 6px 10px;
+  border: 1px dashed #8aa0b0;
+  border-radius: 6px;
+  background: rgb(255 255 255 / 72%);
+}
+
+.wall-counts {
+  display: flex;
+  gap: 10px;
+}
+
+.wall-cell.disease .wall-disease {
+  color: var(--critical);
+  font-weight: 600;
+}
+
+.wall-cell.on {
+  outline: 2px solid var(--accent);
+  border-radius: 8px;
+}
+
+.wall-cell .wall-pin {
+  margin: 0 10px 10px;
+  align-self: flex-start;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1608,5 +1665,52 @@ onBeforeUnmount(() => {
 
 .screen[data-skin='tb-night'] .aisle path {
   stroke: #2a5a80;
+}
+
+.screen[data-skin='tb-night'] .wall-cell {
+  background: #10283f;
+  border-color: #1c4564;
+}
+
+.screen[data-skin='tb-night'] .wall-cell :deep(.result-card),
+.screen[data-skin='tb-night'] .wall-cell :deep(.result-card-caption) {
+  background: #10283f;
+  color: #e7eef6;
+  border-color: #1c4564;
+}
+
+.screen[data-skin='tb-night'] .wall-cell :deep(.result-card-media) {
+  color: #9fb3c8;
+  background: #0c2236;
+}
+
+.screen[data-skin='tb-night'] .wall-cell :deep(.result-card-media span) {
+  border-color: #1c4564;
+  background: rgb(16 40 63 / 88%);
+  color: #9fb3c8;
+}
+
+.screen[data-skin='tb-night'] .wall-title,
+.screen[data-skin='tb-night'] .wall-counts {
+  color: #e7eef6;
+}
+
+.screen[data-skin='tb-night'] .wall-meta {
+  color: #9fb3c8;
+}
+
+.screen[data-skin='tb-night'] .wall-cell :deep(.result-card-detail),
+.screen[data-skin='tb-night'] .wall-pin {
+  color: #8fd4a8;
+  border-color: #1c4564;
+  background: #10283f;
+}
+
+.screen[data-skin='tb-night'] .zone-head h2 {
+  border-left-color: #1f6b4a;
+}
+
+.screen[data-skin='tb-night'] .metrics .tile {
+  padding: 6px 10px;
 }
 </style>

@@ -75,7 +75,7 @@ describe('farm-ops light admin theme', () => {
     expect(css).not.toMatch(/雪亮|#00e5ff|#0b1220/i);
   });
 
-  it('paints the admin shell with the light page and green sidebar', async () => {
+  it('paints the admin shell with the light page and a light nav rail', async () => {
     localStorage.setItem('token', 'test-token');
     await router.push('/');
     await flushPromises();

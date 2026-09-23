@@ -36,48 +36,48 @@ function leave() {
 </script>
 
 <template>
-  <div
-    class="admin-shell min-h-screen bg-canvas text-ink md:grid md:grid-cols-[240px_1fr]"
-    data-theme="farm-ops-light"
-  >
-    <aside
-      class="admin-sidebar bg-sidebar text-white md:border-r md:border-white/10"
-      :class="open ? 'block' : 'hidden md:block'"
-    >
-      <div class="px-5 py-6">
-        <p class="text-xs tracking-[0.16em] text-white/70">MUSHROOM OPS</p>
-        <h1 class="mt-1 text-lg font-semibold text-white">食用菌种植管理</h1>
-      </div>
-      <nav class="space-y-1 px-3 pb-6">
-        <router-link
-          v-for="link in links"
-          :key="link.to"
-          :to="link.to"
-          class="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-white/10 hover:text-white"
-          :class="link.prominent ? 'bg-white/10 font-semibold text-white' : 'text-white/80'"
-          exact-active-class="!bg-sidebar-active !text-white"
-          @click="open = false"
-        >
-          <span>{{ link.label }}</span>
-          <span
-            v-if="link.prominent"
-            class="rounded bg-white/25 px-1.5 py-0.5 text-[10px] font-medium leading-none tracking-wide"
-          >大屏</span>
-        </router-link>
-      </nav>
-    </aside>
-    <div class="min-w-0 bg-canvas">
-      <header class="admin-topbar flex items-center justify-between border-b border-line bg-white px-4 py-3 md:px-6">
-        <button class="btn-ghost md:hidden" type="button" @click="open = !open">菜单</button>
-        <p class="text-sm text-ink">{{ route.meta.title }}</p>
-        <div class="flex items-center gap-3 text-sm">
-          <router-link class="btn-primary" to="/big-screen">基地大屏</router-link>
-          <AlertInbox />
-          <span>{{ currentUser?.displayName }} · {{ roleLabel }}</span>
-          <button class="btn-ghost" type="button" @click="leave">退出</button>
+  <div class="admin-shell flex min-h-screen flex-col bg-canvas text-ink" data-theme="farm-ops-light">
+    <header class="admin-topbar flex items-center gap-3 border-b border-line bg-white px-3 py-2 md:px-4">
+      <button class="btn-ghost md:hidden" type="button" @click="open = !open">菜单</button>
+      <div class="flex min-w-0 items-center gap-2.5">
+        <span class="admin-mark" aria-hidden="true"></span>
+        <div class="min-w-0">
+          <p class="text-[11px] leading-none text-mist">食用菌基地</p>
+          <p class="truncate text-sm font-semibold leading-5 text-ink">食用菌种植管理</p>
         </div>
-      </header>
-      <main class="admin-main p-4 md:p-6">
+      </div>
+      <p class="hidden text-sm text-mist sm:block">{{ route.meta.title }}</p>
+      <div class="ml-auto flex items-center gap-2 text-sm">
+        <router-link class="btn-ghost" to="/big-screen">基地大屏</router-link>
+        <AlertInbox />
+        <span class="hidden text-mist lg:inline">{{ currentUser?.displayName }} · {{ roleLabel }}</span>
+        <button class="btn-ghost" type="button" @click="leave">退出</button>
+      </div>
+    </header>
+    <div class="min-h-0 flex-1 bg-canvas md:grid md:grid-cols-[188px_1fr]">
+      <aside
+        class="admin-sidebar border-line bg-sidebar text-ink md:sticky md:top-0 md:block md:max-h-screen md:overflow-y-auto md:border-r"
+        :class="open ? 'block border-b' : 'hidden'"
+      >
+        <nav class="space-y-0.5 p-2">
+          <router-link
+            v-for="link in links"
+            :key="link.to"
+            :to="link.to"
+            class="flex items-center justify-between rounded-md px-2.5 py-1.5 text-[13px] text-ink hover:bg-canvas"
+            :class="link.prominent ? 'font-semibold' : ''"
+            exact-active-class="!bg-sidebar-active !text-accent"
+            @click="open = false"
+          >
+            <span>{{ link.label }}</span>
+            <span
+              v-if="link.prominent"
+              class="rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium leading-none text-accent"
+            >大屏</span>
+          </router-link>
+        </nav>
+      </aside>
+      <main class="admin-main min-w-0 p-3 md:p-4">
         <router-view />
       </main>
     </div>
