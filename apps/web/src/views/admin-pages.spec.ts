@@ -185,6 +185,7 @@ describe('ReportsView', () => {
     httpGet.mockReset();
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:report');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
   });
 
   afterEach(() => {

@@ -17,4 +17,4 @@
 | 2026-09-23 | `/big-screen` 分区改为浅底 #F5F7FA、白卡片、强调色 #1B7A4E/#2F9E44、圆角 8px | `npm --prefix apps/web test` | STATUS 不写视觉口号 |
 | 2026-09-23 | Overnight 工单模板：谓词 / 隔离 / decisions.tsv / 逃生口；Issue Form | `make gates`；`docs/OVERNIGHT_TICKET.md` | PR #18 未合并 |
 | 2026-09-23 | Overnight 正文改到 harness；本仓 `docs/OVERNIGHT_TICKET.md` 只留指针。Issue 表单仍在 | `make gates`；PR #18 | 不在本仓维护第二份协议 |
-| 2026-09-23 | #3 四页已有 API 调用；补告警失败不显示空态、采摘失败清空旧数据、报表空 Blob 空态、管理端浅色令牌、路由与页面 vitest | `npm --prefix apps/web test`；`make gates` | PR 未合，不关 Issue #3 |
+| 2026-09-23 | #3 四页已有 API 调用；补告警失败不显示空态、采摘失败清空旧数据、报表空 Blob 空态、管理端浅色令牌、路由与页面 vitest | `npm --prefix apps/web test` 20 passed；`make gates` 通过 | PR #19 未合，不关 Issue #3 |

@@ -90,7 +90,7 @@ onMounted(load);
     <section class="panel overflow-x-auto">
       <p v-if="loading" class="text-mist">加载中…</p>
       <p v-else-if="!error && !rows.length" class="text-mist">暂无告警。</p>
-      <table v-else class="data-table">
+      <table v-else-if="rows.length" class="data-table">
         <thead>
           <tr><th>等级</th><th>状态</th><th>棚区</th><th>标题</th><th>时间</th><th></th></tr>
         </thead>

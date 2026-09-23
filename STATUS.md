@@ -15,7 +15,7 @@
 - #2 `/big-screen` 五区页（顶 / 左 / 中 / 右 / 底）接现有总览、棚区、告警、设备、识别列表 API；路由与页面实体测试见 https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/10
 
 ## 进行中
-- #3 管理端四页（设备 / 告警 / 采摘 / 报表）接通现有 `/api/v1`，浅色 farm-ops 令牌与 vitest；PR 未合，Issue 未关
+- #3 管理端四页（设备 / 告警 / 采摘 / 报表）接通现有 `/api/v1`，浅色 farm-ops 令牌与 vitest；PR https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/19 未合，Issue 未关
 
 ## 规范
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18
