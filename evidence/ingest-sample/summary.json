@@ -1,0 +1,351 @@
+{
+  "kind": "contract-golden-fixture-smoke",
+  "note": "报文来自 packages/contracts/fixtures 契约黄金报文（心跳为 heartbeat.mqtt.json）。withRuntimeClock 只改 recognizedAt。不是客户现场抓包。",
+  "startedAt": "2026-09-23T07:07:14.170Z",
+  "finishedAt": "2026-09-23T07:07:24.196Z",
+  "pass": true,
+  "error": null,
+  "mqttUrl": "mqtt://127.0.0.1:1883",
+  "apiBase": "http://127.0.0.1:41821/api/v1",
+  "steps": [
+    {
+      "timestamp": "2026-09-23T07:07:19.345Z",
+      "channel": "http",
+      "path": "/api/v1/ingest/recognition",
+      "method": "POST",
+      "url": "http://127.0.0.1:41821/api/v1/ingest/recognition",
+      "fixture": "recognition.golden.json",
+      "fixtureLabel": "契约黄金报文",
+      "rawBody": {
+        "idempotencyKey": "golden-recognition-001",
+        "shedCode": "S01",
+        "cameraCode": "CAM-S01-01",
+        "recognizedAt": "2026-09-23T07:07:19.331Z",
+        "mushroomCount": 80,
+        "matureCount": 52,
+        "capDiameters": [
+          4.2,
+          5.1,
+          6
+        ],
+        "diseaseCount": 2,
+        "diseaseLevel": 1,
+        "temperature": 22.5,
+        "humidity": 88,
+        "co2": 900,
+        "substrateMoisture": 70
+      },
+      "rawUtf8": "{\"idempotencyKey\":\"golden-recognition-001\",\"shedCode\":\"S01\",\"cameraCode\":\"CAM-S01-01\",\"recognizedAt\":\"2026-09-23T07:07:19.331Z\",\"mushroomCount\":80,\"matureCount\":52,\"capDiameters\":[4.2,5.1,6],\"diseaseCount\":2,\"diseaseLevel\":1,\"temperature\":22.5,\"humidity\":88,\"co2\":900,\"substrateMoisture\":70}",
+      "byteLength": 291,
+      "requestHeaders": {
+        "content-type": "application/json",
+        "x-ingest-token": "<redacted>"
+      },
+      "responseStatus": 201,
+      "responseBody": {
+        "accepted": true,
+        "duplicate": false,
+        "id": "e0ee9c43-7e84-4c47-bcb1-c6ad3281d0bb",
+        "snapshotStored": false
+      },
+      "actor": "edge-simulator",
+      "id": "http-golden",
+      "pass": true,
+      "proof": {
+        "recognitionId": "e0ee9c43-7e84-4c47-bcb1-c6ad3281d0bb",
+        "source": "http",
+        "idempotencyKey": "golden-recognition-001",
+        "mushroomCount": 80,
+        "cameraCode": "CAM-S01-01"
+      },
+      "wireBytesFile": "steps/01-http-golden.body.json"
+    },
+    {
+      "timestamp": "2026-09-23T07:07:19.443Z",
+      "channel": "http",
+      "path": "/api/v1/ingest/recognition",
+      "method": "POST",
+      "url": "http://127.0.0.1:41821/api/v1/ingest/recognition",
+      "fixture": "recognition.unknown-field.json",
+      "fixtureLabel": "契约黄金报文",
+      "rawBody": {
+        "idempotencyKey": "golden-recognition-unknown",
+        "shedCode": "S01",
+        "cameraCode": "CAM-S01-01",
+        "recognizedAt": "2026-09-23T07:07:19.432Z",
+        "mushroomCount": 80,
+        "matureCount": 20,
+        "unexpectedSensor": 1
+      },
+      "rawUtf8": "{\"idempotencyKey\":\"golden-recognition-unknown\",\"shedCode\":\"S01\",\"cameraCode\":\"CAM-S01-01\",\"recognizedAt\":\"2026-09-23T07:07:19.432Z\",\"mushroomCount\":80,\"matureCount\":20,\"unexpectedSensor\":1}",
+      "byteLength": 189,
+      "requestHeaders": {
+        "content-type": "application/json",
+        "x-ingest-token": "<redacted>"
+      },
+      "responseStatus": 400,
+      "responseBody": {
+        "accepted": false,
+        "code": "UNKNOWN_FIELD",
+        "message": "识别报文被拒绝",
+        "errors": [
+          "未知字段 unexpectedSensor"
+        ]
+      },
+      "actor": "edge-simulator",
+      "id": "http-unknown",
+      "pass": true,
+      "proof": {
+        "code": "UNKNOWN_FIELD",
+        "errors": [
+          "未知字段 unexpectedSensor"
+        ]
+      },
+      "wireBytesFile": "steps/02-http-unknown.body.json"
+    },
+    {
+      "timestamp": "2026-09-23T07:07:19.577Z",
+      "channel": "mqtt",
+      "topic": "mushroom/S01/CAM-S01-MQTT/recognition",
+      "fixture": "recognition.mqtt.json",
+      "fixtureLabel": "契约黄金报文",
+      "rawBody": {
+        "idempotencyKey": "golden-recognition-mqtt-001",
+        "shedCode": "S01",
+        "cameraCode": "CAM-S01-MQTT",
+        "recognizedAt": "2026-09-23T07:07:19.564Z",
+        "mushroomCount": 80,
+        "matureCount": 52,
+        "capDiameters": [
+          4.2,
+          5.1,
+          6
+        ],
+        "diseaseCount": 2,
+        "diseaseLevel": 1,
+        "temperature": 22.5,
+        "humidity": 88,
+        "co2": 900,
+        "substrateMoisture": 70
+      },
+      "rawUtf8": "{\"idempotencyKey\":\"golden-recognition-mqtt-001\",\"shedCode\":\"S01\",\"cameraCode\":\"CAM-S01-MQTT\",\"recognizedAt\":\"2026-09-23T07:07:19.564Z\",\"mushroomCount\":80,\"matureCount\":52,\"capDiameters\":[4.2,5.1,6],\"diseaseCount\":2,\"diseaseLevel\":1,\"temperature\":22.5,\"humidity\":88,\"co2\":900,\"substrateMoisture\":70}",
+      "byteLength": 298,
+      "qos": 1,
+      "puback": true,
+      "clientId": "edge-sim-5059-1",
+      "mqttUrl": "mqtt://127.0.0.1:1883",
+      "actor": "edge-simulator",
+      "id": "mqtt-golden",
+      "attempts": 1,
+      "proof": {
+        "recognitionId": "585e68db-e501-4775-bccd-c4699fca63db",
+        "source": "mqtt",
+        "idempotencyKey": "golden-recognition-mqtt-001",
+        "mushroomCount": 80,
+        "cameraCode": "CAM-S01-MQTT"
+      },
+      "pass": true,
+      "wireBytesFile": "steps/03-mqtt-golden.body.json"
+    },
+    {
+      "timestamp": "2026-09-23T07:07:19.730Z",
+      "channel": "mqtt",
+      "topic": "mushroom/S01/CAM-S01-01/recognition",
+      "fixture": "recognition.golden.json",
+      "fixtureLabel": "重放已计时的契约黄金报文字节",
+      "rawBody": {
+        "idempotencyKey": "golden-recognition-001",
+        "shedCode": "S01",
+        "cameraCode": "CAM-S01-01",
+        "recognizedAt": "2026-09-23T07:07:19.331Z",
+        "mushroomCount": 80,
+        "matureCount": 52,
+        "capDiameters": [
+          4.2,
+          5.1,
+          6
+        ],
+        "diseaseCount": 2,
+        "diseaseLevel": 1,
+        "temperature": 22.5,
+        "humidity": 88,
+        "co2": 900,
+        "substrateMoisture": 70
+      },
+      "rawUtf8": "{\"idempotencyKey\":\"golden-recognition-001\",\"shedCode\":\"S01\",\"cameraCode\":\"CAM-S01-01\",\"recognizedAt\":\"2026-09-23T07:07:19.331Z\",\"mushroomCount\":80,\"matureCount\":52,\"capDiameters\":[4.2,5.1,6],\"diseaseCount\":2,\"diseaseLevel\":1,\"temperature\":22.5,\"humidity\":88,\"co2\":900,\"substrateMoisture\":70}",
+      "byteLength": 291,
+      "qos": 1,
+      "puback": true,
+      "clientId": "edge-sim-5071-1",
+      "mqttUrl": "mqtt://127.0.0.1:1883",
+      "actor": "edge-simulator",
+      "id": "mqtt-duplicate",
+      "pass": true,
+      "proof": {
+        "totalBefore": 1,
+        "totalAfter": 1,
+        "idempotencyKey": "golden-recognition-001",
+        "source": "http",
+        "recognitionId": "e0ee9c43-7e84-4c47-bcb1-c6ad3281d0bb"
+      },
+      "wireBytesFile": "steps/04-mqtt-duplicate.body.json"
+    },
+    {
+      "timestamp": "2026-09-23T07:07:23.934Z",
+      "channel": "mqtt",
+      "topic": "mushroom/S01/CAM-S01-01/recognition",
+      "fixture": "recognition.unknown-field.json",
+      "fixtureLabel": "契约黄金报文",
+      "rawBody": {
+        "idempotencyKey": "golden-recognition-unknown",
+        "shedCode": "S01",
+        "cameraCode": "CAM-S01-01",
+        "recognizedAt": "2026-09-23T07:07:23.919Z",
+        "mushroomCount": 80,
+        "matureCount": 20,
+        "unexpectedSensor": 1
+      },
+      "rawUtf8": "{\"idempotencyKey\":\"golden-recognition-unknown\",\"shedCode\":\"S01\",\"cameraCode\":\"CAM-S01-01\",\"recognizedAt\":\"2026-09-23T07:07:23.919Z\",\"mushroomCount\":80,\"matureCount\":20,\"unexpectedSensor\":1}",
+      "byteLength": 189,
+      "qos": 1,
+      "puback": true,
+      "clientId": "edge-sim-5198-1",
+      "mqttUrl": "mqtt://127.0.0.1:1883",
+      "actor": "edge-simulator",
+      "id": "mqtt-unknown",
+      "attempts": 1,
+      "proof": {
+        "table": "ingest_rejects",
+        "source": "mqtt",
+        "errors": [
+          "未知字段 unexpectedSensor"
+        ],
+        "idempotencyKey": "golden-recognition-unknown",
+        "absentFromRecognitionList": true
+      },
+      "pass": true,
+      "wireBytesFile": "steps/05-mqtt-unknown.body.json"
+    },
+    {
+      "timestamp": "2026-09-23T07:07:24.078Z",
+      "channel": "mqtt",
+      "topic": "mushroom/S01/EDGE-SIM-BOX/heartbeat",
+      "fixture": "heartbeat.mqtt.json",
+      "fixtureLabel": "契约夹具：MQTT 心跳字节。MqttIngestAdapter 交给设备心跳，不是识别报文，也不是客户现场抓包。",
+      "rawBody": {
+        "deviceCode": "EDGE-SIM-BOX",
+        "deviceType": "ai_box",
+        "online": true
+      },
+      "rawUtf8": "{\"deviceCode\":\"EDGE-SIM-BOX\",\"deviceType\":\"ai_box\",\"online\":true}",
+      "byteLength": 65,
+      "qos": 1,
+      "puback": true,
+      "clientId": "edge-sim-5210-1",
+      "mqttUrl": "mqtt://127.0.0.1:1883",
+      "actor": "edge-simulator",
+      "id": "mqtt-heartbeat",
+      "attempts": 1,
+      "proof": {
+        "table": "devices",
+        "code": "EDGE-SIM-BOX",
+        "type": "ai_box",
+        "shedCode": "S01",
+        "onlineStatus": "online",
+        "lastSeenAt": "2026-09-23T07:07:24.158Z"
+      },
+      "pass": true,
+      "wireBytesFile": "steps/06-mqtt-heartbeat.body.json"
+    },
+    {
+      "id": "alert-create",
+      "timestamp": "2026-09-23T07:07:24.183Z",
+      "channel": "http",
+      "method": "POST",
+      "path": "/api/v1/alerts",
+      "url": "http://127.0.0.1:41821/api/v1/alerts",
+      "fixture": "alert.create.json",
+      "fixtureLabel": "契约黄金报文",
+      "rawBody": {
+        "shedCode": "S01",
+        "cameraCode": "CAM-S01-01",
+        "level": "warning",
+        "title": "人工抽查",
+        "message": "架构墙验收告警"
+      },
+      "rawUtf8": "{\"shedCode\":\"S01\",\"cameraCode\":\"CAM-S01-01\",\"level\":\"warning\",\"title\":\"人工抽查\",\"message\":\"架构墙验收告警\"}",
+      "byteLength": 119,
+      "responseStatus": 201,
+      "responseBody": {
+        "ruleId": null,
+        "metric": null,
+        "shedCode": "S01",
+        "cameraCode": "CAM-S01-01",
+        "level": "warning",
+        "status": "open",
+        "title": "人工抽查",
+        "message": "架构墙验收告警",
+        "metricValue": null,
+        "threshold": null,
+        "ackedBy": null,
+        "ackedAt": null,
+        "ackNote": null,
+        "closedBy": null,
+        "closedAt": null,
+        "closeNote": null,
+        "id": "a4a101fe-f64c-4e9e-934e-26643f62976b",
+        "createdAt": "2026-09-23T07:07:24.176Z"
+      },
+      "actor": "smoke",
+      "pass": true,
+      "proof": {
+        "alertId": "a4a101fe-f64c-4e9e-934e-26643f62976b",
+        "status": "open"
+      },
+      "wireBytesFile": "steps/07-alert-create.body.json"
+    },
+    {
+      "id": "alert-ack",
+      "timestamp": "2026-09-23T07:07:24.195Z",
+      "channel": "http",
+      "method": "POST",
+      "path": "/api/v1/alerts/a4a101fe-f64c-4e9e-934e-26643f62976b/ack",
+      "url": "http://127.0.0.1:41821/api/v1/alerts/a4a101fe-f64c-4e9e-934e-26643f62976b/ack",
+      "fixture": "alert.ack.json",
+      "fixtureLabel": "契约黄金报文",
+      "rawBody": {
+        "note": "已确认"
+      },
+      "rawUtf8": "{\"note\":\"已确认\"}",
+      "byteLength": 20,
+      "responseStatus": 201,
+      "responseBody": {
+        "id": "a4a101fe-f64c-4e9e-934e-26643f62976b",
+        "ruleId": null,
+        "metric": null,
+        "shedCode": "S01",
+        "cameraCode": "CAM-S01-01",
+        "level": "warning",
+        "status": "acked",
+        "title": "人工抽查",
+        "message": "架构墙验收告警",
+        "metricValue": null,
+        "threshold": null,
+        "ackedBy": "admin",
+        "ackedAt": "2026-09-23T07:07:24.187Z",
+        "ackNote": "已确认",
+        "closedBy": null,
+        "closedAt": null,
+        "closeNote": null,
+        "createdAt": "2026-09-23T07:07:24.176Z"
+      },
+      "actor": "smoke",
+      "pass": true,
+      "proof": {
+        "alertId": "a4a101fe-f64c-4e9e-934e-26643f62976b",
+        "status": "acked"
+      },
+      "wireBytesFile": "steps/08-alert-ack.body.json"
+    }
+  ]
+}

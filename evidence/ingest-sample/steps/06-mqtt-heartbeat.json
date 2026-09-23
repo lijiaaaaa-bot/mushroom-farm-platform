@@ -1,0 +1,31 @@
+{
+  "timestamp": "2026-09-23T07:07:24.078Z",
+  "channel": "mqtt",
+  "topic": "mushroom/S01/EDGE-SIM-BOX/heartbeat",
+  "fixture": "heartbeat.mqtt.json",
+  "fixtureLabel": "契约夹具：MQTT 心跳字节。MqttIngestAdapter 交给设备心跳，不是识别报文，也不是客户现场抓包。",
+  "rawBody": {
+    "deviceCode": "EDGE-SIM-BOX",
+    "deviceType": "ai_box",
+    "online": true
+  },
+  "rawUtf8": "{\"deviceCode\":\"EDGE-SIM-BOX\",\"deviceType\":\"ai_box\",\"online\":true}",
+  "byteLength": 65,
+  "qos": 1,
+  "puback": true,
+  "clientId": "edge-sim-5210-1",
+  "mqttUrl": "mqtt://127.0.0.1:1883",
+  "actor": "edge-simulator",
+  "id": "mqtt-heartbeat",
+  "attempts": 1,
+  "proof": {
+    "table": "devices",
+    "code": "EDGE-SIM-BOX",
+    "type": "ai_box",
+    "shedCode": "S01",
+    "onlineStatus": "online",
+    "lastSeenAt": "2026-09-23T07:07:24.158Z"
+  },
+  "pass": true,
+  "wireBytesFile": "steps/06-mqtt-heartbeat.body.json"
+}

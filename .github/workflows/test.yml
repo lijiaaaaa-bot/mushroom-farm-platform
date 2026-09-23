@@ -15,3 +15,21 @@ jobs:
           node-version: 22
       - name: make test
         run: make test
+
+  ingest-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: HTTP and MQTT smoke with evidence
+        run: make smoke
+      - name: Upload ingest smoke evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ingest-smoke-evidence
+          path: evidence/ingest-last-run/
+          if-no-files-found: warn

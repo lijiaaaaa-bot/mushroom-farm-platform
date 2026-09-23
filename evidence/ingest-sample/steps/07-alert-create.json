@@ -1,0 +1,47 @@
+{
+  "id": "alert-create",
+  "timestamp": "2026-09-23T07:07:24.183Z",
+  "channel": "http",
+  "method": "POST",
+  "path": "/api/v1/alerts",
+  "url": "http://127.0.0.1:41821/api/v1/alerts",
+  "fixture": "alert.create.json",
+  "fixtureLabel": "契约黄金报文",
+  "rawBody": {
+    "shedCode": "S01",
+    "cameraCode": "CAM-S01-01",
+    "level": "warning",
+    "title": "人工抽查",
+    "message": "架构墙验收告警"
+  },
+  "rawUtf8": "{\"shedCode\":\"S01\",\"cameraCode\":\"CAM-S01-01\",\"level\":\"warning\",\"title\":\"人工抽查\",\"message\":\"架构墙验收告警\"}",
+  "byteLength": 119,
+  "responseStatus": 201,
+  "responseBody": {
+    "ruleId": null,
+    "metric": null,
+    "shedCode": "S01",
+    "cameraCode": "CAM-S01-01",
+    "level": "warning",
+    "status": "open",
+    "title": "人工抽查",
+    "message": "架构墙验收告警",
+    "metricValue": null,
+    "threshold": null,
+    "ackedBy": null,
+    "ackedAt": null,
+    "ackNote": null,
+    "closedBy": null,
+    "closedAt": null,
+    "closeNote": null,
+    "id": "a4a101fe-f64c-4e9e-934e-26643f62976b",
+    "createdAt": "2026-09-23T07:07:24.176Z"
+  },
+  "actor": "smoke",
+  "pass": true,
+  "proof": {
+    "alertId": "a4a101fe-f64c-4e9e-934e-26643f62976b",
+    "status": "open"
+  },
+  "wireBytesFile": "steps/07-alert-create.body.json"
+}

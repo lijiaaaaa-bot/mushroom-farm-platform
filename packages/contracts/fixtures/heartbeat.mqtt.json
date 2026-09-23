@@ -1,0 +1,10 @@
+{
+  "label": "契约夹具：MQTT 心跳字节。MqttIngestAdapter 交给设备心跳，不是识别报文，也不是客户现场抓包。",
+  "shedCode": "S01",
+  "deviceCode": "EDGE-SIM-BOX",
+  "body": {
+    "deviceCode": "EDGE-SIM-BOX",
+    "deviceType": "ai_box",
+    "online": true
+  }
+}

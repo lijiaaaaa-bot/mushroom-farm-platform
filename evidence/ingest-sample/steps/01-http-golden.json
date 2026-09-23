@@ -1,0 +1,52 @@
+{
+  "timestamp": "2026-09-23T07:07:19.345Z",
+  "channel": "http",
+  "path": "/api/v1/ingest/recognition",
+  "method": "POST",
+  "url": "http://127.0.0.1:41821/api/v1/ingest/recognition",
+  "fixture": "recognition.golden.json",
+  "fixtureLabel": "契约黄金报文",
+  "rawBody": {
+    "idempotencyKey": "golden-recognition-001",
+    "shedCode": "S01",
+    "cameraCode": "CAM-S01-01",
+    "recognizedAt": "2026-09-23T07:07:19.331Z",
+    "mushroomCount": 80,
+    "matureCount": 52,
+    "capDiameters": [
+      4.2,
+      5.1,
+      6
+    ],
+    "diseaseCount": 2,
+    "diseaseLevel": 1,
+    "temperature": 22.5,
+    "humidity": 88,
+    "co2": 900,
+    "substrateMoisture": 70
+  },
+  "rawUtf8": "{\"idempotencyKey\":\"golden-recognition-001\",\"shedCode\":\"S01\",\"cameraCode\":\"CAM-S01-01\",\"recognizedAt\":\"2026-09-23T07:07:19.331Z\",\"mushroomCount\":80,\"matureCount\":52,\"capDiameters\":[4.2,5.1,6],\"diseaseCount\":2,\"diseaseLevel\":1,\"temperature\":22.5,\"humidity\":88,\"co2\":900,\"substrateMoisture\":70}",
+  "byteLength": 291,
+  "requestHeaders": {
+    "content-type": "application/json",
+    "x-ingest-token": "<redacted>"
+  },
+  "responseStatus": 201,
+  "responseBody": {
+    "accepted": true,
+    "duplicate": false,
+    "id": "e0ee9c43-7e84-4c47-bcb1-c6ad3281d0bb",
+    "snapshotStored": false
+  },
+  "actor": "edge-simulator",
+  "id": "http-golden",
+  "pass": true,
+  "proof": {
+    "recognitionId": "e0ee9c43-7e84-4c47-bcb1-c6ad3281d0bb",
+    "source": "http",
+    "idempotencyKey": "golden-recognition-001",
+    "mushroomCount": 80,
+    "cameraCode": "CAM-S01-01"
+  },
+  "wireBytesFile": "steps/01-http-golden.body.json"
+}

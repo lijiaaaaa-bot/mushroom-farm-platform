@@ -1,0 +1,43 @@
+{
+  "timestamp": "2026-09-23T07:07:19.730Z",
+  "channel": "mqtt",
+  "topic": "mushroom/S01/CAM-S01-01/recognition",
+  "fixture": "recognition.golden.json",
+  "fixtureLabel": "重放已计时的契约黄金报文字节",
+  "rawBody": {
+    "idempotencyKey": "golden-recognition-001",
+    "shedCode": "S01",
+    "cameraCode": "CAM-S01-01",
+    "recognizedAt": "2026-09-23T07:07:19.331Z",
+    "mushroomCount": 80,
+    "matureCount": 52,
+    "capDiameters": [
+      4.2,
+      5.1,
+      6
+    ],
+    "diseaseCount": 2,
+    "diseaseLevel": 1,
+    "temperature": 22.5,
+    "humidity": 88,
+    "co2": 900,
+    "substrateMoisture": 70
+  },
+  "rawUtf8": "{\"idempotencyKey\":\"golden-recognition-001\",\"shedCode\":\"S01\",\"cameraCode\":\"CAM-S01-01\",\"recognizedAt\":\"2026-09-23T07:07:19.331Z\",\"mushroomCount\":80,\"matureCount\":52,\"capDiameters\":[4.2,5.1,6],\"diseaseCount\":2,\"diseaseLevel\":1,\"temperature\":22.5,\"humidity\":88,\"co2\":900,\"substrateMoisture\":70}",
+  "byteLength": 291,
+  "qos": 1,
+  "puback": true,
+  "clientId": "edge-sim-5071-1",
+  "mqttUrl": "mqtt://127.0.0.1:1883",
+  "actor": "edge-simulator",
+  "id": "mqtt-duplicate",
+  "pass": true,
+  "proof": {
+    "totalBefore": 1,
+    "totalAfter": 1,
+    "idempotencyKey": "golden-recognition-001",
+    "source": "http",
+    "recognitionId": "e0ee9c43-7e84-4c47-bcb1-c6ad3281d0bb"
+  },
+  "wireBytesFile": "steps/04-mqtt-duplicate.body.json"
+}

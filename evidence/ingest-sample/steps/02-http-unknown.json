@@ -1,0 +1,43 @@
+{
+  "timestamp": "2026-09-23T07:07:19.443Z",
+  "channel": "http",
+  "path": "/api/v1/ingest/recognition",
+  "method": "POST",
+  "url": "http://127.0.0.1:41821/api/v1/ingest/recognition",
+  "fixture": "recognition.unknown-field.json",
+  "fixtureLabel": "契约黄金报文",
+  "rawBody": {
+    "idempotencyKey": "golden-recognition-unknown",
+    "shedCode": "S01",
+    "cameraCode": "CAM-S01-01",
+    "recognizedAt": "2026-09-23T07:07:19.432Z",
+    "mushroomCount": 80,
+    "matureCount": 20,
+    "unexpectedSensor": 1
+  },
+  "rawUtf8": "{\"idempotencyKey\":\"golden-recognition-unknown\",\"shedCode\":\"S01\",\"cameraCode\":\"CAM-S01-01\",\"recognizedAt\":\"2026-09-23T07:07:19.432Z\",\"mushroomCount\":80,\"matureCount\":20,\"unexpectedSensor\":1}",
+  "byteLength": 189,
+  "requestHeaders": {
+    "content-type": "application/json",
+    "x-ingest-token": "<redacted>"
+  },
+  "responseStatus": 400,
+  "responseBody": {
+    "accepted": false,
+    "code": "UNKNOWN_FIELD",
+    "message": "识别报文被拒绝",
+    "errors": [
+      "未知字段 unexpectedSensor"
+    ]
+  },
+  "actor": "edge-simulator",
+  "id": "http-unknown",
+  "pass": true,
+  "proof": {
+    "code": "UNKNOWN_FIELD",
+    "errors": [
+      "未知字段 unexpectedSensor"
+    ]
+  },
+  "wireBytesFile": "steps/02-http-unknown.body.json"
+}
