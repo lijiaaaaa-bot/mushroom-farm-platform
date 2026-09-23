@@ -131,9 +131,7 @@ function memoryReads() {
   return {
     rows,
     create: (input: Partial<AlertRead>) => input,
-    findOne: async (query: {
-      where: { userId?: string; alertId?: string };
-    }) =>
+    findOne: async (query: { where: { userId?: string; alertId?: string } }) =>
       rows.find(
         (row) =>
           row.userId === query.where.userId &&
@@ -147,8 +145,7 @@ function memoryReads() {
         readAt: input.readAt ?? new Date(),
       } as AlertRead;
       const index = rows.findIndex(
-        (row) =>
-          row.userId === saved.userId && row.alertId === saved.alertId,
+        (row) => row.userId === saved.userId && row.alertId === saved.alertId,
       );
       if (index >= 0) rows[index] = saved;
       else rows.push(saved);
@@ -170,7 +167,9 @@ function assignUser(
       username: req.header('x-test-user') || role,
       displayName: role,
       role: role as Role,
-      shedCodes: sheds ? sheds.split(',').filter((code) => code.length > 0) : [],
+      shedCodes: sheds
+        ? sheds.split(',').filter((code) => code.length > 0)
+        : [],
     };
   }
   next();

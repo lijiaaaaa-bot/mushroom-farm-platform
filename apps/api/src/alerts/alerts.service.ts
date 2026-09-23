@@ -222,12 +222,9 @@ export class AlertsService {
     const scope = ShedScope.fromUser(user);
     const qb = this.alerts
       .createQueryBuilder('a')
-      .leftJoin(
-        AlertRead,
-        'r',
-        'r.alertId = a.id AND r.userId = :userId',
-        { userId: user.id },
-      )
+      .leftJoin(AlertRead, 'r', 'r.alertId = a.id AND r.userId = :userId', {
+        userId: user.id,
+      })
       .where('r.id IS NULL');
     this.applyScope(qb, scope);
     return qb;
