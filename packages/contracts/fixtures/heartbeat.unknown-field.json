@@ -1,0 +1,11 @@
+{
+  "label": "契约夹具：心跳未知字段。应被 strict schema 拒绝。",
+  "expect": "UNKNOWN_FIELD",
+  "body": {
+    "shedCode": "S01",
+    "deviceCode": "EDGE-SIM-BOX",
+    "deviceType": "ai_box",
+    "online": true,
+    "firmware": "1.2.3"
+  }
+}

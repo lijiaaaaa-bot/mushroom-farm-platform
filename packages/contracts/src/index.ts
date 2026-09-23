@@ -233,6 +233,36 @@ export const canonicalEnvironmentSchema = z
 
 export type CanonicalEnvironment = z.infer<typeof canonicalEnvironmentSchema>;
 
+/** 心跳与识别、环境报文分开。未声明字段会被 .strict() 拒绝。 */
+export const heartbeatIngressSchema = z
+  .object({
+    shedCode: z.string().optional(),
+    棚区编号: z.string().optional(),
+    deviceCode: z.string().optional(),
+    设备编号: z.string().optional(),
+    deviceType: z.string().optional(),
+    设备类型: z.string().optional(),
+    online: z.boolean().optional(),
+    在线: z.boolean().optional(),
+    reportedAt: z.string().optional(),
+    心跳时间: z.string().optional(),
+  })
+  .strict();
+
+export type HeartbeatIngress = z.infer<typeof heartbeatIngressSchema>;
+
+export const canonicalHeartbeatSchema = z
+  .object({
+    shedCode: z.string().min(1),
+    deviceCode: z.string().min(1),
+    deviceType: deviceTypeSchema.optional(),
+    online: z.boolean(),
+    reportedAt: z.string().optional(),
+  })
+  .strict();
+
+export type CanonicalHeartbeat = z.infer<typeof canonicalHeartbeatSchema>;
+
 export const createAlertSchema = z
   .object({
     shedCode: z.string().min(1),
@@ -575,6 +605,57 @@ export function parseEnvironmentIngress(
   rangeError(errors, canonical.humidity, LIMITS.humidityPct, '湿度');
   rangeError(errors, canonical.co2, LIMITS.co2Ppm, 'CO₂');
   rangeError(errors, canonical.substrateMoisture, LIMITS.substrateMoisturePct, '基质含水率');
+  if (errors.length) return fail(ERROR_CODES.VALIDATION_FAILED, errors);
+  return { ok: true, value: canonical };
+}
+
+function pickHeartbeat(
+  body: HeartbeatIngress,
+  keys: (keyof HeartbeatIngress)[],
+): unknown {
+  for (const key of keys) {
+    const value = body[key];
+    if (value !== undefined && value !== null && value !== '') return value;
+  }
+  return undefined;
+}
+
+export function parseHeartbeatIngress(
+  raw: unknown,
+): ParseResult<CanonicalHeartbeat> {
+  const parsed = heartbeatIngressSchema.safeParse(raw);
+  if (!parsed.success) {
+    const issue = zodErrors(parsed.error);
+    return fail(issue.code, issue.errors);
+  }
+  const body = parsed.data;
+  const deviceTypeRaw = pickHeartbeat(body, ['deviceType', '设备类型']);
+  const reported = pickHeartbeat(body, ['reportedAt', '心跳时间']);
+  const onlineRaw = pickHeartbeat(body, ['online', '在线']);
+  const errors: string[] = [];
+  let deviceType: DeviceType | undefined;
+  if (deviceTypeRaw !== undefined) {
+    const text = String(deviceTypeRaw).trim();
+    if (!isDeviceType(text)) errors.push('设备类型无效');
+    else deviceType = text;
+  }
+  const canonical: CanonicalHeartbeat = {
+    shedCode: String(pickHeartbeat(body, ['shedCode', '棚区编号']) ?? '').trim(),
+    deviceCode: String(
+      pickHeartbeat(body, ['deviceCode', '设备编号']) ?? '',
+    ).trim(),
+    deviceType,
+    online: onlineRaw === undefined ? true : onlineRaw === true,
+    reportedAt: reported === undefined ? undefined : String(reported),
+  };
+  if (!canonical.shedCode) errors.push('缺少棚区编号');
+  if (!canonical.deviceCode) errors.push('缺少设备编号');
+  if (
+    canonical.reportedAt !== undefined &&
+    Number.isNaN(new Date(canonical.reportedAt).getTime())
+  ) {
+    errors.push('心跳时间无效');
+  }
   if (errors.length) return fail(ERROR_CODES.VALIDATION_FAILED, errors);
   return { ok: true, value: canonical };
 }

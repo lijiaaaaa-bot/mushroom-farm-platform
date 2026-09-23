@@ -12,6 +12,7 @@ interface DeviceRow {
   shedCode: string;
   onlineStatus: string;
   lastSeenAt: string | null;
+  lastHeartbeatAt?: string | null;
 }
 
 interface ImportMessage {
@@ -88,6 +89,20 @@ function fileBody(selected: File) {
   return body;
 }
 
+function heartbeatText(row: DeviceRow): string {
+  const value = row.lastHeartbeatAt || row.lastSeenAt;
+  if (!value) return '—';
+  return new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+
 onMounted(load);
 </script>
 
@@ -139,7 +154,7 @@ onMounted(load);
       <p v-else-if="!rows.length" class="text-mist">暂无设备。识别上报会自动建档。</p>
       <table v-else class="data-table">
         <thead>
-          <tr><th>编号</th><th>名称</th><th>类型</th><th>棚区</th><th>状态</th><th>最后心跳</th></tr>
+          <tr><th>编号</th><th>名称</th><th>类型</th><th>棚区</th><th>状态</th><th>最近心跳</th></tr>
         </thead>
         <tbody>
           <tr v-for="row in rows" :key="row.id">
@@ -147,8 +162,13 @@ onMounted(load);
             <td>{{ row.name }}</td>
             <td>{{ DEVICE_TYPE_LABEL[row.type] }}</td>
             <td>{{ row.shedCode }}</td>
-            <td :class="row.onlineStatus === 'online' ? 'text-accent' : 'text-mist'">{{ row.onlineStatus === 'online' ? '在线' : '离线' }}</td>
-            <td class="font-mono text-xs">{{ row.lastSeenAt ? new Date(row.lastSeenAt).toLocaleString('zh-CN') : '—' }}</td>
+            <td>
+              <span
+                class="inline-flex rounded-lg bg-canvas px-2 py-0.5"
+                :class="row.onlineStatus === 'online' ? 'text-accent' : 'text-mist'"
+              >{{ row.onlineStatus === 'online' ? '在线' : '离线' }}</span>
+            </td>
+            <td class="font-mono text-xs">{{ heartbeatText(row) }}</td>
           </tr>
         </tbody>
       </table>

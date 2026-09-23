@@ -391,14 +391,16 @@ try {
       const deviceCode = sent.rawBody.deviceCode;
       const row = await withPg(async (db) => {
         const result = await db.query(
-          `SELECT code, type, shed_code, online_status, last_seen_at
+          `SELECT code, type, shed_code, online_status, last_seen_at, last_heartbeat_at
            FROM devices
            WHERE code = $1`,
           [deviceCode],
         );
         return result.rows[0] || null;
       });
-      if (!row || row.online_status !== 'online') return null;
+      if (!row || row.online_status !== 'online' || !row.last_heartbeat_at) {
+        return null;
+      }
       if (row.type !== sent.rawBody.deviceType) {
         throw new Error(`心跳设备类型不符 ${JSON.stringify(row)}`);
       }
@@ -409,6 +411,7 @@ try {
         shedCode: row.shed_code,
         onlineStatus: row.online_status,
         lastSeenAt: row.last_seen_at,
+        lastHeartbeatAt: row.last_heartbeat_at,
       };
     },
     15_000,

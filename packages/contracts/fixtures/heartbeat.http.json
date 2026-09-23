@@ -1,0 +1,11 @@
+{
+  "label": "契约夹具：HTTP 心跳。与 MQTT 心跳同一 schema，棚区写在报文体里。",
+  "expect": "ok",
+  "body": {
+    "shedCode": "S01",
+    "deviceCode": "EDGE-SIM-BOX",
+    "deviceType": "ai_box",
+    "online": true,
+    "reportedAt": "2026-09-23T08:00:00.000Z"
+  }
+}

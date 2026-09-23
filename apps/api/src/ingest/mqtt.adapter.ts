@@ -10,6 +10,7 @@ import {
   MQTT_ENVIRONMENT_TOPIC,
   MQTT_HEARTBEAT_TOPIC,
   MQTT_RECOGNITION_TOPIC,
+  parseHeartbeatIngress,
 } from '@mushroom/contracts';
 import { DevicesService } from '../devices';
 import { IngestService } from './ingest.service';
@@ -104,17 +105,33 @@ export class MqttIngestAdapter implements OnModuleInit, OnModuleDestroy {
       return;
     }
     if (kind === 'heartbeat') {
-      const code = String(
-        body.deviceCode || body['设备编号'] || deviceFromTopic,
-      );
-      const deviceType =
-        typeof body.deviceType === 'string' ? body.deviceType : undefined;
-      await this.devices.heartbeat(
-        shedFromTopic,
-        code,
-        deviceType,
-        body.online !== false,
-      );
+      if (!body.shedCode && !body['棚区编号']) body.shedCode = shedFromTopic;
+      if (!body.deviceCode && !body['设备编号'])
+        body.deviceCode = deviceFromTopic;
+      const parsed = parseHeartbeatIngress(body);
+      if (!parsed.ok) {
+        this.logger.warn(
+          `MQTT 心跳被拒绝 ${topic}：${parsed.code} ${parsed.errors.join('；')}`,
+        );
+        return;
+      }
+      const beat = parsed.value;
+      if (beat.reportedAt) {
+        await this.devices.heartbeat(
+          beat.shedCode,
+          beat.deviceCode,
+          beat.deviceType,
+          beat.online,
+          beat.reportedAt,
+        );
+      } else {
+        await this.devices.heartbeat(
+          beat.shedCode,
+          beat.deviceCode,
+          beat.deviceType,
+          beat.online,
+        );
+      }
     }
   }
 }

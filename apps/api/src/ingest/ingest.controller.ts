@@ -9,15 +9,20 @@ import {
   StreamableFile,
   UseGuards,
 } from '@nestjs/common';
+import { parseHeartbeatIngress } from '@mushroom/contracts';
 import { AuthUser } from '../common/auth-user';
 import { CurrentUser, Public } from '../common/decorators';
 import { IngestTokenGuard } from '../common/guards';
 import { ListQuery } from '../common/pagination';
+import { DevicesService } from '../devices';
 import { IngestService } from './ingest.service';
 
 @Controller('ingest')
 export class IngestController {
-  constructor(private readonly ingest: IngestService) {}
+  constructor(
+    private readonly ingest: IngestService,
+    private readonly devices: DevicesService,
+  ) {}
 
   @Public()
   @UseGuards(IngestTokenGuard)
@@ -49,6 +54,37 @@ export class IngestController {
       });
     }
     return result;
+  }
+
+  @Public()
+  @UseGuards(IngestTokenGuard)
+  @Post('heartbeat')
+  async heartbeat(@Body() body: unknown) {
+    const parsed = parseHeartbeatIngress(body);
+    if (!parsed.ok) {
+      throw new BadRequestException({
+        accepted: false,
+        code: parsed.code,
+        message: '心跳报文被拒绝',
+        errors: parsed.errors,
+      });
+    }
+    const beat = parsed.value;
+    if (beat.reportedAt) {
+      return this.devices.heartbeat(
+        beat.shedCode,
+        beat.deviceCode,
+        beat.deviceType,
+        beat.online,
+        beat.reportedAt,
+      );
+    }
+    return this.devices.heartbeat(
+      beat.shedCode,
+      beat.deviceCode,
+      beat.deviceType,
+      beat.online,
+    );
   }
 
   @Get('recognitions')
