@@ -19,7 +19,7 @@
 
 ## 进行中
 - #26 `/diseases` 列出 diseaseCount>0 的识别（时间、棚、摄像头、等级、数量），识别页与病害页可打开已存抓拍；棚隔离沿用 ShedScope。PR 未合，不关 Issue
-- #30 `/devices` 摄像头批量导入（CSV 文件或粘贴）；设备编码冲突跳过；棚不存在或无权按行失败。PR 未合，不关 Issue
+- #30 `/devices` 摄像头批量导入（CSV 文件或粘贴）；设备编码冲突跳过；棚不存在或无权按行失败。PR #31 未合，不关 Issue
 
 ## 规范
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18
