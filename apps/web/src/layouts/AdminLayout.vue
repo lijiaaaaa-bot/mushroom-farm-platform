@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ROLE_LABEL, type Role } from '@mushroom/contracts';
 import { currentUser, logout } from '../auth';
+import AlertInbox from '../components/AlertInbox.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -75,6 +76,7 @@ function leave() {
         <button class="btn-ghost md:hidden" type="button" @click="open = !open">菜单</button>
         <p class="text-sm text-ink">{{ route.meta.title }}</p>
         <div class="flex items-center gap-3 text-sm">
+          <AlertInbox />
           <span>{{ currentUser?.displayName }} · {{ roleLabel }}</span>
           <button class="btn-ghost" type="button" @click="leave">退出</button>
         </div>

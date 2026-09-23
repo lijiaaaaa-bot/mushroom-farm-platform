@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpCode,
   Param,
   Patch,
   Post,
@@ -83,6 +84,23 @@ export class AlertsController {
   @Get('alerts')
   list(@CurrentUser() user: AuthUser, @Query() query: ListQuery) {
     return this.alerts.list(user, query);
+  }
+
+  @Get('alerts/unread')
+  unread(@CurrentUser() user: AuthUser) {
+    return this.alerts.listUnread(user);
+  }
+
+  @Post('alerts/read-all')
+  @HttpCode(200)
+  markAllRead(@CurrentUser() user: AuthUser) {
+    return this.alerts.markAllRead(user);
+  }
+
+  @Post('alerts/:id/read')
+  @HttpCode(200)
+  markRead(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.alerts.markRead(user, id);
   }
 
   @Post('alerts')

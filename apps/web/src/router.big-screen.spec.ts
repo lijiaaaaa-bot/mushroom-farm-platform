@@ -1,5 +1,13 @@
 import { flushPromises, mount } from '@vue/test-utils';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('./api', () => ({
+  http: {
+    get: vi.fn().mockResolvedValue({ data: { unreadCount: 0, items: [] } }),
+    post: vi.fn(),
+  },
+  errorText: () => '请求失败',
+}));
 import AdminLayout from './layouts/AdminLayout.vue';
 import router from './router';
 import BigScreenView from './views/BigScreenView.vue';

@@ -10,6 +10,7 @@ import { AuthUser } from '../common/auth-user';
 import { RolesGuard } from '../common/guards';
 import { configureApp } from '../configure-app';
 import { Alert } from '../entities/alert.entity';
+import { AlertRead } from '../entities/alert-read.entity';
 import { AlertRule } from '../entities/alert-rule.entity';
 import { AlertsController } from './alerts.controller';
 import { AlertsService } from './alerts.service';
@@ -88,6 +89,7 @@ describe('alert-rules HTTP', () => {
         { provide: APP_GUARD, useClass: RolesGuard },
         { provide: getRepositoryToken(AlertRule), useValue: rules },
         { provide: getRepositoryToken(Alert), useValue: {} },
+        { provide: getRepositoryToken(AlertRead), useValue: {} },
         { provide: AuditService, useValue: { write: jest.fn() } },
       ],
     }).compile();
