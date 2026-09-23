@@ -3,8 +3,8 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：Issue #26 病害列表与可打开抓拍（分支 overnight/mvp-disease-snapshots）
-- 进行中文件：apps/web DiseasesView、RecognitionsView 抓拍列；apps/api GET /diseases 与 snapshot 代理
+- 本会话目标：#30 `/devices` 摄像头 CSV 批量导入（进行中，PR 未合则不关 Issue）
+- 进行中文件：`apps/api/src/devices/`、`apps/web/src/views/DevicesView.vue`、`evidence/overnight-mvp-device-batch-import/decisions.tsv`
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -23,4 +23,5 @@
 | 2026-09-23 | STATUS：#4 移入已完成。console PR #1 squash 合入 main（f75deeb）；`public/status.json` 与 Issues/PR/STATUS 一致；Issue #4 已关闭 | `make gates`；本 PR | 无 |
 | 2026-09-23 | #23 阈值规则页接到已有 POST/PATCH `/alert-rules`。不改 AlertsController / AlertEngine。写权限仅超管与生产管理员 | `make test` 与 `make gates` 退出码 0；PR #24 | PR #24 未合，不关 Issue #23 |
 | 2026-09-23 | STATUS：#23 移入已完成。PR #24 squash 合入 main（c560613）；`/alert-rules` 管理员可写；Issue #23 已关闭 | `make gates`；`gh pr view 24` MERGED；`gh issue view 23` CLOSED | 无 |
+| 2026-09-23 | #30 摄像头批量导入：POST /devices/import 接受 CSV 文件、CSV 文本或 JSON 行。设备编码冲突跳过且不改原档案。棚不存在或无权只失败该行。超管、生产管理员、棚负责人可导入；查看员 403 | `make test` 与 `make gates` 退出码 0（API jest 28，web vitest 36） | PR 未合，不关 Issue #30 |
 | 2026-09-23 | #26 病害页与抓拍打开：GET /diseases 过滤 diseaseCount>0；GET /ingest/recognitions/:id/snapshot 读 MinIO 或原图 URL；棚隔离仍走 ShedScope | `make test` 与 `make gates` 退出码 0（API 19，web vitest 31）；不关 Issue #26 | PR #29 未合 |

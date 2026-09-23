@@ -1,0 +1,3 @@
+time	phase	decision	reason	evidence	result
+2026-09-23T10:30:00Z	decide	设备编码冲突采用跳过：已存在的 code 不更新名称、棚或类型，记入 skippedCount，不计入失败。同批后出现的相同编码同样跳过。棚不存在或无权访问该棚只失败该行，其余行继续。未填类型默认 camera。单条 POST /devices 仍只允许超管与生产管理员。导入另允许棚负责人，行级按 ShedScope 限制所属棚；查看员整单 403。	谓词要求写明跳过或更新，且无权棚按行失败。现有单条创建设备不含棚负责人，但工单写明棚负责人可导入所属棚，故只在导入接口放行，不扩大单条创建。	apps/api/src/devices/devices.service.ts	open
+2026-09-23T10:36:00Z	verify	保留	make test 与 make gates 退出码均为 0。API jest 28 passed（含 devices-import 9：合法批、冲突跳过、缺棚继续、multipart、越权棚、查看员 403）。web vitest 36 passed（含导入后刷新列表、失败行、文件上传、查看员无表单）。	make test && make gates	pass
