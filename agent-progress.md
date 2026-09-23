@@ -15,4 +15,4 @@
 | 2026-09-23 | `/big-screen` 五区页 rebase 到 main，并加路由与页面实体测试 | `npm --prefix apps/web test`；`make test`；PR #10 | Issue #2 随 PR #10 合并后关闭 |
 | 2026-09-23 | STATUS 与 PR #10 只记路由、五区、现有 API 接线与实体测试 | `make gates`；PR #10 正文 | 视觉方向不写入本 PR 验收 |
 | 2026-09-23 | `/big-screen` 分区改为浅底 #F5F7FA、白卡片、强调色 #1B7A4E/#2F9E44、圆角 8px | `npm --prefix apps/web test` | STATUS 不写视觉口号 |
-| 2026-09-23 | Overnight 工单模板：谓词 / 隔离 / decisions.tsv / 逃生口；Issue Form | `make gates`；`docs/OVERNIGHT_TICKET.md` | PR 编号回填 STATUS |
+| 2026-09-23 | Overnight 工单模板：谓词 / 隔离 / decisions.tsv / 逃生口；Issue Form | `make gates`；`docs/OVERNIGHT_TICKET.md` | PR #18 未合并 |

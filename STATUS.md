@@ -18,7 +18,7 @@
 - 无
 
 ## 规范
-- Overnight 工单模板已落地：`docs/OVERNIGHT_TICKET.md`、`.github/ISSUE_TEMPLATE/overnight_task.yml`。PR：
+- Overnight 工单模板已落地：`docs/OVERNIGHT_TICKET.md`、`.github/ISSUE_TEMPLATE/overnight_task.yml`。PR：#18
 
 ## 待开
 - #3 管理端四页（设备 / 告警 / 采摘 / 报表接通 API），排在 #2 之后
