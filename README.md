@@ -15,9 +15,10 @@ make api     # 编译契约并启动 API（:41821）
 make web     # 启动管理端（:43123）
 make test    # 契约、模块边界（含负例）、接入路径、API 单测、前端类型检查
 make smoke   # up + migrate + HTTP/MQTT 黄金报文接入 + 列表 + 告警确认
+make gates   # 交付物门禁（与 test 分开；CI 的 deliverable-gates 跑同一命令）
 ```
 
-不要直接跑 `npm run start`、`vite` 或 `docker compose`。约束说明见 `ARCHITECTURE_WALLS.md`。
+不要直接跑 `npm run start`、`vite` 或 `docker compose`。约束说明见 `ARCHITECTURE_WALLS.md`。文稿完成口径见 [`docs/PROJECT_DELIVERABLE_NORMS.md`](docs/PROJECT_DELIVERABLE_NORMS.md)。
 
 开发种子账号：`admin` / `Admin@123456`。接入令牌请求头：`X-Ingest-Token: dev-ingest-token`。
 

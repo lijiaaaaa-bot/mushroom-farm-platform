@@ -4,7 +4,8 @@
 
 | 墙 | 入口 | 强制点 |
 | --- | --- | --- |
-| 唯一入口 | `Makefile` | `up` `migrate` `api` `web` `test` `smoke` |
+| 唯一入口 | `Makefile` | `up` `migrate` `api` `web` `test` `smoke` `gates` |
+| 交付物门禁 | `make gates`；`.github/workflows/deliverable-gates.yml` | `node scripts/gates/run-all.mjs`；与 `make test` 分开，非 0 即失败 |
 | 接入报文 | `packages/contracts/src/index.ts` `recognitionIngressSchema` | `.strict()`，未知字段返回 `UNKNOWN_FIELD`。`parseRecognitionIngress` 必须调用 `recognitionIngressSchema.safeParse` |
 | 接入路径 | `apps/api/src/ingest/ingest.controller.ts`、`mqtt.adapter.ts`、`ingest.service.ts`、`apps/api/src/configure-app.ts` | `scripts/check-boundaries.mjs`：controller 调用 `this.ingest.handle(body, 'http')`，参数为 `@Body() body: unknown`；MQTT `on('message')` 进入 `onMessage`，识别报文调用 `this.ingest.handle(body, 'mqtt')`；`IngestService` 调用 `parseRecognitionIngress`。`main.ts` 与 `ingest.wall.spec.ts` 都调用 `configureApp` |
 | 告警报文 | 同文件 `createAlertSchema` `alertNoteSchema` `alertStatusSchema` | 创建/确认/关闭走 schema；状态机只允许 open→acked→closed 与 open→closed |

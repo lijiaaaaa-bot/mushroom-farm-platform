@@ -1,0 +1,14 @@
+# 交付物门禁
+
+完成 = `node scripts/gates/run-all.mjs` 退出码 0（等价于 `make gates`）。Skill、prompt、口头说明都不是墙；墙是这条命令的退出码。
+
+`make test` 仍只跑契约、边界和单测。`make gates` 与它分开，由 CI workflow `deliverable-gates` 在 pull request 和 `main` / `master` push 上执行。
+
+`facts.json` 从需求原文填写：把原文已经写明的规模、通道、角色等放进 `facts`。这些事实在文稿里按事实写，不要和【假定】或【假设】写在同一行。样例 JSON 以后放进 `json_samples`，门禁只检查文件存在且可 `JSON.parse`。
+
+当前门禁：
+
+- 文件名和一级标题不得含禁用元词（见 `facts.json` 的 `forbidden_name_substrings`）。
+- 需求事实关键词不得与【假定】/【假设】出现在同一行。
+- 禁止无证据的完成百分比（`完成 N%`、`N% 完成`、`进度 N%`）；写这条规则本身须带「禁止」「无证据」或「不编造」。
+- `json_samples` 列出的文件必须可解析；清单为空时跳过。
