@@ -35,9 +35,30 @@ export class IngestController {
     return result;
   }
 
+  @Public()
+  @UseGuards(IngestTokenGuard)
+  @Post('environment')
+  async environment(@Body() body: unknown) {
+    const result = await this.ingest.handleEnvironment(body, 'http');
+    if (!result.accepted) {
+      throw new BadRequestException({
+        accepted: false,
+        code: result.code,
+        message: '环境报文被拒绝',
+        errors: result.errors,
+      });
+    }
+    return result;
+  }
+
   @Get('recognitions')
   list(@CurrentUser() user: AuthUser, @Query() query: ListQuery) {
     return this.ingest.list(user, query);
+  }
+
+  @Get('environment-readings')
+  listEnvironment(@CurrentUser() user: AuthUser, @Query() query: ListQuery) {
+    return this.ingest.listEnvironment(user, query);
   }
 
   @Get('recognitions/:id/snapshot')

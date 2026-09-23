@@ -19,9 +19,10 @@
 - #26 `/diseases` 列出 diseaseCount>0 的识别，识别页与病害页可打开已存抓拍；PR #29 squash 合入 main（ca8ef58）；Issue closed.
 - #30 `/devices` 摄像头批量导入；PR #31 squash 合入 main（746e224）；Issue closed.
 - #32 站内告警未读入口；PR #33 squash 合入 main（5d104b2）；Issue closed.
+- #27 棚区平面坐标（F-R2-03 / F-R8-03）：`sheds.map_x` / `map_y`、管理端可编辑、大屏点位读取配置坐标；PR #28 squash 合入 main（dfbdbd0）；Issue closed. https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/28
 
 ## 进行中
-- #27 棚区平面坐标（F-R2-03 / F-R8-03）：`sheds.map_x` / `map_y`、管理端可编辑、大屏点位读取配置坐标；PR https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/28 未合并
+- #34 环境报文接入与管理端观测：`POST /api/v1/ingest/environment` 与 MQTT `mushroom/+/+/environment` 写入 `environment_readings`；`/environment` 展示最近读数。PR https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/35 未合，不关 Issue
 
 ## 规范
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18

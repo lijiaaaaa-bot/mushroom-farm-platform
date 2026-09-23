@@ -12,6 +12,7 @@ import AdminLayout from './layouts/AdminLayout.vue';
 import router from './router';
 import AlertsView from './views/AlertsView.vue';
 import DevicesView from './views/DevicesView.vue';
+import EnvironmentView from './views/EnvironmentView.vue';
 import DiseasesView from './views/DiseasesView.vue';
 import HarvestView from './views/HarvestView.vue';
 import ReportsView from './views/ReportsView.vue';
@@ -19,6 +20,7 @@ import RulesView from './views/RulesView.vue';
 
 const pages = [
   { path: '/devices', component: DevicesView, title: '设备', label: '设备' },
+  { path: '/environment', component: EnvironmentView, title: '环境读数', label: '环境读数' },
   { path: '/diseases', component: DiseasesView, title: '病害', label: '病害' },
   { path: '/alerts', component: AlertsView, title: '告警', label: '告警' },
   { path: '/alert-rules', component: RulesView, title: '阈值规则', label: '阈值规则' },

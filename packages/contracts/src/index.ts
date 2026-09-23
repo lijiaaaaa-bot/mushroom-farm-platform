@@ -95,7 +95,9 @@ export const DEVICE_TYPE_LABEL: Record<DeviceType, string> = {
 
 export const MQTT_RECOGNITION_TOPIC = 'mushroom/+/+/recognition';
 export const MQTT_HEARTBEAT_TOPIC = 'mushroom/+/+/heartbeat';
+export const MQTT_ENVIRONMENT_TOPIC = 'mushroom/+/+/environment';
 export const INGEST_HTTP_PATH = '/api/v1/ingest/recognition';
+export const INGEST_ENVIRONMENT_HTTP_PATH = '/api/v1/ingest/environment';
 export const IMAGE_RETENTION_DAYS = 30;
 export const TIMESERIES_RETENTION_DAYS = 90;
 export const DEVICE_OFFLINE_AFTER_MS = 5 * 60 * 1000;
@@ -187,6 +189,50 @@ export const canonicalRecognitionSchema = z
 
 export type CanonicalRecognition = z.infer<typeof canonicalRecognitionSchema>;
 
+/** 环境上报与识别报文分开。未声明字段会被 .strict() 拒绝。 */
+export const environmentIngressSchema = z
+  .object({
+    idempotencyKey: z.string().optional(),
+    幂等键: z.string().optional(),
+    shedCode: z.string().optional(),
+    棚区编号: z.string().optional(),
+    sensorCode: z.string().optional(),
+    传感器编号: z.string().optional(),
+    observedAt: z.string().optional(),
+    观测时间: z.string().optional(),
+    temperature: optionalCount,
+    温度: optionalCount,
+    环境温度: optionalCount,
+    humidity: optionalCount,
+    湿度: optionalCount,
+    环境湿度: optionalCount,
+    co2: optionalCount,
+    CO2: optionalCount,
+    'CO₂': optionalCount,
+    co2浓度: optionalCount,
+    二氧化碳: optionalCount,
+    substrateMoisture: optionalCount,
+    基质含水率: optionalCount,
+  })
+  .strict();
+
+export type EnvironmentIngress = z.infer<typeof environmentIngressSchema>;
+
+export const canonicalEnvironmentSchema = z
+  .object({
+    idempotencyKey: z.string().optional(),
+    shedCode: z.string().min(1),
+    sensorCode: z.string().min(1),
+    observedAt: z.string().min(1),
+    temperature: z.number().optional(),
+    humidity: z.number().optional(),
+    co2: z.number().optional(),
+    substrateMoisture: z.number().optional(),
+  })
+  .strict();
+
+export type CanonicalEnvironment = z.infer<typeof canonicalEnvironmentSchema>;
+
 export const createAlertSchema = z
   .object({
     shedCode: z.string().min(1),
@@ -261,6 +307,17 @@ export function buildIdempotencyKey(input: {
   const stamp = new Date(input.recognizedAt).toISOString();
   return createHash('sha1')
     .update(`${input.shedCode}|${input.cameraCode}|${stamp}`)
+    .digest('hex');
+}
+
+export function buildEnvironmentIdempotencyKey(input: {
+  shedCode: string;
+  sensorCode: string;
+  observedAt: string;
+}): string {
+  const stamp = new Date(input.observedAt).toISOString();
+  return createHash('sha1')
+    .update(`environment|${input.shedCode}|${input.sensorCode}|${stamp}`)
     .digest('hex');
 }
 
@@ -462,6 +519,57 @@ export function parseRecognitionIngress(
     canonical.diseaseLevel > LIMITS.diseaseLevel.max
   ) {
     errors.push('病害等级无效');
+  }
+  rangeError(errors, canonical.temperature, LIMITS.temperatureC, '温度');
+  rangeError(errors, canonical.humidity, LIMITS.humidityPct, '湿度');
+  rangeError(errors, canonical.co2, LIMITS.co2Ppm, 'CO₂');
+  rangeError(errors, canonical.substrateMoisture, LIMITS.substrateMoisturePct, '基质含水率');
+  if (errors.length) return fail(ERROR_CODES.VALIDATION_FAILED, errors);
+  return { ok: true, value: canonical };
+}
+
+function pickEnv(body: EnvironmentIngress, keys: (keyof EnvironmentIngress)[]): unknown {
+  for (const key of keys) {
+    const value = body[key];
+    if (value !== undefined && value !== null && value !== '') return value;
+  }
+  return undefined;
+}
+
+export function parseEnvironmentIngress(
+  raw: unknown,
+  now = new Date(),
+): ParseResult<CanonicalEnvironment> {
+  const parsed = environmentIngressSchema.safeParse(raw);
+  if (!parsed.success) return fail(zodErrors(parsed.error).code, zodErrors(parsed.error).errors);
+  const body = parsed.data;
+  const observed = pickEnv(body, ['observedAt', '观测时间']);
+  const idempotencyKey = pickEnv(body, ['idempotencyKey', '幂等键']);
+  const canonical: CanonicalEnvironment = {
+    idempotencyKey: typeof idempotencyKey === 'string' ? idempotencyKey : undefined,
+    shedCode: String(pickEnv(body, ['shedCode', '棚区编号']) ?? '').trim(),
+    sensorCode: String(pickEnv(body, ['sensorCode', '传感器编号']) ?? '').trim(),
+    observedAt: String(observed ?? ''),
+    temperature: num(pickEnv(body, ['temperature', '温度', '环境温度'])),
+    humidity: num(pickEnv(body, ['humidity', '湿度', '环境湿度'])),
+    co2: num(pickEnv(body, ['co2', 'CO2', 'CO₂', 'co2浓度', '二氧化碳'])),
+    substrateMoisture: num(pickEnv(body, ['substrateMoisture', '基质含水率'])),
+  };
+  const errors: string[] = [];
+  if (!canonical.shedCode) errors.push('缺少棚区编号');
+  if (!canonical.sensorCode) errors.push('缺少传感器编号');
+  const time = new Date(canonical.observedAt);
+  if (!canonical.observedAt || Number.isNaN(time.getTime())) errors.push('观测时间无效');
+  else {
+    if (time.getTime() > now.getTime() + LIMITS.recognizedAtFutureMinutes * 60 * 1000) {
+      errors.push('观测时间超前过多');
+    }
+    if (now.getTime() - time.getTime() > LIMITS.recognizedAtPastDays * 24 * 60 * 60 * 1000) {
+      errors.push('观测时间超出补传窗口');
+    }
+  }
+  if (canonical.temperature === undefined && canonical.humidity === undefined) {
+    errors.push('缺少温度或湿度');
   }
   rangeError(errors, canonical.temperature, LIMITS.temperatureC, '温度');
   rangeError(errors, canonical.humidity, LIMITS.humidityPct, '湿度');

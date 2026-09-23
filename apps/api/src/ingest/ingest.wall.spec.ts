@@ -9,6 +9,7 @@ import { AlertEngineService } from '../alerts';
 import { IngestTokenGuard } from '../common/guards';
 import { configureApp } from '../configure-app';
 import { DevicesService } from '../devices';
+import { EnvironmentReading } from '../entities/environment-reading.entity';
 import { IngestReject } from '../entities/ingest-reject.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { RedisService } from '../redis';
@@ -49,6 +50,10 @@ describe('ingest wall', () => {
         },
         {
           provide: getRepositoryToken(RecognitionRecord),
+          useValue: { create: jest.fn(), save: jest.fn(), findOne: jest.fn() },
+        },
+        {
+          provide: getRepositoryToken(EnvironmentReading),
           useValue: { create: jest.fn(), save: jest.fn(), findOne: jest.fn() },
         },
         { provide: getRepositoryToken(IngestReject), useValue: rejectRepo },

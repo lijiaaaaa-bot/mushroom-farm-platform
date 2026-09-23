@@ -6,6 +6,7 @@ import {
   IMAGE_RETENTION_DAYS,
   TIMESERIES_RETENTION_DAYS,
 } from '@mushroom/contracts';
+import { EnvironmentReading } from '../entities/environment-reading.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { MinioStorageService } from '../storage';
 
@@ -17,6 +18,8 @@ export class RetentionService {
   constructor(
     @InjectRepository(RecognitionRecord)
     private readonly records: Repository<RecognitionRecord>,
+    @InjectRepository(EnvironmentReading)
+    private readonly readings: Repository<EnvironmentReading>,
     private readonly storage: MinioStorageService,
   ) {}
 
@@ -49,9 +52,13 @@ export class RetentionService {
     const removed = await this.records.delete({
       recognizedAt: LessThan(seriesCutoff),
     });
+    const environmentRemoved = await this.readings.delete({
+      observedAt: LessThan(seriesCutoff),
+    });
     return {
       imagesCleared: staleImages.length,
       rowsDeleted: removed.affected ?? 0,
+      environmentRowsDeleted: environmentRemoved.affected ?? 0,
     };
   }
 }

@@ -6,9 +6,12 @@ import { ShedScope } from '../common/shed-scope';
 import {
   IDEMPOTENCY_TTL_SECONDS,
   averageDiameter,
+  buildEnvironmentIdempotencyKey,
   buildIdempotencyKey,
+  parseEnvironmentIngress,
   parseRecognitionIngress,
 } from '@mushroom/contracts';
+import { EnvironmentReading } from '../entities/environment-reading.entity';
 import { IngestReject } from '../entities/ingest-reject.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { RedisService } from '../redis';
@@ -33,6 +36,8 @@ export class IngestService {
   constructor(
     @InjectRepository(RecognitionRecord)
     private readonly records: Repository<RecognitionRecord>,
+    @InjectRepository(EnvironmentReading)
+    private readonly readings: Repository<EnvironmentReading>,
     @InjectRepository(IngestReject)
     private readonly rejects: Repository<IngestReject>,
     private readonly redis: RedisService,
@@ -136,6 +141,79 @@ export class IngestService {
     }
   }
 
+  async handleEnvironment(
+    raw: unknown,
+    source: 'http' | 'mqtt',
+  ): Promise<IngestResult> {
+    const parsed = parseEnvironmentIngress(raw);
+    if (!parsed.ok) {
+      await this.rejects.save(
+        this.rejects.create({
+          source,
+          errors: parsed.errors,
+          payload: raw,
+        }),
+      );
+      this.logger.warn(`丢弃${source}环境上报：${parsed.errors.join('；')}`);
+      return { accepted: false, code: parsed.code, errors: parsed.errors };
+    }
+    const canonical = parsed.value;
+    const idempotencyKey =
+      canonical.idempotencyKey ||
+      buildEnvironmentIdempotencyKey({
+        shedCode: canonical.shedCode,
+        sensorCode: canonical.sensorCode,
+        observedAt: canonical.observedAt,
+      });
+    const redisFresh = await this.redis.setNx(
+      `ingest:env:idemp:${idempotencyKey}`,
+      IDEMPOTENCY_TTL_SECONDS,
+    );
+    if (redisFresh === false) {
+      const existing = await this.readings.findOne({
+        where: { idempotencyKey },
+      });
+      if (existing) return { accepted: true, duplicate: true, id: existing.id };
+    }
+    try {
+      const saved = await this.readings.save(
+        this.readings.create({
+          idempotencyKey,
+          shedCode: canonical.shedCode,
+          sensorCode: canonical.sensorCode,
+          observedAt: new Date(canonical.observedAt),
+          temperature: canonical.temperature ?? null,
+          humidity: canonical.humidity ?? null,
+          co2: canonical.co2 ?? null,
+          substrateMoisture: canonical.substrateMoisture ?? null,
+          source,
+          rawPayload: raw,
+        }),
+      );
+      try {
+        await this.devices.heartbeat(
+          saved.shedCode,
+          saved.sensorCode,
+          'sensor',
+          true,
+        );
+      } catch (error) {
+        this.logger.warn(
+          `环境读数已入库，传感器心跳未更新：${(error as Error).message}`,
+        );
+      }
+      return { accepted: true, duplicate: false, id: saved.id };
+    } catch (error) {
+      if (this.isUniqueViolation(error)) {
+        const existing = await this.readings.findOne({
+          where: { idempotencyKey },
+        });
+        return { accepted: true, duplicate: true, id: existing?.id };
+      }
+      throw error;
+    }
+  }
+
   async list(user: AuthUser, query: ListQuery) {
     const scope = ShedScope.fromUser(user);
     if (query.shedCode) scope.assert(query.shedCode);
@@ -159,6 +237,30 @@ export class IngestService {
     if (query.to)
       qb.andWhere('r.recognizedAt <= :to', { to: new Date(query.to) });
     if (isDiseasedQuery(query.diseased)) qb.andWhere('r.diseaseCount > 0');
+    const [items, total] = await qb
+      .skip(page.skip)
+      .take(page.pageSize)
+      .getManyAndCount();
+    return { items, total, page: page.page, pageSize: page.pageSize };
+  }
+
+  async listEnvironment(user: AuthUser, query: ListQuery) {
+    const scope = ShedScope.fromUser(user);
+    if (query.shedCode) scope.assert(query.shedCode);
+    const page = parsePage(query);
+    const qb = this.readings
+      .createQueryBuilder('e')
+      .orderBy('e.observedAt', 'DESC');
+    if (scope.codes) {
+      if (!scope.codes.length) qb.andWhere('1 = 0');
+      else qb.andWhere('e.shedCode IN (:...codes)', { codes: scope.codes });
+    }
+    if (query.shedCode)
+      qb.andWhere('e.shedCode = :shedCode', { shedCode: query.shedCode });
+    if (query.from)
+      qb.andWhere('e.observedAt >= :from', { from: new Date(query.from) });
+    if (query.to)
+      qb.andWhere('e.observedAt <= :to', { to: new Date(query.to) });
     const [items, total] = await qb
       .skip(page.skip)
       .take(page.pageSize)
