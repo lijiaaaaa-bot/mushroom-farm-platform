@@ -18,3 +18,7 @@
 ## 同构翻车（必升规则）
 
 发现表面合规或门禁漏报时：先抽出「坏在哪一类」，再同时做三件事——（1）更新 `facts.json` 或 `scripts/gates/run-all.mjs` 规则；（2）在 `scripts/gates/fixtures/` 加一条同构负例（或正例）；（3）`make gates-selftest` 必须绿。禁止只改那一份坏稿、不升规则。
+
+## 上游 harness
+
+元改动（门禁、协议、agent 规范、检出结构）先进入 [project-harness-day0](https://origin.cursor.com/lijiaaaaa/tmp-3e65e753ea9c25fb) v0.1.0。本仓是消费方：禁止只改本仓故事或文稿、不回 harness。其他项目 Day-0 从该仓 `INSTALL.md` 拷贝。本仓 `scripts/gates` 继续由 `make gates` 执行。说明见 [`HARNESS.md`](./HARNESS.md)。
