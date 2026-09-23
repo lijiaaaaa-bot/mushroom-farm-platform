@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AlertsModule } from '../alerts';
 import { DevicesModule } from '../devices';
+import { GrowthTrendModule } from '../growth';
 import { EnvironmentReading } from '../entities/environment-reading.entity';
 import { HeartbeatReceipt } from '../entities/heartbeat-receipt.entity';
 import { IngestReject } from '../entities/ingest-reject.entity';
@@ -20,6 +21,7 @@ import { MqttIngestAdapter } from './mqtt.adapter';
     ]),
     DevicesModule,
     AlertsModule,
+    GrowthTrendModule,
   ],
   controllers: [IngestController],
   providers: [IngestService, MqttIngestAdapter],

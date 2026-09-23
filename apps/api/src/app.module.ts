@@ -12,6 +12,7 @@ import { DashboardModule } from './dashboard';
 import { DiseasesModule } from './diseases';
 import { SnakeNamingStrategy } from './database/naming.strategy';
 import { DevicesModule } from './devices';
+import { GrowthTrendModule } from './growth';
 import { HarvestModule } from './harvest';
 import { IngestModule } from './ingest';
 import { MaintenanceModule } from './maintenance';
@@ -46,6 +47,7 @@ import { StorageModule } from './storage';
     IngestModule,
     AlertsModule,
     HarvestModule,
+    GrowthTrendModule,
     ReportsModule,
     DashboardModule,
     DiseasesModule,

@@ -1,4 +1,10 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ObjectLiteral, QueryFailedError, Repository } from 'typeorm';
 import { ListQuery, parsePage } from '../common/pagination';
@@ -11,6 +17,7 @@ import {
   buildIdempotencyKey,
   parseEnvironmentIngress,
   parseRecognitionIngress,
+  shanghaiDate,
 } from '@mushroom/contracts';
 import { EnvironmentReading } from '../entities/environment-reading.entity';
 import { HeartbeatReceipt } from '../entities/heartbeat-receipt.entity';
@@ -20,6 +27,7 @@ import { RedisService } from '../redis';
 import { MinioStorageService } from '../storage';
 import { AlertEngineService } from '../alerts';
 import { DevicesService } from '../devices';
+import { GrowthTrendService } from '../growth';
 import { AuthUser } from '../common/auth-user';
 
 export interface IngestResult {
@@ -91,6 +99,9 @@ export class IngestService {
     private readonly storage: MinioStorageService,
     private readonly devices: DevicesService,
     private readonly alerts: AlertEngineService,
+    @Optional()
+    @Inject(GrowthTrendService)
+    private readonly growth?: GrowthTrendService,
   ) {}
 
   async handle(raw: unknown, source: 'http' | 'mqtt'): Promise<IngestResult> {
@@ -176,6 +187,13 @@ export class IngestService {
       );
       await this.devices.touchCamera(saved.shedCode, saved.cameraCode);
       await this.alerts.evaluate(saved);
+      try {
+        await this.growth?.refreshDay(shanghaiDate(saved.recognizedAt));
+      } catch (refreshError) {
+        this.logger.warn(
+          `日聚合刷新失败，识别记录已入库：${(refreshError as Error).message}`,
+        );
+      }
       return { accepted: true, duplicate: false, id: saved.id, snapshotStored };
     } catch (error) {
       if (this.isUniqueViolation(error)) {
