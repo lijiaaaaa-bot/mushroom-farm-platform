@@ -8,6 +8,7 @@ const features = [
   'auth',
   'dashboard',
   'devices',
+  'growth',
   'harvest',
   'ingest',
   'maintenance',

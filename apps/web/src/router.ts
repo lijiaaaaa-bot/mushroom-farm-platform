@@ -7,6 +7,7 @@ import DashboardView from './views/DashboardView.vue';
 import DiseasesView from './views/DiseasesView.vue';
 import DevicesView from './views/DevicesView.vue';
 import EnvironmentView from './views/EnvironmentView.vue';
+import GrowthTrendsView from './views/GrowthTrendsView.vue';
 import HarvestView from './views/HarvestView.vue';
 import IngestObservabilityView from './views/IngestObservabilityView.vue';
 import LoginView from './views/LoginView.vue';
@@ -34,6 +35,7 @@ const router = createRouter({
         { path: 'alerts', component: AlertsView, meta: { title: '告警' } },
         { path: 'alert-rules', component: RulesView, meta: { title: '阈值规则' } },
         { path: 'harvest', component: HarvestView, meta: { title: '采摘' } },
+        { path: 'growth-trends', component: GrowthTrendsView, meta: { title: '生长趋势' } },
         { path: 'reports', component: ReportsView, meta: { title: '报表' } },
         { path: 'sheds', component: ShedsView, meta: { title: '棚区' } },
         { path: 'audit', component: AuditView, meta: { title: '审计' } },
@@ -43,12 +45,7 @@ const router = createRouter({
           props: { title: '基地大屏', summary: '基地与单棚大屏。' },
           meta: { title: '大屏' },
         },
-        {
-          path: 'phase2/trends',
-          component: Phase2View,
-          props: { title: '生长趋势', summary: '抓拍对比与生长复盘。' },
-          meta: { title: '趋势' },
-        },
+        { path: 'phase2/trends', redirect: '/growth-trends' },
         { path: 'phase2/yield', redirect: '/harvest' },
         {
           path: 'phase2/wecom',

@@ -15,6 +15,7 @@ import DevicesView from './views/DevicesView.vue';
 import EnvironmentView from './views/EnvironmentView.vue';
 import IngestObservabilityView from './views/IngestObservabilityView.vue';
 import DiseasesView from './views/DiseasesView.vue';
+import GrowthTrendsView from './views/GrowthTrendsView.vue';
 import HarvestView from './views/HarvestView.vue';
 import ReportsView from './views/ReportsView.vue';
 import RulesView from './views/RulesView.vue';
@@ -27,6 +28,7 @@ const pages = [
   { path: '/alerts', component: AlertsView, title: '告警', label: '告警' },
   { path: '/alert-rules', component: RulesView, title: '阈值规则', label: '阈值规则' },
   { path: '/harvest', component: HarvestView, title: '采摘', label: '采摘' },
+  { path: '/growth-trends', component: GrowthTrendsView, title: '生长趋势', label: '生长趋势' },
   { path: '/reports', component: ReportsView, title: '报表', label: '报表' },
 ] as const;
 

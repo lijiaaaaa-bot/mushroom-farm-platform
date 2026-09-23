@@ -30,6 +30,7 @@ module.exports = {
           'auth',
           'dashboard',
           'devices',
+          'growth',
           'harvest',
           'ingest',
           'maintenance',

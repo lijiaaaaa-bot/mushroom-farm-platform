@@ -19,13 +19,13 @@ const links = [
   { to: '/alerts', label: '告警' },
   { to: '/alert-rules', label: '阈值规则' },
   { to: '/harvest', label: '采摘' },
+  { to: '/growth-trends', label: '生长趋势' },
   { to: '/reports', label: '报表' },
   { to: '/sheds', label: '棚区' },
   { to: '/audit', label: '审计' },
 ];
 const phase2 = [
   { to: '/phase2/big-screen', label: '大屏' },
-  { to: '/phase2/trends', label: '趋势' },
   { to: '/phase2/wecom', label: '企微' },
 ];
 const roleLabel = computed(() => {

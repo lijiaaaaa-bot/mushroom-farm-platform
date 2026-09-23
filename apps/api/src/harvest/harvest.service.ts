@@ -1,7 +1,10 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
+  Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -16,6 +19,7 @@ import {
   todayShanghai,
 } from '@mushroom/contracts';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
+import { GrowthTrendService } from '../growth';
 import { projectMatureYield } from './yield-estimate';
 
 export interface HarvestItem {
@@ -45,9 +49,14 @@ export interface HarvestCorrection {
 
 @Injectable()
 export class HarvestService {
+  private readonly logger = new Logger(HarvestService.name);
+
   constructor(
     @InjectRepository(RecognitionRecord)
     private readonly records: Repository<RecognitionRecord>,
+    @Optional()
+    @Inject(GrowthTrendService)
+    private readonly growth?: GrowthTrendService,
   ) {}
 
   async daily(user: AuthUser, date?: string) {
@@ -117,6 +126,17 @@ export class HarvestService {
       record.matureCount = matureCount;
       record.mushroomCount = mushroomCount;
       await this.records.save(record);
+      if (changes.mushroomCount) {
+        try {
+          await this.growth?.refreshDay(
+            shanghaiDate(new Date(record.recognizedAt)),
+          );
+        } catch (error) {
+          this.logger.warn(
+            `日聚合刷新失败，采摘修正已保存：${(error as Error).message}`,
+          );
+        }
+      }
     }
     return { item: toHarvestItem(record), changes };
   }
