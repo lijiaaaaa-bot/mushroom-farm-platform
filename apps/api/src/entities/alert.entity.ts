@@ -5,7 +5,7 @@ import {
   Index,
   PrimaryGeneratedColumn,
 } from 'typeorm';
-import { AlertLevel, AlertStatus } from '@mushroom/contracts';
+import { AlertCloseReason, AlertLevel, AlertStatus } from '@mushroom/contracts';
 
 @Entity('alerts')
 @Index(['shedCode', 'status'])
@@ -60,6 +60,18 @@ export class Alert {
 
   @Column({ type: 'text', nullable: true })
   closeNote: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  closeReason: AlertCloseReason | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  claimedBy: string | null;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  claimedAt: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  claimNote: string | null;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;

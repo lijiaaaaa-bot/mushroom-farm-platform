@@ -113,8 +113,26 @@ export class AlertsService {
         closedBy: null,
         closedAt: null,
         closeNote: null,
+        closeReason: null,
+        claimedBy: null,
+        claimedAt: null,
+        claimNote: null,
       }),
     );
+  }
+
+  async claim(user: AuthUser, id: string, note?: string) {
+    const alert = await this.require(user, id);
+    if (alert.status === 'closed') {
+      throw new BadRequestException({
+        code: ERROR_CODES.INVALID_TRANSITION,
+        message: '已关闭的告警不能认领',
+      });
+    }
+    alert.claimedBy = user.username;
+    alert.claimedAt = new Date();
+    alert.claimNote = note ?? null;
+    return this.alerts.save(alert);
   }
 
   async ack(user: AuthUser, id: string, note?: string) {
@@ -146,10 +164,33 @@ export class AlertsService {
     alert.closedBy = user.username;
     alert.closedAt = new Date();
     alert.closeNote = note ?? null;
+    alert.closeReason = 'resolved';
     if (!alert.ackedAt) {
       alert.ackedBy = user.username;
       alert.ackedAt = alert.closedAt;
       alert.ackNote = alert.ackNote ?? '关闭时自动确认';
+    }
+    return this.alerts.save(alert);
+  }
+
+  async closeFalsePositive(user: AuthUser, id: string, note: string) {
+    const alert = await this.require(user, id);
+    const error = transitionError(alert.status, 'closed');
+    if (error) {
+      throw new BadRequestException({
+        code: ERROR_CODES.INVALID_TRANSITION,
+        message: error,
+      });
+    }
+    alert.status = 'closed';
+    alert.closedBy = user.username;
+    alert.closedAt = new Date();
+    alert.closeNote = note;
+    alert.closeReason = 'false_positive';
+    if (!alert.ackedAt) {
+      alert.ackedBy = user.username;
+      alert.ackedAt = alert.closedAt;
+      alert.ackNote = alert.ackNote ?? '误报关闭时自动确认';
     }
     return this.alerts.save(alert);
   }

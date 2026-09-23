@@ -3,6 +3,7 @@ import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
 import { Public } from '../common/decorators';
 import {
+  ALERT_CLOSE_REASONS,
   ALERT_LEVELS,
   ALERT_METRICS,
   ALERT_STATUSES,
@@ -50,6 +51,7 @@ export class MetaController {
         mqttEnvironment: MQTT_ENVIRONMENT_TOPIC,
       },
       alertStatuses: ALERT_STATUSES,
+      alertCloseReasons: ALERT_CLOSE_REASONS,
       alertLevels: ALERT_LEVELS,
       alertMetrics: ALERT_METRICS,
       roles: ROLES,
