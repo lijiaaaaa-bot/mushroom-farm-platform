@@ -36,6 +36,7 @@ export class MqttIngestAdapter implements OnModuleInit, OnModuleDestroy {
     this.client.on('connect', () => {
       this.client?.subscribe(
         [MQTT_RECOGNITION_TOPIC, MQTT_HEARTBEAT_TOPIC],
+        { qos: 1 },
         (error) => {
           if (error) this.logger.warn(`MQTT 订阅失败：${error.message}`);
           else this.logger.log(`MQTT 已订阅 ${MQTT_RECOGNITION_TOPIC}`);
@@ -46,7 +47,9 @@ export class MqttIngestAdapter implements OnModuleInit, OnModuleDestroy {
       this.logger.warn(`MQTT 错误：${error.message}`),
     );
     this.client.on('message', (topic, payload) => {
-      void this.onMessage(topic, payload);
+      void this.onMessage(topic, payload).catch((error: Error) => {
+        this.logger.warn(`MQTT 处理失败 ${topic}：${error.message}`);
+      });
     });
   }
 
@@ -76,7 +79,12 @@ export class MqttIngestAdapter implements OnModuleInit, OnModuleDestroy {
       if (!body.shedCode && !body['棚区编号']) body.shedCode = shedFromTopic;
       if (!body.cameraCode && !body['摄像头编号'])
         body.cameraCode = deviceFromTopic;
-      await this.ingest.handle(body, 'mqtt');
+      const result = await this.ingest.handle(body, 'mqtt');
+      if (!result.accepted) {
+        this.logger.warn(
+          `MQTT 识别被拒绝 ${topic}：${result.code || ''} ${(result.errors || []).join('；')}`,
+        );
+      }
       return;
     }
     if (kind === 'heartbeat') {

@@ -13,7 +13,7 @@
 | 模块边界 | `apps/api/.eslintrc.js` `no-restricted-imports`；`scripts/check-boundaries.mjs` | 功能模块只能从 `apps/api/src/<module>/index.ts` 导入 |
 | Web 边界 | `apps/web/.eslintrc.cjs`；同一检查脚本 | 禁止 `@nestjs/*`、`apps/api`、`entities`；类型来自 `@mushroom/contracts` |
 | 负例 | `scripts/boundaries.spec.mjs`、`apps/api/src/ingest/ingest.wall.spec.ts` | 深导入使 check-boundaries 与 eslint `no-restricted-imports` 失败；HTTP 与 MQTT 未知字段得到 `UNKNOWN_FIELD` |
-| 冒烟门禁 | `make smoke` | compose 依赖 + `infra/migrations` + 黄金接入 + 列表断言 + 告警确认；失败即非 0 |
+| 冒烟门禁 | `make smoke` | compose 依赖 + `infra/migrations` + 黄金接入（HTTP 与 MQTT）+ 列表断言 + 告警确认；失败即非 0 |
 | CI | `.github/workflows/test.yml` | `pull_request` 与 `main` push 执行 `make test` |
 
 共享内核（`common` `entities` `config` `database`）不在功能模块墙内。心跳 `mushroom/+/+/heartbeat` 进入 `DevicesService.heartbeat`，不写识别记录。
