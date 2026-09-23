@@ -13,8 +13,11 @@
 - #5 squash 合入 main（4dd50a1）、#1 已关闭：MQTT recognition 与 HTTP 同管道
 - CI job `ingest-smoke` 跑 `make smoke`：`scripts/edge-simulator.mjs` 向 Mosquitto / HTTP 发送契约黄金报文，证据目录 `evidence/ingest-last-run/` 上传为 artifact `ingest-smoke-evidence`；可打开的一次真实跑样在 `evidence/ingest-sample/summary.json`
 
+## 视觉口径（与 Issue #2 一致）
+- 看板与指挥大屏：清亮农作物监控风格（农业场景）。暗色可选，不是验收硬约束。不以公安 / 雪亮类比作为验收。
+
 ## 进行中
-- #2 大屏：暗色指挥页路由 + 五区布局接现有 API（#2，`status:doing`）
+- #2 大屏：指挥页路由 + 五区布局（清亮农作物风格）；`/big-screen` 五区接现有 list/alert/device API（允许空态）。暗色可选。（#2，`status:doing`）
 
 ## 待开
 - #3 管理端四页（设备 / 告警 / 采摘 / 报表接通 API），排在 #2 之后
