@@ -3,8 +3,8 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：#47 生长趋势日聚合 rebase 到 main（PR #52）
-- 进行中文件：`STATUS.md`、`apps/api/src/growth/`、`apps/web/src/views/GrowthTrendsView.vue`
+- 本会话目标：管理端侧栏去掉「二期槽位」与未上线的大屏/企微占位，把真实 `/big-screen` 放到总览下
+- 进行中文件：`apps/web/src/layouts/AdminLayout.vue`
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -45,3 +45,4 @@
 | 2026-09-23 | #50 病害同期环境：GET /diseases/:id/environment 按棚（可选传感器）对齐识别时间前后各 30 分钟。空窗说明，不用识别自带温湿度充数。/diseases 同屏。#49 产量：GET /harvest/yield-estimate，满 30 个上海自然日才线性外推未来 3 日并标注「估计」，不足则说明且 days 为空。棚隔离 | 待 `make test` 与 `make gates` | PR 未合，不关 Issue #50 / #49 |
 | 2026-09-23 | #50/#49 验收：环境窗含前后边界与他棚排除，空态不显示识别自带 22.5；产量平坦序列外推 15/1015，缺日 days 为空，棚负责人请求他棚 403。页面同屏与「估计」标注。jsdom 不初始化 ECharts | `make test` 退出码 0（API jest 72，web vitest 68）；`make gates` 退出码 0 | 未打开登录后的 /diseases 与 /harvest。PR #53 草稿未合，不关 Issue |
 | 2026-09-23 | #47 生长趋势日聚合：daily_aggregates 存棚/摄像头当日最新蘑菇数与菌盖直径均值；识别入库与蘑菇数修正后刷新，每小时回写昨日和当日；GET /growth-trends 仅 7/30 天且按棚隔离；/growth-trends 只画已有日点 | `make test` 退出码 0（API jest 72，web vitest 65）；`make gates` 退出码 0 | 未打开登录后的 /growth-trends。PR #52 未合，不关 Issue #47 |
+| 2026-09-23 | 侧栏去掉「二期槽位」以及 `/phase2/big-screen`、`/phase2/wecom`。总览下一项为「基地大屏」（字重 600 +「大屏」角标），打开现有 `/big-screen`。占位页不再显示 PHASE 2。不改 STATUS | `make test` 退出码 0（API jest 85，web vitest 80）；`make gates` 退出码 0。无 Docker，用本机 Vite：侧栏第二项 href `/big-screen`，点击后 h1 为「菇棚监测」；窄屏菜单同样不含企微 | PR #57 未合 |
