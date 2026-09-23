@@ -26,7 +26,7 @@
 - #41 F-R1-07 接入可观测：`GET /api/v1/ingest/observability` 汇总近窗接收、拒收、延迟与最近错误；覆盖识别 HTTP/MQTT、环境与心跳。`/ingest-observability` 展示数字与最近错误，加载失败不渲染空表。PR #42 squash 合入 main（4d04654）；Issue closed. https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/42
 
 ## 进行中
-- #43 F-R3-04 告警认领与误报关闭：认领人在 `/alerts` 可见；误报关闭的关闭原因为 false_positive，与普通关闭的 resolved 区分；认领、误报、关闭的备注写入审计。查看员不能写。PR 未合，不关 Issue。
+- #43 F-R3-04 告警认领与误报关闭：认领人在 `/alerts` 可见；误报关闭的关闭原因为 false_positive，与普通关闭的 resolved 区分；认领、误报、关闭的备注写入审计。查看员不能写。PR #44 未合，不关 Issue。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/44
 
 ## 规范
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18
