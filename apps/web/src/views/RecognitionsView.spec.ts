@@ -46,7 +46,7 @@ describe('RecognitionsView snapshots', () => {
     vi.restoreAllMocks();
   });
 
-  it('opens a snapshot the same way as the disease list, and shows 无抓拍 otherwise', async () => {
+  it('renders an image caption card and opens the stored snapshot', async () => {
     httpGet.mockImplementation((url: string) => {
       if (String(url).includes('/snapshot')) {
         return Promise.resolve({ data: new Blob(['jpeg'], { type: 'image/jpeg' }) });
@@ -55,21 +55,24 @@ describe('RecognitionsView snapshots', () => {
     });
     const wrapper = mount(RecognitionsView);
     await flushPromises();
-    const rows = wrapper.findAll('tbody tr');
+    const cards = wrapper.findAll('.result-card');
 
     expect(httpGet).toHaveBeenCalledWith('/ingest/recognitions?pageSize=50');
-    expect(rows[0].text()).toContain('查看抓拍');
-    expect(rows[0].find('img').exists()).toBe(false);
-    expect(rows[1].text()).toContain('无抓拍');
-    expect(rows[1].find('img').exists()).toBe(false);
-
-    await rows[0].get('button').trigger('click');
-    await flushPromises();
-
-    expect(wrapper.get('img').attributes('src')).toBe('blob:recognition');
+    expect(wrapper.find('.result-grid').exists()).toBe(true);
+    expect(wrapper.find('table').exists()).toBe(false);
+    expect(cards).toHaveLength(2);
+    expect(cards[0].text()).toContain('成熟 4');
+    expect(cards[0].text()).toContain('详情');
+    expect(cards[0].get('img').attributes('src')).toBe('blob:recognition');
+    expect(cards[1].text()).toContain('无抓拍');
+    expect(cards[1].find('img').exists()).toBe(false);
+    expect(cards[1].find('button').exists()).toBe(false);
     expect(httpGet).toHaveBeenCalledWith('/ingest/recognitions/r-1/snapshot', {
       responseType: 'blob',
     });
+
+    await cards[0].get('button').trigger('click');
+    expect(wrapper.findAll('img').length).toBeGreaterThan(1);
     wrapper.unmount();
   });
 });

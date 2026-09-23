@@ -87,7 +87,7 @@ onMounted(load);
 </script>
 
 <template>
-  <section class="space-y-4">
+  <section class="ops-page space-y-4">
     <form class="flex flex-wrap items-end gap-3" @submit.prevent="load">
       <label class="text-sm">日期
         <input v-model="date" class="field mt-1" type="date" />

@@ -4,15 +4,29 @@
 
 :root {
   color-scheme: light;
+  --bg-app: #F5F7FA;
+  --bg-app-alt: #F0F2F5;
+  --bg-card: #FFFFFF;
+  --bg-sidebar: #1B7A4E;
+  --bg-sidebar-active: #2E8B57;
+  --text-primary: #1F2329;
+  --text-secondary: #646A73;
+  --accent: #2F9E44;
+  --warn: #F59E0B;
+  --critical: #E03131;
+  --line: #E5E6EB;
+  --radius-card: 8px;
+  --radius-control: 6px;
   font-family: "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
-  background: #f5f7fa;
-  color: #1e293b;
+  background: var(--bg-app);
+  color: var(--text-primary);
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background: #f5f7fa;
+  background: var(--bg-app);
+  color: var(--text-primary);
 }
 
 #app {
@@ -45,6 +59,76 @@ body {
     @apply border-b border-line px-3 py-2;
   }
   .text-danger {
-    color: #c44536;
+    color: var(--critical);
   }
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.result-card {
+  overflow: hidden;
+  border-radius: var(--radius-card);
+  border: 1px solid var(--line);
+  background: var(--bg-card);
+  box-shadow: 0 1px 2px rgb(31 35 41 / 6%);
+}
+
+.result-card-media {
+  display: flex;
+  aspect-ratio: 4 / 3;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-app-alt);
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.result-card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.result-card-caption {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-top: 1px solid var(--line);
+  padding: 8px 12px;
+  color: var(--text-primary);
+  font-size: 14px;
+}
+
+.result-card-detail {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.level-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: var(--radius-control);
+  border: 1px solid var(--line);
+  padding: 0 6px;
+  font-size: 12px;
+  line-height: 20px;
+}
+
+.level-pill-critical {
+  color: var(--critical);
+  border-color: var(--critical);
+}
+
+.level-pill-warn {
+  color: var(--warn);
+  border-color: var(--warn);
 }
