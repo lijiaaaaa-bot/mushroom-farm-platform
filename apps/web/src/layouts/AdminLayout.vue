@@ -8,9 +8,9 @@ import AlertInbox from '../components/AlertInbox.vue';
 const route = useRoute();
 const router = useRouter();
 const open = ref(false);
-const links = [
+const links: Array<{ to: string; label: string; prominent?: boolean }> = [
   { to: '/', label: '总览' },
-  { to: '/big-screen', label: '菇棚监测' },
+  { to: '/big-screen', label: '基地大屏', prominent: true },
   { to: '/devices', label: '设备' },
   { to: '/recognitions', label: '识别记录' },
   { to: '/environment', label: '环境读数' },
@@ -23,10 +23,6 @@ const links = [
   { to: '/reports', label: '报表' },
   { to: '/sheds', label: '棚区' },
   { to: '/audit', label: '审计' },
-];
-const phase2 = [
-  { to: '/phase2/big-screen', label: '大屏' },
-  { to: '/phase2/wecom', label: '企微' },
 ];
 const roleLabel = computed(() => {
   const role = currentUser.value?.role;
@@ -57,21 +53,16 @@ function leave() {
           v-for="link in links"
           :key="link.to"
           :to="link.to"
-          class="block rounded-md px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white"
+          class="flex items-center justify-between rounded-md px-3 py-2 text-sm hover:bg-white/10 hover:text-white"
+          :class="link.prominent ? 'bg-white/10 font-semibold text-white' : 'text-white/80'"
           exact-active-class="!bg-sidebar-active !text-white"
           @click="open = false"
         >
-          {{ link.label }}
-        </router-link>
-        <p class="px-3 pt-4 text-xs text-white/60">二期槽位</p>
-        <router-link
-          v-for="link in phase2"
-          :key="link.to"
-          :to="link.to"
-          class="block rounded-md px-3 py-2 text-sm text-white/80 hover:bg-white/10 hover:text-white"
-          @click="open = false"
-        >
-          {{ link.label }}
+          <span>{{ link.label }}</span>
+          <span
+            v-if="link.prominent"
+            class="rounded bg-white/25 px-1.5 py-0.5 text-[10px] font-medium leading-none tracking-wide"
+          >大屏</span>
         </router-link>
       </nav>
     </aside>
