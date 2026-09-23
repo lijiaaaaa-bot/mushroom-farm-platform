@@ -24,4 +24,6 @@ export interface ListQuery {
   date?: string;
   online?: string;
   q?: string;
+  /** `1` or `true` keeps rows with diseaseCount > 0. */
+  diseased?: string;
 }

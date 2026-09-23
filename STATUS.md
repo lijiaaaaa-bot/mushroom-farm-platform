@@ -18,7 +18,7 @@
 - #23 `/alert-rules` writable for admins; PR #24 merged; Issue closed.
 
 ## 进行中
-- 无
+- #26 `/diseases` 列出 diseaseCount>0 的识别（时间、棚、摄像头、等级、数量），识别页与病害页可打开已存抓拍；棚隔离沿用 ShedScope。PR 未合，不关 Issue
 
 ## 规范
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18

@@ -4,6 +4,7 @@ import AlertsView from './views/AlertsView.vue';
 import AuditView from './views/AuditView.vue';
 import BigScreenView from './views/BigScreenView.vue';
 import DashboardView from './views/DashboardView.vue';
+import DiseasesView from './views/DiseasesView.vue';
 import DevicesView from './views/DevicesView.vue';
 import HarvestView from './views/HarvestView.vue';
 import LoginView from './views/LoginView.vue';
@@ -25,6 +26,7 @@ const router = createRouter({
         { path: '', component: DashboardView, meta: { title: '总览' } },
         { path: 'devices', component: DevicesView, meta: { title: '设备' } },
         { path: 'recognitions', component: RecognitionsView, meta: { title: '识别记录' } },
+        { path: 'diseases', component: DiseasesView, meta: { title: '病害' } },
         { path: 'alerts', component: AlertsView, meta: { title: '告警' } },
         { path: 'alert-rules', component: RulesView, meta: { title: '阈值规则' } },
         { path: 'harvest', component: HarvestView, meta: { title: '采摘' } },

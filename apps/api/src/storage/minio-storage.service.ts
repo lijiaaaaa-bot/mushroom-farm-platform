@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Client as MinioClient } from 'minio';
+import { Readable } from 'node:stream';
 import { buildSnapshotObjectKey } from '@mushroom/contracts';
 
 @Injectable()
@@ -54,6 +55,24 @@ export class MinioStorageService implements OnModuleInit {
     return { objectKey, url: `${base.replace(/\/$/, '')}/${objectKey}` };
   }
 
+  async readObject(objectKey: string): Promise<Buffer | null> {
+    if (!isSafeObjectKey(objectKey)) return null;
+    if (!this.client) return null;
+    if (!this.ready) await this.ensureBucket();
+    if (!this.ready || !this.client) return null;
+    const bucket =
+      this.config.get<string>('minio.bucket') || 'mushroom-snapshots';
+    try {
+      const stream = await this.client.getObject(bucket, objectKey);
+      return await readLimited(stream, 8 * 1024 * 1024);
+    } catch (error) {
+      this.logger.warn(
+        `读取抓拍失败 ${objectKey}：${(error as Error).message}`,
+      );
+      return null;
+    }
+  }
+
   async remove(objectKey: string): Promise<void> {
     if (!this.client || !this.ready) return;
     const bucket =
@@ -79,4 +98,45 @@ export class MinioStorageService implements OnModuleInit {
       );
     }
   }
+}
+
+function isSafeObjectKey(objectKey: string): boolean {
+  return (
+    Boolean(objectKey) &&
+    !objectKey.startsWith('/') &&
+    !objectKey.includes('\\') &&
+    !objectKey.includes('..')
+  );
+}
+
+function readLimited(
+  stream: Readable,
+  maxBytes: number,
+): Promise<Buffer | null> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    let total = 0;
+    let settled = false;
+    const finish = (value: Buffer | null) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    stream.on('data', (chunk: Buffer | string) => {
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      total += buf.length;
+      if (total > maxBytes) {
+        stream.destroy();
+        finish(null);
+        return;
+      }
+      chunks.push(buf);
+    });
+    stream.on('end', () => finish(Buffer.concat(chunks)));
+    stream.on('error', (error) => {
+      if (settled) return;
+      settled = true;
+      reject(error);
+    });
+  });
 }
