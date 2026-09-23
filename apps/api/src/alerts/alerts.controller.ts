@@ -4,6 +4,7 @@ import {
   Controller,
   Get,
   HttpCode,
+  Optional,
   Param,
   Patch,
   Post,
@@ -30,6 +31,7 @@ import { AuthUser } from '../common/auth-user';
 import { CurrentUser, Roles } from '../common/decorators';
 import { ListQuery } from '../common/pagination';
 import { AlertsService } from './alerts.service';
+import { SevereAlertPushService } from './severe-alert-push.service';
 
 class CreateRuleDto {
   @IsString()
@@ -80,6 +82,7 @@ export class AlertsController {
   constructor(
     private readonly alerts: AlertsService,
     private readonly audit: AuditService,
+    @Optional() private readonly push?: SevereAlertPushService,
   ) {}
 
   @Get('alerts')
@@ -90,6 +93,13 @@ export class AlertsController {
   @Get('alerts/unread')
   unread(@CurrentUser() user: AuthUser) {
     return this.alerts.listUnread(user);
+  }
+
+  @Get('alerts/push-channels')
+  pushChannels() {
+    return (
+      this.push?.channels() ?? { wecomEnabled: false, dingtalkEnabled: false }
+    );
   }
 
   @Post('alerts/read-all')

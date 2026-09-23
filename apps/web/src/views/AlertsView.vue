@@ -87,6 +87,9 @@ onMounted(load);
 
 <template>
   <div class="ops-page space-y-4">
+    <p class="text-sm">
+      <a class="text-accent" href="/phase2/wecom">企微/钉钉推送</a>
+    </p>
     <form v-if="canOperate(currentUser?.role)" class="panel grid gap-3 md:grid-cols-6" @submit.prevent="createAlert">
       <input v-model="form.shedCode" class="field" placeholder="棚区" />
       <input v-model="form.cameraCode" class="field" placeholder="摄像头" />

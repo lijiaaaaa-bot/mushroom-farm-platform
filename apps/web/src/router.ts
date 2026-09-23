@@ -12,6 +12,7 @@ import HarvestView from './views/HarvestView.vue';
 import IngestObservabilityView from './views/IngestObservabilityView.vue';
 import LoginView from './views/LoginView.vue';
 import Phase2View from './views/phase2/Phase2View.vue';
+import WecomPushView from './views/WecomPushView.vue';
 import RecognitionsView from './views/RecognitionsView.vue';
 import ReportsView from './views/ReportsView.vue';
 import RulesView from './views/RulesView.vue';
@@ -33,6 +34,7 @@ const router = createRouter({
         { path: 'ingest-observability', component: IngestObservabilityView, meta: { title: '接入观测' } },
         { path: 'diseases', component: DiseasesView, meta: { title: '病害' } },
         { path: 'alerts', component: AlertsView, meta: { title: '告警' } },
+        { path: 'phase2/wecom', component: WecomPushView, meta: { title: '企微/钉钉' } },
         { path: 'alert-rules', component: RulesView, meta: { title: '阈值规则' } },
         { path: 'harvest', component: HarvestView, meta: { title: '采摘' } },
         { path: 'growth-trends', component: GrowthTrendsView, meta: { title: '生长趋势' } },
@@ -47,12 +49,6 @@ const router = createRouter({
         },
         { path: 'phase2/trends', redirect: '/growth-trends' },
         { path: 'phase2/yield', redirect: '/harvest' },
-        {
-          path: 'phase2/wecom',
-          component: Phase2View,
-          props: { title: '企微推送', summary: '企微 / 钉钉告警推送。' },
-          meta: { title: '企微' },
-        },
       ],
     },
   ],

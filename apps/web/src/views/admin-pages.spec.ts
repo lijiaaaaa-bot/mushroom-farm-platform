@@ -126,6 +126,7 @@ describe('AlertsView', () => {
     const wrapper = await mountView(AlertsView);
 
     expect(httpGet).toHaveBeenCalledWith('/alerts?pageSize=50');
+    expect(wrapper.get('a[href="/phase2/wecom"]').text()).toBe('企微/钉钉推送');
     expect(wrapper.text()).toContain('高温');
     expect(wrapper.text()).toContain('严重');
     expect(wrapper.text()).toContain('待确认');

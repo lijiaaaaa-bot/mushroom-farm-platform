@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -19,6 +20,10 @@ import {
 import { AlertRule } from '../entities/alert-rule.entity';
 import { AlertRead } from '../entities/alert-read.entity';
 import { Alert } from '../entities/alert.entity';
+import {
+  deliverSevereAlert,
+  SevereAlertPushService,
+} from './severe-alert-push.service';
 
 @Injectable()
 export class AlertsService {
@@ -26,6 +31,7 @@ export class AlertsService {
     @InjectRepository(Alert) private readonly alerts: Repository<Alert>,
     @InjectRepository(AlertRule) private readonly rules: Repository<AlertRule>,
     @InjectRepository(AlertRead) private readonly reads: Repository<AlertRead>,
+    @Optional() private readonly push?: SevereAlertPushService,
   ) {}
 
   async list(user: AuthUser, query: ListQuery) {
@@ -95,7 +101,7 @@ export class AlertsService {
     ShedScope.fromUser(user).assert(input.shedCode);
     if (!isAlertLevel(input.level))
       throw new BadRequestException('告警等级无效');
-    return this.alerts.save(
+    const saved = await this.alerts.save(
       this.alerts.create({
         ruleId: null,
         metric: null,
@@ -119,6 +125,8 @@ export class AlertsService {
         claimNote: null,
       }),
     );
+    await deliverSevereAlert(this.push, saved);
+    return saved;
   }
 
   async claim(user: AuthUser, id: string, note?: string) {

@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import {
@@ -9,6 +9,10 @@ import {
 import { AlertRule } from '../entities/alert-rule.entity';
 import { Alert } from '../entities/alert.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
+import {
+  deliverSevereAlert,
+  SevereAlertPushService,
+} from './severe-alert-push.service';
 
 @Injectable()
 export class AlertEngineService {
@@ -19,6 +23,7 @@ export class AlertEngineService {
     @InjectRepository(Alert) private readonly alerts: Repository<Alert>,
     @InjectRepository(RecognitionRecord)
     private readonly records: Repository<RecognitionRecord>,
+    @Optional() private readonly push?: SevereAlertPushService,
   ) {}
 
   async evaluate(record: RecognitionRecord): Promise<void> {
@@ -42,7 +47,7 @@ export class AlertEngineService {
       });
       if (open) continue;
       const label = ALERT_METRIC_LABEL[rule.metric];
-      await this.alerts.save(
+      const saved = await this.alerts.save(
         this.alerts.create({
           ruleId: rule.id,
           metric: rule.metric,
@@ -75,6 +80,7 @@ export class AlertEngineService {
       this.logger.log(
         `告警 ${rule.metric} ${record.shedCode}/${record.cameraCode}`,
       );
+      await deliverSevereAlert(this.push, saved);
     }
   }
 

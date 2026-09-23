@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Optional } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -11,6 +11,7 @@ import {
   type AlertLevel,
   isDeviceType,
 } from '@mushroom/contracts';
+import { deliverSevereAlert, SevereAlertPushService } from '../alerts';
 import { Alert } from '../entities/alert.entity';
 import { Device } from '../entities/device.entity';
 import { Shed } from '../entities/shed.entity';
@@ -44,6 +45,7 @@ export class DevicesService {
     @InjectRepository(Device) private readonly devices: Repository<Device>,
     @InjectRepository(Shed) private readonly sheds: Repository<Shed>,
     @InjectRepository(Alert) private readonly alerts: Repository<Alert>,
+    @Optional() private readonly push?: SevereAlertPushService,
   ) {}
 
   async list(user: AuthUser, query: ListQuery) {
@@ -354,7 +356,7 @@ export class DevicesService {
     const minutes = Math.max(1, Math.round(timeoutMs / 60_000));
     const level: AlertLevel =
       timeoutMs >= 15 * 60 * 1000 ? 'severe' : 'warning';
-    await this.alerts.save(
+    const saved = await this.alerts.save(
       this.alerts.create({
         ruleId: null,
         metric: DEVICE_OFFLINE_METRIC,
@@ -378,6 +380,7 @@ export class DevicesService {
         claimNote: null,
       }),
     );
+    await deliverSevereAlert(this.push, saved);
     return true;
   }
 

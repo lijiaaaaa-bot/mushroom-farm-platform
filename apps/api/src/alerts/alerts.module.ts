@@ -5,12 +5,14 @@ import { AlertRead } from '../entities/alert-read.entity';
 import { Alert } from '../entities/alert.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { AlertEngineService } from './alert-engine.service';
+import { AlertPushModule } from './alert-push.module';
 import { AlertsController } from './alerts.controller';
 import { AlertsService } from './alerts.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Alert, AlertRead, AlertRule, RecognitionRecord]),
+    AlertPushModule,
   ],
   controllers: [AlertsController],
   providers: [AlertsService, AlertEngineService],

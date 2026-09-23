@@ -37,6 +37,22 @@ make gates   # 交付物门禁（与 test 分开；CI 的 deliverable-gates 跑�
 - 约 110 路摄像头、30 个棚区；角色为超管 / 生产管理员 / 棚区负责人 / 查看
 - 未知棚区或摄像头首次上报时自动建档
 
+## 严重告警推送
+
+只推送级别为「严重」的告警到企业微信和/或钉钉群机器人。提示和一般不发送。两个地址可以同时配置。未设置时该通道关闭，API 启动和告警处理都不报错。
+
+在 API 进程的环境变量里填写（见 `.env.example`）：
+
+| 变量 | 作用 |
+|------|------|
+| `WECOM_WEBHOOK_URL` | 企业微信群机器人 webhook |
+| `DINGTALK_WEBHOOK_URL` | 钉钉自定义机器人 webhook |
+| `DINGTALK_WEBHOOK_SECRET` | 钉钉加签密钥。留空则不签名 |
+
+报文是文本，以「严重告警」开头，含棚区、摄像头、标题和说明。钉钉机器人若要求关键词，可填「严重告警」。
+
+推送失败只写入 API 日志，不改变告警是否已保存。认领、确认、关闭和误报关闭照常完成。登录后在告警页打开「企微/钉钉推送」（`/phase2/wecom`）可看到通道是否启用，以及上述变量名。状态接口是 `GET /api/v1/alerts/push-channels`，只返回是否启用，不返回地址。
+
 ## 发布 MQTT 测试报文
 
 `make up` 启动 Mosquitto，本机端口 `1883`，允许匿名连接。识别主题与契约一致：`mushroom/{棚区编号}/{摄像头编号}/recognition`（订阅过滤器 `mushroom/+/+/recognition`）。报文就是 HTTP 接入用的同一份 JSON，多出来的字段会被 `.strict()` 拒绝，错误码为 `UNKNOWN_FIELD`。

@@ -17,6 +17,9 @@ export interface AppConfig {
   ingestToken: string;
   seedOnStart: boolean;
   typeormSync: boolean;
+  wecomWebhookUrl: string;
+  dingtalkWebhookUrl: string;
+  dingtalkWebhookSecret: string;
 }
 
 export default function configuration(): AppConfig {
@@ -43,5 +46,8 @@ export default function configuration(): AppConfig {
     ingestToken: process.env.INGEST_TOKEN || 'dev-ingest-token',
     seedOnStart: process.env.SEED_ON_START !== 'false',
     typeormSync: process.env.TYPEORM_SYNC === 'true',
+    wecomWebhookUrl: (process.env.WECOM_WEBHOOK_URL ?? '').trim(),
+    dingtalkWebhookUrl: (process.env.DINGTALK_WEBHOOK_URL ?? '').trim(),
+    dingtalkWebhookSecret: (process.env.DINGTALK_WEBHOOK_SECRET ?? '').trim(),
   };
 }
