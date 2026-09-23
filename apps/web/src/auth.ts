@@ -36,3 +36,7 @@ export function canOperate(role: Role | undefined) {
 export function canWriteRules(role: Role | undefined) {
   return role === 'super_admin' || role === 'production_admin';
 }
+
+export function canImportDevices(role: Role | undefined) {
+  return role === 'super_admin' || role === 'production_admin' || role === 'shed_manager';
+}
