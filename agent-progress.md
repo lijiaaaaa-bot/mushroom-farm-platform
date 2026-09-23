@@ -31,3 +31,4 @@
 | 2026-09-23 | #27 CI：平面坐标输入改为保存输入框文本，点击「保存坐标」发出 PATCH。分支 rebase 到含 #29/#31/#33 的 main | `make test` 与 `make gates` 退出码 0（jest 35，vitest 45） | PR #28 仍不合并 |
 | 2026-09-23 | #34 环境报文：HTTP POST /ingest/environment 与 MQTT mushroom/+/+/environment 写入 environment_readings。幂等键优先，否则按棚、传感器、观测时间哈希；Redis 与唯一约束双保险。/environment 列出最近读数，失败不显示空表。棚隔离沿用 ShedScope | 待 `make test` 与 `make gates` | PR 未合，不关 Issue #34 |
 | 2026-09-23 | #34 验收：合法上报、显式键与缺省键重复、Redis 不可用时的唯一约束、识别报文打到环境路径被拒、棚负责人与查看越权 403、MQTT 入库不进识别管道。页面失败非空表、有数据渲染 | `make test` 退出码 0（API jest 39，web vitest 45）；`make gates` 退出码 0 | PR #35 未合，不关 Issue #34。本机无 Docker，未打开登录后页面 |
+| 2026-09-23 | #34 rebase 到 main dfbdbd0。STATUS：#27 移入已完成（PR #28 squash dfbdbd0，Issue closed）；#34 仍进行中，链接 PR #35 | `make test` 退出码 0（API jest 44，web vitest 48）；`make gates` 退出码 0 | PR #35 不合并 |
