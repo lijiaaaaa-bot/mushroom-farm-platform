@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { errorText, http } from '../api';
 
 const error = ref('');
+const emptyNote = ref('');
 const files = [
   ['growth.xlsx', '生长'],
   ['disease.xlsx', '病害'],
@@ -13,9 +14,15 @@ const files = [
 
 async function download(path: string) {
   error.value = '';
+  emptyNote.value = '';
   try {
-    const response = await http.get(`/reports/${path}`, { responseType: 'blob' });
-    const url = URL.createObjectURL(response.data);
+    const response = await http.get<Blob>(`/reports/${path}`, { responseType: 'blob' });
+    const blob = response.data;
+    if (!blob || blob.size === 0) {
+      emptyNote.value = '该报表没有可导出的数据。';
+      return;
+    }
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = path;
@@ -36,6 +43,7 @@ async function download(path: string) {
         下载{{ label }}
       </button>
     </div>
-    <p v-if="error" class="text-sm text-red-300">{{ error }}</p>
+    <p v-if="emptyNote" class="text-sm text-mist">{{ emptyNote }}</p>
+    <p v-if="error" class="text-sm text-danger">{{ error }}</p>
   </section>
 </template>

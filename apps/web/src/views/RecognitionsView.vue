@@ -35,7 +35,7 @@ onMounted(async () => {
     <h2 class="text-lg">识别记录</h2>
     <p class="mb-3 text-sm text-mist">HTTP {{ INGEST_HTTP_PATH }} · MQTT {{ MQTT_RECOGNITION_TOPIC }}</p>
     <p v-if="loading" class="text-mist">加载中…</p>
-    <p v-else-if="error" class="text-red-300">{{ error }}</p>
+    <p v-else-if="error" class="text-danger">{{ error }}</p>
     <p v-else-if="!rows.length" class="text-mist">暂无记录。</p>
     <table v-else class="data-table">
       <thead>

@@ -40,7 +40,7 @@ async function submit() {
         密码
         <input v-model="password" class="field mt-1" type="password" autocomplete="current-password" />
       </label>
-      <p v-if="error" class="text-sm text-red-300">{{ error }}</p>
+      <p v-if="error" class="text-sm text-danger">{{ error }}</p>
       <button class="btn-primary w-full" :disabled="loading" type="submit">
         {{ loading ? '登录中…' : '进入管理台' }}
       </button>

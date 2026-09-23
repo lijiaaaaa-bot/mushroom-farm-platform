@@ -4,12 +4,15 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        ink: '#07120e',
-        panel: '#10241c',
-        line: '#1f4a38',
-        mist: '#93c4ab',
-        accent: '#3ddc97',
-        amber: '#f0b429',
+        canvas: '#F5F7FA',
+        ink: '#1e293b',
+        panel: '#ffffff',
+        line: '#e2e8f0',
+        mist: '#64748b',
+        accent: '#1B7A4E',
+        grow: '#2F9E44',
+        amber: '#c48a16',
+        danger: '#c44536',
       },
       fontFamily: {
         sans: ['"Noto Sans SC"', 'ui-sans-serif', 'system-ui', 'sans-serif'],

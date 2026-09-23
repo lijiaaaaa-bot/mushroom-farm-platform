@@ -29,7 +29,7 @@ onMounted(async () => {
   <section class="panel">
     <h2 class="mb-3 text-lg">棚区</h2>
     <p v-if="loading" class="text-mist">加载中…</p>
-    <p v-else-if="error" class="text-red-300">{{ error }}</p>
+    <p v-else-if="error" class="text-danger">{{ error }}</p>
     <p v-else-if="!rows.length" class="text-mist">当前账号没有可见棚区。</p>
     <ul v-else class="space-y-2">
       <li v-for="row in rows" :key="row.id" class="flex justify-between border-b border-line/70 py-2">

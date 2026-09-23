@@ -3,18 +3,16 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
   font-family: "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
-  background: #07120e;
-  color: #e7f6ee;
+  background: #f5f7fa;
+  color: #1e293b;
 }
 
 body {
   margin: 0;
   min-height: 100vh;
-  background:
-    radial-gradient(1200px 500px at 10% -10%, rgba(61, 220, 151, 0.16), transparent 55%),
-    linear-gradient(180deg, #07120e, #0b1a14 40%, #07120e);
+  background: #f5f7fa;
 }
 
 #app {
@@ -23,19 +21,19 @@ body {
 
 @layer components {
   .panel {
-    @apply rounded-2xl border border-line bg-panel/90 p-4 shadow-lg shadow-black/20;
+    @apply rounded-lg border border-line bg-panel p-4 shadow-sm;
   }
   .field {
-    @apply w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm text-white outline-none ring-accent/40 placeholder:text-mist/60 focus:ring-2;
+    @apply w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none ring-accent/30 placeholder:text-mist focus:ring-2;
   }
   .btn {
     @apply inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition;
   }
   .btn-primary {
-    @apply btn bg-accent text-ink hover:brightness-110;
+    @apply btn bg-accent text-white hover:bg-grow;
   }
   .btn-ghost {
-    @apply btn border border-line text-mist hover:text-white;
+    @apply btn border border-line bg-white text-ink hover:border-accent hover:text-accent;
   }
   .data-table {
     @apply w-full text-left text-sm;
@@ -44,6 +42,9 @@ body {
     @apply border-b border-line px-3 py-2 font-medium text-mist;
   }
   .data-table td {
-    @apply border-b border-line/70 px-3 py-2;
+    @apply border-b border-line px-3 py-2;
+  }
+  .text-danger {
+    color: #c44536;
   }
 }

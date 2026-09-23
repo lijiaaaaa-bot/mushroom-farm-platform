@@ -37,9 +37,9 @@ function leave() {
 </script>
 
 <template>
-  <div class="min-h-screen md:grid md:grid-cols-[240px_1fr]">
+  <div class="min-h-screen bg-canvas text-ink md:grid md:grid-cols-[240px_1fr]">
     <aside
-      class="border-b border-line bg-ink/80 md:border-b-0 md:border-r"
+      class="border-b border-line bg-white md:border-b-0 md:border-r"
       :class="open ? 'block' : 'hidden md:block'"
     >
       <div class="px-5 py-6">
@@ -51,8 +51,8 @@ function leave() {
           v-for="link in links"
           :key="link.to"
           :to="link.to"
-          class="block rounded-lg px-3 py-2 text-sm text-mist hover:bg-panel hover:text-white"
-          exact-active-class="!bg-panel !text-accent"
+          class="block rounded-lg px-3 py-2 text-sm text-mist hover:bg-canvas hover:text-accent"
+          exact-active-class="!bg-canvas !text-accent"
           @click="open = false"
         >
           {{ link.label }}
@@ -62,17 +62,17 @@ function leave() {
           v-for="link in phase2"
           :key="link.to"
           :to="link.to"
-          class="block rounded-lg px-3 py-2 text-sm text-mist hover:bg-panel hover:text-white"
+          class="block rounded-lg px-3 py-2 text-sm text-mist hover:bg-canvas hover:text-accent"
           @click="open = false"
         >
           {{ link.label }}
         </router-link>
       </nav>
     </aside>
-    <div>
-      <header class="flex items-center justify-between border-b border-line px-4 py-3 md:px-6">
+    <div class="bg-canvas">
+      <header class="flex items-center justify-between border-b border-line bg-white px-4 py-3 md:px-6">
         <button class="btn-ghost md:hidden" type="button" @click="open = !open">菜单</button>
-        <p class="text-sm text-mist">{{ route.meta.title }}</p>
+        <p class="text-sm text-ink">{{ route.meta.title }}</p>
         <div class="flex items-center gap-3 text-sm">
           <span>{{ currentUser?.displayName }} · {{ roleLabel }}</span>
           <button class="btn-ghost" type="button" @click="leave">退出</button>
