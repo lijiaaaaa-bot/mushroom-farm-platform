@@ -134,6 +134,7 @@ describe('BigScreenView', () => {
     expect(httpGet).toHaveBeenCalledWith('/ingest/recognitions', { params: { pageSize: 30 } });
 
     const screen = zones(wrapper);
+    expect(wrapper.get('.screen').attributes('data-skin')).toBe('tb-night');
     expect(screen.top.text()).toContain('菇棚监测');
     expect(screen.left.text()).toContain('指标');
     expect(screen.left.text()).toContain('告警');

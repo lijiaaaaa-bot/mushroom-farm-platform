@@ -66,6 +66,11 @@ describe('farm-ops light admin theme', () => {
     expect(css).toContain('border: 1px solid var(--line)');
     expect(layout).toContain('bg-sidebar');
     expect(layout).toContain('data-theme="farm-ops-light"');
+    expect(layout).toContain("label: '基地大屏'");
+    expect(layout).not.toContain('二期槽位');
+    expect(css).toContain('.tb-board');
+    expect(css).toContain('.tb-floor');
+    expect(css).toContain('.overview-alarms');
     expect(layout).not.toMatch(/雪亮|bg-slate-900|from-cyan|#00e5ff|#0b1220/i);
     expect(css).not.toMatch(/雪亮|#00e5ff|#0b1220/i);
   });

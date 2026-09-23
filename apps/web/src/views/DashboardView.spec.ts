@@ -79,9 +79,16 @@ describe('DashboardView', () => {
     expect(wrapper.find('.overview-chart').exists()).toBe(true);
     expect(wrapper.find('.overview-chart-empty').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('这一窗没有识别汇总');
+    expect(wrapper.get('.tb-board').attributes('data-layout')).toBe('tb-ops');
+    expect(wrapper.find('.tb-floor').exists()).toBe(true);
+    expect(wrapper.find('.tb-alarms').exists()).toBe(true);
+    expect(wrapper.find('.result-grid').exists()).toBe(false);
     expect(chartInit).toHaveBeenCalledTimes(1);
     expect(setOption).toHaveBeenCalledWith(
       expect.objectContaining({
+        yAxis: expect.objectContaining({
+          splitLine: { lineStyle: { color: tokens.grid } },
+        }),
         series: [
           expect.objectContaining({ name: '成熟', data: [12], itemStyle: { color: tokens.accent } }),
           expect.objectContaining({ name: '总数', data: [40], itemStyle: { color: '#3B6EA5' } }),
@@ -105,6 +112,89 @@ describe('DashboardView', () => {
     expect(chartInit).not.toHaveBeenCalled();
     expect(wrapper.text()).toContain('暂无未关闭告警');
     expect(wrapper.text()).toContain('暂无识别记录');
+    wrapper.unmount();
+  });
+
+  it('plots configured shed pins and temperature thresholds from alert rules', async () => {
+    httpGet.mockImplementation((url: string) => {
+      const path = String(url);
+      if (path === '/dashboard/overview') return Promise.resolve({ data: overview });
+      if (path === '/sheds') {
+        return Promise.resolve({
+          data: [
+            { id: 'shed-1', code: 'S01', name: '一号棚', location: '东区', mapX: 32, mapY: 48 },
+            { id: 'shed-2', code: 'S02', name: '二号棚', location: null, mapX: null, mapY: null },
+          ],
+        });
+      }
+      if (path.startsWith('/devices')) {
+        return Promise.resolve({
+          data: { items: [{ shedCode: 'S01', onlineStatus: 'online' }], total: 1 },
+        });
+      }
+      if (path.startsWith('/harvest/daily')) {
+        return Promise.resolve({
+          data: { items: [{ shedCode: 'S01', matureCount: 4, mushroomCount: 10 }] },
+        });
+      }
+      if (path.startsWith('/ingest/environment-readings')) {
+        return Promise.resolve({
+          data: {
+            items: [
+              {
+                shedCode: 'S01',
+                sensorCode: 'T1',
+                observedAt: '2026-09-23T01:00:00.000Z',
+                temperature: 22.4,
+                humidity: 81,
+              },
+            ],
+          },
+        });
+      }
+      if (path === '/alert-rules') {
+        return Promise.resolve({
+          data: [
+            {
+              metric: 'temperature_high',
+              threshold: 30,
+              level: 'severe',
+              enabled: true,
+              name: '高温',
+              shedCode: null,
+            },
+            {
+              metric: 'disease_count',
+              threshold: 3,
+              level: 'warning',
+              enabled: true,
+              name: '病害',
+              shedCode: null,
+            },
+          ],
+        });
+      }
+      return Promise.resolve({ data: { items: [] } });
+    });
+    const wrapper = mount(DashboardView);
+    await flushPromises();
+
+    const pin = wrapper.get('.tb-pin');
+    expect(pin.text()).toContain('S01');
+    expect(pin.attributes('style')).toContain('left: 32%');
+    expect(pin.attributes('style')).toContain('top: 48%');
+    expect(wrapper.text()).toContain('未配置平面坐标：S02');
+    expect(wrapper.text()).toContain('一号棚');
+    expect(wrapper.text()).toContain('1/1');
+    expect(wrapper.find('.overview-temp').exists()).toBe(true);
+    expect(chartInit).toHaveBeenCalledTimes(2);
+    const tempCall = setOption.mock.calls.find((call) =>
+      Array.isArray(call[0]?.series) &&
+      call[0].series.some((item: { name?: string }) => item.name === 'S01'),
+    );
+    expect(tempCall).toBeTruthy();
+    const marked = tempCall?.[0].series as { name: string; markLine?: { data: { yAxis: number }[] } }[];
+    expect(marked.find((item) => item.name === 'S01')?.markLine?.data.map((item) => item.yAxis)).toEqual([30]);
     wrapper.unmount();
   });
 
