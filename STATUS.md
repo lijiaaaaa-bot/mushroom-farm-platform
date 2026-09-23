@@ -32,6 +32,7 @@
 - `GET /api/v1/alerts/unread`：`alert_reads.alert_id` 与 `alerts.id` 同为 uuid。已有库由 `007_alert_reads_alert_id_uuid.sql` 丢掉空值和非 uuid 行后 `ALTER ... USING btrim(alert_id)::uuid`。未读计数不再因 `character varying = uuid` 返回 500。PR #61。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/61
 
 ## 进行中
+- 管理端总览改为浅色顶栏加 188px 白导航；棚区平面用床位底图和状态色块，芯片显示温度、湿度、在线；温度图虚线只来自已启用的温度规则。`/big-screen` 夜色仍只在该页根节点，抓拍卡与面板收紧。
 - #55 F-R2-04 基地大屏：管理端侧栏与顶栏进入 `/big-screen`。默认一屏为指标、棚区平面、抓拍墙、告警与环境；可切抓拍墙或带时间轴的多区。时间轴跳到 `/growth-trends` 或识别记录的上海日筛选。夜色投屏皮肤 `data-skin=tb-night` 只在这一页。PR #59 已 rebase 到含 #60 的 main，未合，不关 Issue。
 - #48 管理端 Family B 轻量农事风落地（对照调查 04/06 样张；云端改代码中）
 - #47 F-R4-01 / F-R4-02 生长趋势日聚合：`daily_aggregates` 按棚与摄像头保存当日最新蘑菇数和菌盖直径均值；识别入库后刷新，每小时回写昨日与当日；`GET /api/v1/growth-trends?days=7|30` 按棚隔离；`/growth-trends` 只画已有日点。PR #52 未合，不关 Issue。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/52

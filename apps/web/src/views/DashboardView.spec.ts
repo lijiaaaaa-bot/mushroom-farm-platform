@@ -70,8 +70,9 @@ describe('DashboardView', () => {
     await flushPromises();
 
     expect(httpGet).toHaveBeenCalledWith('/dashboard/overview');
-    expect(wrapper.findAll('.kpi-tile')).toHaveLength(8);
-    expect(wrapper.text()).toContain('棚区');
+    expect(wrapper.find('.kpi-tile').exists()).toBe(false);
+    expect(wrapper.find('.tb-kpi-strip').exists()).toBe(false);
+    expect(wrapper.text()).toContain('棚区平面');
     expect(wrapper.text()).toContain('221');
     expect(wrapper.text()).toContain('22.4℃');
     expect(wrapper.text()).toContain('高温');
@@ -180,10 +181,13 @@ describe('DashboardView', () => {
     await flushPromises();
 
     const pin = wrapper.get('.tb-pin');
+    expect(pin.attributes('data-tone')).toBe('severe');
     expect(pin.text()).toContain('S01');
+    expect(pin.text()).toContain('22.4℃');
     expect(pin.attributes('style')).toContain('left: 32%');
     expect(pin.attributes('style')).toContain('top: 48%');
-    expect(wrapper.text()).toContain('未配置平面坐标：S02');
+    expect(wrapper.text()).toContain('未标坐标');
+    expect(wrapper.text()).toContain('S02');
     expect(wrapper.text()).toContain('一号棚');
     expect(wrapper.text()).toContain('1/1');
     expect(wrapper.find('.overview-temp').exists()).toBe(true);

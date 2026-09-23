@@ -121,12 +121,22 @@ const trend = computed(() => data.value?.trend ?? []);
 const alerts = computed(() => data.value?.recentAlerts ?? []);
 const records = computed(() => data.value?.recentRecords ?? []);
 
-const placedSheds = computed(() =>
-  sheds.value.filter((shed) => typeof shed.mapX === 'number' && typeof shed.mapY === 'number'),
-);
-const unplacedSheds = computed(() =>
-  sheds.value.filter((shed) => typeof shed.mapX !== 'number' || typeof shed.mapY !== 'number'),
-);
+type FloorTone = 'severe' | 'warning' | 'online' | 'idle';
+
+interface FloorShed {
+  id: string;
+  code: string;
+  name: string;
+  x: number;
+  y: number;
+  placed: boolean;
+  tone: FloorTone;
+  online: number | null;
+  total: number | null;
+  temperature: number | null;
+  humidity: number | null;
+  mature: number | null;
+}
 
 const shedRows = computed(() =>
   sheds.value.map((shed) => {
@@ -147,6 +157,90 @@ const shedRows = computed(() =>
     };
   }),
 );
+
+function gridSpot(count: number, index: number) {
+  if (count <= 1) return { x: 50, y: 46 };
+  const cols = count <= 3 ? count : Math.ceil(Math.sqrt(count));
+  const rows = Math.ceil(count / cols);
+  const col = index % cols;
+  const row = Math.floor(index / cols);
+  return {
+    x: 18 + ((col + 0.5) / cols) * 64,
+    y: 24 + ((row + 0.5) / rows) * 52,
+  };
+}
+
+function clampSpot(value: number) {
+  return Math.min(88, Math.max(12, value));
+}
+
+const floorSheds = computed<FloorShed[]>(() => {
+  const placedCount = sheds.value.filter(
+    (shed) => typeof shed.mapX === 'number' && typeof shed.mapY === 'number',
+  ).length;
+  const looseCount = sheds.value.length - placedCount;
+  const dock = placedCount > 0 && looseCount > 0;
+  let loose = 0;
+  return sheds.value.map((shed, index) => {
+    const stats = shedRows.value.find((row) => row.code === shed.code);
+    const open = alerts.value.filter((row) => row.shedCode === shed.code);
+    let tone: FloorTone = 'idle';
+    if (open.some((row) => row.level === 'severe')) tone = 'severe';
+    else if (open.some((row) => row.level === 'warning')) tone = 'warning';
+    else if ((stats?.online ?? 0) > 0) tone = 'online';
+    const placed = typeof shed.mapX === 'number' && typeof shed.mapY === 'number';
+    let x = 50;
+    let y = 46;
+    if (placed) {
+      x = clampSpot(shed.mapX as number);
+      y = clampSpot(shed.mapY as number);
+    } else if (dock) {
+      x = ((loose + 0.5) / looseCount) * 70 + 15;
+      y = 82;
+      loose += 1;
+    } else {
+      const spot = gridSpot(sheds.value.length, index);
+      x = spot.x;
+      y = spot.y;
+      loose += 1;
+    }
+    return {
+      id: shed.id,
+      code: shed.code,
+      name: shed.name,
+      x,
+      y,
+      placed,
+      tone,
+      online: stats?.online ?? null,
+      total: stats?.total ?? null,
+      temperature: stats?.temperature ?? null,
+      humidity: stats?.humidity ?? null,
+      mature: stats?.mature ?? null,
+    };
+  });
+});
+
+const tempAverages = computed(() =>
+  tempSeries.value.map((item) => {
+    const sum = item.points.reduce((total, point) => total + point.v, 0);
+    return {
+      name: item.name,
+      avg: Math.round((sum / item.points.length) * 10) / 10,
+    };
+  }),
+);
+
+const trendAverages = computed(() => {
+  if (!trend.value.length) return null;
+  const mean = (pick: (point: TrendPoint) => number) =>
+    Math.round((trend.value.reduce((sum, point) => sum + pick(point), 0) / trend.value.length) * 10) / 10;
+  return {
+    mature: mean((point) => point.mature),
+    mushroom: mean((point) => point.mushroom),
+    disease: mean((point) => point.disease),
+  };
+});
 
 const tempThresholds = computed(() =>
   rules.value.filter(
@@ -200,12 +294,6 @@ function dayLabel(day: string) {
   return day.length >= 10 ? day.slice(5) : day;
 }
 
-function levelClass(level: AlertLevel) {
-  if (level === 'severe') return 'level-pill level-pill-critical';
-  if (level === 'warning') return 'level-pill level-pill-warn';
-  return 'level-pill';
-}
-
 function asArray<T>(value: unknown): T[] {
   return Array.isArray(value) ? (value as T[]) : [];
 }
@@ -252,6 +340,7 @@ function render() {
             lineStyle: {
               color: rule.level === 'severe' ? tokens.critical : rule.level === 'warning' ? tokens.warn : tokens.mist,
               type: 'dashed' as const,
+              width: 1.5,
             },
           })),
         }
@@ -261,8 +350,8 @@ function render() {
       backgroundColor: 'transparent',
       textStyle: { color: tokens.mist },
       tooltip: { trigger: 'axis' },
-      legend: { textStyle: { color: tokens.ink }, top: 0 },
-      grid: { left: 44, right: 16, top: 36, bottom: 28 },
+      legend: { textStyle: { color: tokens.ink }, bottom: 0 },
+      grid: { left: 44, right: 16, top: 16, bottom: 48 },
       xAxis: { type: 'time', ...axisLook() },
       yAxis: { type: 'value', name: '℃', ...axisLook() },
       series: tempSeries.value.map((item, index) => ({
@@ -283,8 +372,8 @@ function render() {
       backgroundColor: 'transparent',
       textStyle: { color: tokens.mist },
       tooltip: { trigger: 'axis' },
-      legend: { textStyle: { color: tokens.ink }, top: 0 },
-      grid: { left: 40, right: 16, top: 36, bottom: 28 },
+      legend: { textStyle: { color: tokens.ink }, bottom: 0 },
+      grid: { left: 40, right: 16, top: 16, bottom: 48 },
       xAxis: {
         type: 'category',
         data: trend.value.map((item) => dayLabel(item.day)),
@@ -300,7 +389,7 @@ function render() {
           data: trend.value.map((item) => item.mature),
           itemStyle: { color: MATURE_COLOR },
           lineStyle: { color: MATURE_COLOR, width: 2 },
-          areaStyle: { color: 'rgba(47, 158, 68, 0.12)' },
+          areaStyle: { color: 'rgba(47, 158, 68, 0.22)' },
         },
         {
           name: '总数',
@@ -310,6 +399,7 @@ function render() {
           data: trend.value.map((item) => item.mushroom),
           itemStyle: { color: TOTAL_COLOR },
           lineStyle: { color: TOTAL_COLOR, width: 2 },
+          areaStyle: { color: 'rgba(59, 110, 165, 0.16)' },
         },
         {
           name: '病害',
@@ -387,75 +477,65 @@ onBeforeUnmount(() => {
   <p v-if="loading" class="text-mist">加载中…</p>
   <p v-else-if="error" class="text-danger">{{ error }}</p>
   <div v-else-if="data" class="ops-page tb-board" data-layout="tb-ops">
-    <section class="tb-kpi-strip" aria-label="指标">
-      <article class="kpi-tile">
-        <p>棚区</p>
-        <p class="tb-kpi-value">{{ metric(data.shedCount) }}</p>
-      </article>
-      <article class="kpi-tile">
-        <p>设备在线</p>
-        <p class="tb-kpi-value">
-          {{ metric(data.deviceOnline) }}<span class="tb-kpi-sub">/{{ metric(data.deviceTotal) }}</span>
-        </p>
-      </article>
-      <article class="kpi-tile">
-        <p>今日成熟</p>
-        <p class="tb-kpi-value">{{ metric(data.todayMature) }}</p>
-      </article>
-      <article class="kpi-tile">
-        <p>今日菇数</p>
-        <p class="tb-kpi-value">{{ metric(data.todayMushroom) }}</p>
-      </article>
-      <article class="kpi-tile">
-        <p>可采摄像头</p>
-        <p class="tb-kpi-value">{{ metric(data.harvestableCameras) }}</p>
-      </article>
-      <article class="kpi-tile">
-        <p>未关闭告警</p>
-        <p class="tb-kpi-value">
-          {{ metric(data.openAlerts) }}
-          <span class="tb-kpi-sub text-danger">严重 {{ metric(data.severeAlerts) }}</span>
-        </p>
-      </article>
-      <article class="kpi-tile">
-        <p>均温</p>
-        <p class="tb-kpi-value">{{ metric(data.env?.avgTemp, '℃') }}</p>
-      </article>
-      <article class="kpi-tile">
-        <p>均湿</p>
-        <p class="tb-kpi-value">{{ metric(data.env?.avgHumidity, '%') }}</p>
-      </article>
-    </section>
-
     <section class="tb-top">
       <article class="tb-card">
-        <h2>棚区平面</h2>
+        <header class="tb-card-head">
+          <h2>棚区平面</h2>
+          <p class="tb-card-meta">
+            <span>{{ metric(data.shedCount) }} 棚</span>
+            <span>在线 {{ metric(data.deviceOnline) }}/{{ metric(data.deviceTotal) }}</span>
+            <span>告警 {{ metric(data.openAlerts) }} · 严重 {{ metric(data.severeAlerts) }}</span>
+          </p>
+        </header>
         <p v-if="shedsError" class="text-danger">{{ shedsError }}</p>
-        <div v-else class="tb-floor">
-          <p v-if="!placedSheds.length" class="tb-floor-empty">未配置平面坐标。</p>
-          <span
-            v-for="shed in placedSheds"
+        <div v-else class="tb-floor" aria-label="棚区平面">
+          <svg class="tb-bays" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            <rect v-for="bay in 5" :key="bay" x="2" :y="4 + (bay - 1) * 19" width="96" height="15" rx="1.2" />
+          </svg>
+          <p v-if="!floorSheds.length" class="tb-floor-empty">暂无棚区。</p>
+          <div
+            v-for="shed in floorSheds"
             :key="shed.id"
             class="tb-pin"
-            :style="{ left: `${shed.mapX}%`, top: `${shed.mapY}%` }"
+            :data-tone="shed.tone"
+            :style="{ left: `${shed.x}%`, top: `${shed.y}%` }"
           >
-            <span class="tb-pin-dot"></span>
-            <span>{{ shed.code }}</span>
-          </span>
+            <span class="tb-plot" aria-hidden="true"></span>
+            <button class="tb-chip" type="button">
+              <span class="tb-chip-dot"></span>
+              <span class="tb-chip-body">
+                <span class="tb-chip-code">{{ shed.code }}</span>
+                <span class="tb-chip-name">{{ shed.name }}</span>
+                <span class="tb-chip-line">
+                  {{ metric(shed.temperature, '℃') }} · {{ metric(shed.humidity, '%') }}
+                </span>
+                <span class="tb-chip-line">
+                  在线 {{ shed.online === null ? '—' : `${shed.online}/${shed.total}` }}
+                  <template v-if="!shed.placed"> · 未标坐标</template>
+                </span>
+                <span class="tb-chip-pop">成熟 {{ metric(shed.mature) }}</span>
+              </span>
+            </button>
+          </div>
         </div>
-        <p v-if="!shedsError && unplacedSheds.length && placedSheds.length" class="tb-note">
-          未配置平面坐标：{{ unplacedSheds.map((shed) => shed.code).join('、') }}
+        <p v-if="!shedsError" class="tb-legend">
+          <span><i data-tone="online"></i>在线</span>
+          <span><i data-tone="warning"></i>一般</span>
+          <span><i data-tone="severe"></i>严重</span>
         </p>
       </article>
       <article class="tb-card">
-        <h2>棚区</h2>
+        <header class="tb-card-head">
+          <h2>棚区</h2>
+          <p class="tb-card-meta">均湿 {{ metric(data.env?.avgHumidity, '%') }}</p>
+        </header>
         <p v-if="shedsError" class="text-danger">{{ shedsError }}</p>
         <p v-else-if="!shedRows.length" class="text-sm text-mist">暂无棚区。</p>
-        <div v-else class="overflow-x-auto">
+        <div v-else class="tb-table-wrap">
           <table class="data-table tb-entities">
             <thead>
               <tr>
-                <th>棚区</th>
+                <th>名称</th>
                 <th>在线</th>
                 <th>成熟</th>
                 <th>菇数</th>
@@ -465,8 +545,15 @@ onBeforeUnmount(() => {
             </thead>
             <tbody>
               <tr v-for="row in shedRows" :key="row.code">
-                <td>{{ row.code }}<span class="text-mist"> {{ row.name }}</span></td>
-                <td class="font-mono">{{ row.online === null ? '—' : `${row.online}/${row.total}` }}</td>
+                <td>
+                  <span class="tb-dot" :data-on="row.online !== null && row.online > 0"></span>
+                  <span class="font-medium">{{ row.code }}</span>
+                  <span class="text-mist"> {{ row.name }}</span>
+                </td>
+                <td class="font-mono">
+                  <template v-if="row.online === null">—</template>
+                  <template v-else>{{ row.online > 0 ? '在线' : '离线' }} {{ row.online }}/{{ row.total }}</template>
+                </td>
                 <td class="font-mono">{{ metric(row.mature) }}</td>
                 <td class="font-mono">{{ metric(row.mushroom) }}</td>
                 <td class="font-mono">{{ metric(row.temperature, '℃') }}</td>
@@ -480,20 +567,47 @@ onBeforeUnmount(() => {
 
     <section class="tb-bottom">
       <article class="tb-card">
-        <h2>温度</h2>
+        <header class="tb-card-head">
+          <h2>温度</h2>
+          <p class="tb-card-meta">均温 {{ metric(data.env?.avgTemp, '℃') }}</p>
+        </header>
         <p v-if="envError" class="text-danger">{{ envError }}</p>
-        <div v-else-if="tempSeries.length" ref="tempEl" class="overview-temp tb-chart"></div>
+        <template v-else-if="tempSeries.length">
+          <div ref="tempEl" class="overview-temp tb-chart"></div>
+          <p class="tb-avg">
+            <span v-for="item in tempAverages" :key="item.name">{{ item.name }} <b>{{ item.avg }}℃</b></span>
+          </p>
+          <p v-if="tempThresholds.length" class="tb-note">
+            已启用阈值：
+            <span v-for="rule in tempThresholds" :key="`${rule.metric}-${rule.threshold}-${rule.shedCode ?? ''}`">
+              {{ ALERT_METRIC_LABEL[rule.metric] }} {{ rule.threshold }}℃
+            </span>
+          </p>
+        </template>
         <p v-else class="overview-temp-empty text-sm text-mist">暂无环境读数。</p>
       </article>
       <article class="tb-card">
-        <h2>近 7 日成熟 / 总数 / 病害</h2>
+        <header class="tb-card-head">
+          <h2>近 7 日</h2>
+          <p class="tb-card-meta">
+            今日成熟 {{ metric(data.todayMature) }} · 菇数 {{ metric(data.todayMushroom) }} · 可采 {{ metric(data.harvestableCameras) }}
+          </p>
+        </header>
         <div v-if="trend.length" ref="chartEl" class="overview-chart tb-chart"></div>
         <p v-else class="overview-chart-empty text-sm text-mist">这一窗没有识别汇总。</p>
+        <p v-if="trendAverages" class="tb-avg">
+          <span>成熟 <b>{{ trendAverages.mature }}</b></span>
+          <span>总数 <b>{{ trendAverages.mushroom }}</b></span>
+          <span>病害 <b>{{ trendAverages.disease }}</b></span>
+        </p>
       </article>
       <article class="tb-card tb-alarms">
-        <h2>告警</h2>
+        <header class="tb-card-head">
+          <h2>告警</h2>
+          <p class="tb-card-meta">{{ alerts.length }} 条</p>
+        </header>
         <p v-if="!alerts.length" class="text-sm text-mist">暂无未关闭告警。</p>
-        <div v-else class="overflow-x-auto">
+        <div v-else class="tb-table-wrap">
           <table class="data-table overview-alarms">
             <thead>
               <tr>
@@ -509,7 +623,7 @@ onBeforeUnmount(() => {
                 <td class="font-mono text-xs">{{ clock(row.createdAt) }}</td>
                 <td>{{ row.shedCode }}<span v-if="row.cameraCode"> · {{ row.cameraCode }}</span></td>
                 <td>{{ row.title }}</td>
-                <td><span :class="levelClass(row.level)">{{ ALERT_LEVEL_LABEL[row.level] }}</span></td>
+                <td><span class="tb-sev" :data-level="row.level">{{ ALERT_LEVEL_LABEL[row.level] }}</span></td>
                 <td>{{ ALERT_STATUS_LABEL[row.status] }}</td>
               </tr>
             </tbody>
@@ -519,7 +633,9 @@ onBeforeUnmount(() => {
     </section>
 
     <article class="tb-card">
-      <h2>最近识别</h2>
+      <header class="tb-card-head">
+        <h2>最近识别</h2>
+      </header>
       <p v-if="!records.length" class="text-sm text-mist">暂无识别记录。</p>
       <div v-else class="overflow-x-auto">
         <table class="data-table overview-results">
