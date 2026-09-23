@@ -30,6 +30,7 @@ test: contracts lint
 	node --test scripts/boundaries.spec.mjs scripts/evidence.spec.mjs scripts/edge-simulator.spec.mjs
 	npm --prefix apps/api test
 	npm --prefix apps/web run typecheck
+	npm --prefix apps/web test
 
 # 交付物门禁，与 test 分开。CI：.github/workflows/deliverable-gates.yml
 gates:

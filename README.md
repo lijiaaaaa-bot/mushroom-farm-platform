@@ -13,7 +13,7 @@ make up      # docker compose 启动 Postgres / Redis / MinIO / Mosquitto
 make migrate # 执行 infra/migrations
 make api     # 编译契约并启动 API（:41821）
 make web     # 启动管理端（:43123）
-make test    # 契约、模块边界（含负例）、接入路径、API 单测、前端类型检查
+make test    # 契约、模块边界（含负例）、接入路径、API 单测、前端类型检查与 /big-screen 实体测试
 make smoke   # up + migrate + 边缘模拟实体发送 HTTP/MQTT 黄金报文；证据写入 evidence/ingest-last-run/
 make smoke-evidence # 与 make smoke 相同
 make gates   # 交付物门禁（与 test 分开；CI 的 deliverable-gates 跑同一命令）
