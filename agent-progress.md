@@ -3,8 +3,8 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：#43 F-R3-04 告警认领与误报关闭（进行中，PR 未合则不关 Issue）
-- 进行中文件：`apps/api/src/alerts/`、`apps/web/src/views/AlertsView.vue`、`evidence/overnight-mvp-alert-claim-falsepos/decisions.tsv`
+- 本会话目标：#45 STATUS 看板对齐。#41 已完成（PR #42）；#43 已完成（PR #44）；进行中无已关闭 Issue
+- 进行中文件：`STATUS.md`
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -39,3 +39,4 @@
 | 2026-09-23 | #38 验收：心跳更新 lastHeartbeatAt、相同 reportedAt 为 duplicate、超时一条设备离线告警、恢复心跳自动关闭、列表含在线状态、棚负责人不见他棚、失败不渲染空表 | `make test` 退出码 0（API jest 57，web vitest 56）；`make gates` 退出码 0 | 本机无 Docker，未打开登录后的 /devices。PR #40 未合，不关 Issue #38 |
 | 2026-09-23 | #41 接入观测：GET /ingest/observability 汇总近窗接收、拒收、p50 与最近延迟、最近错误。识别与环境按入库行计，心跳含重复上报。/ingest-observability 展示数字与错误；失败不渲染表。棚负责人不见他棚和无棚号拒收 | `make test` 退出码 0（API jest 59，web vitest 59）；`make gates` 退出码 0 | 未打开登录后的 /ingest-observability。PR #42 未合，不关 Issue #41 |
 | 2026-09-23 | #43 认领与误报关闭：POST /alerts/:id/claim 写入 claimedBy；POST /alerts/:id/false-positive 以 closeReason=false_positive 关闭，普通关闭为 resolved。备注进审计。查看员与棚外 403。`/alerts` 沿用浅色 panel / btn-ghost | `make test` 退出码 0（API jest 63，web vitest 63）；`make gates` 退出码 0 | 本机无 Docker，未打开登录后的 /alerts。PR #44 未合，不关 Issue #43 |
+| 2026-09-23 | #45 STATUS：#41 已在已完成并引用 PR #42（squash 4d04654，Issue closed）；#43 从进行中移入已完成（PR #44 squash 6690bcb，Issue closed）；进行中改为无 | `gh pr view 42` MERGED；`gh pr view 44` MERGED；`gh issue view 41` CLOSED；`gh issue view 43` CLOSED；`make gates` | 不改业务代码，不自动合并 |
