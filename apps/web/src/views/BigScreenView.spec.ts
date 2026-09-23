@@ -348,9 +348,11 @@ describe('BigScreenView', () => {
     expect(wrapper.get('.screen').attributes('data-layout')).toBe('panels');
     expect(wrapper.get('main.zone.center').text()).toContain('棚区平面');
     expect(wrapper.get('.wall').text()).toContain('抓拍墙');
-    expect(wrapper.get('.timeline-chart').exists()).toBe(true);
+    expect(wrapper.get('.timeline-chart').attributes('class')).toContain('timeline-chart');
     expect(chartInit).toHaveBeenCalled();
-    const option = setOption.mock.calls.at(-1)?.[0] as { series: Array<{ name: string; data: Array<number | null> }> };
+    const option = setOption.mock.calls[setOption.mock.calls.length - 1]?.[0] as {
+      series: Array<{ name: string; data: Array<number | null> }>;
+    };
     expect(option.series[0].name).toBe('S01');
     expect(option.series[0].data).toEqual([10]);
     expect(wrapper.text()).not.toContain('近 7 日没有日聚合');
@@ -391,7 +393,7 @@ describe('BigScreenView', () => {
 
   it('keeps the night skin on this route and does not restyle the document', async () => {
     stubHttp(true);
-    const source = readFileSync(new URL('./BigScreenView.vue', import.meta.url), 'utf8');
+    const source = readFileSync('src/views/BigScreenView.vue', 'utf8');
     expect(source).not.toMatch(/雪亮|#00e5ff|#0b1220|#00fff/i);
     expect(source).toContain('data-skin');
     expect(source).toContain('tb-night');
