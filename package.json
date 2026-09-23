@@ -1,0 +1,12 @@
+{
+  "name": "mushroom-farm-platform",
+  "private": true,
+  "description": "食用菌种植管理平台",
+  "scripts": {
+    "up": "make up",
+    "api": "make api",
+    "web": "make web",
+    "test": "make test",
+    "smoke": "make smoke"
+  }
+}
