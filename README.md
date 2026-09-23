@@ -13,7 +13,7 @@ make up      # docker compose 启动 Postgres / Redis / MinIO / Mosquitto
 make migrate # 执行 infra/migrations
 make api     # 编译契约并启动 API（:41821）
 make web     # 启动管理端（:43123）
-make test    # 契约测试、模块边界、API 单测、前端类型检查
+make test    # 契约、模块边界（含负例）、接入路径、API 单测、前端类型检查
 make smoke   # up + migrate + 黄金报文接入 + 列表 + 告警确认
 ```
 

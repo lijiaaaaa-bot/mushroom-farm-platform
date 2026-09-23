@@ -54,7 +54,7 @@ export class MqttIngestAdapter implements OnModuleInit, OnModuleDestroy {
     this.client?.end(true);
   }
 
-  private async onMessage(topic: string, payload: Buffer) {
+  async onMessage(topic: string, payload: Buffer) {
     const parts = topic.split('/');
     if (parts.length < 4 || parts[0] !== 'mushroom') return;
     const shedFromTopic = parts[1];
