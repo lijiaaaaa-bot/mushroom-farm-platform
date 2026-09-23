@@ -15,9 +15,10 @@
 - #2 `/big-screen` 五区页（顶 / 左 / 中 / 右 / 底）接现有总览、棚区、告警、设备、识别列表 API；路由与页面实体测试见 https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/10
 - #3 admin devices/alerts/harvest/reports wired to existing API + vitest + Family B Light; PR #19; Issue closed.
 - #4 console PR #1 merged（https://github.com/lijiaaaaa-bot/mushroom-project-console/pull/1 ，squash f75deeb）；`public/status.json` matches Issues/PR/STATUS；Issue #4 closed.
+- #23 `/alert-rules` writable for admins; PR #24 merged; Issue closed.
 
 ## 进行中
-- #23 `/alert-rules` 可新建规则，并可修改阈值、等级、窗口分钟与启用；超管与生产管理员可写，棚区负责人与查看人员写操作被拒绝
+- 无
 
 ## 规范
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18
