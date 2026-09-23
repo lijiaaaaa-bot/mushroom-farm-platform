@@ -3,8 +3,8 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：STATUS 将 #4 从待开移到进行中（console overnight agent 对齐 `public/status.json`，尚无 PR 号）
-- 进行中文件：`STATUS.md`、`agent-progress.md`
+- 本会话目标：STATUS 将 #4 移入已完成（console PR #1 已合，Issue #4 已关）
+- 进行中文件：无
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -20,3 +20,4 @@
 | 2026-09-23 | #3 四页已有 API 调用；补告警失败不显示空态、采摘失败清空旧数据、报表空 Blob 空态、管理端浅色令牌、路由与页面 vitest | `npm --prefix apps/web test` 20 passed；`make gates` 通过 | PR #19 未合，不关 Issue #3 |
 | 2026-09-23 | #19/#3 done：PR #19 squash 合入 main（506427d），Issue #3 已关闭；STATUS 已完成一行 | `gh pr view 19` MERGED；`gh issue view 3` CLOSED | 无 |
 | 2026-09-23 | STATUS：#4 从待开移到进行中；console overnight agent 对齐 mushroom-project-console `public/status.json` | `make gates`；本 PR | 指挥台仓尚无 PR 号，不关 Issue #4 |
+| 2026-09-23 | STATUS：#4 移入已完成。console PR #1 squash 合入 main（f75deeb）；`public/status.json` 与 Issues/PR/STATUS 一致；Issue #4 已关闭 | `make gates`；本 PR | 无 |
