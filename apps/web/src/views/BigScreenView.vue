@@ -586,21 +586,19 @@ onBeforeUnmount(() => {
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 12px;
   padding: 12px;
-  color: #24362b;
+  color: #1e293b;
   color-scheme: light;
-  background:
-    radial-gradient(900px 420px at 80% -10%, rgba(255, 214, 140, 0.45), transparent 55%),
-    linear-gradient(180deg, #f7fbf4 0%, #e7f2df 100%);
+  background: #f5f7fa;
 }
 
 .zone {
   min-width: 0;
   min-height: 0;
   position: relative;
-  border: 1px solid #d7e6cf;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 10px 28px rgba(47, 90, 48, 0.06);
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .top {
@@ -621,17 +619,15 @@ onBeforeUnmount(() => {
 .mark {
   width: 36px;
   height: 36px;
-  border-radius: 12px;
-  background:
-    radial-gradient(circle at 50% 62%, #2f7d46 0 7px, transparent 8px),
-    linear-gradient(#e7f6ea, #d7efd4);
-  border: 1px solid #b7d7b4;
+  border-radius: 8px;
+  background: #1b7a4e;
+  border: 1px solid #1b7a4e;
 }
 
 .eyebrow {
   margin: 0;
   font-size: 12px;
-  color: #5d7364;
+  color: #64748b;
 }
 
 .top h1,
@@ -643,14 +639,14 @@ onBeforeUnmount(() => {
 
 .top h1 {
   font-size: 22px;
-  color: #1d3b28;
+  color: #1e293b;
 }
 
 .clock {
   margin: 0;
   font-variant-numeric: tabular-nums;
   font-size: 20px;
-  color: #1d3b28;
+  color: #1e293b;
 }
 
 .top-side {
@@ -667,7 +663,7 @@ onBeforeUnmount(() => {
 .row-sub,
 .row-meta {
   margin: 0;
-  color: #5d7364;
+  color: #64748b;
   font-size: 12px;
 }
 
@@ -679,10 +675,10 @@ onBeforeUnmount(() => {
 }
 
 .text-btn {
-  border: 1px solid #b7d7b4;
+  border: 1px solid #e2e8f0;
   background: #fff;
-  color: #1d3b28;
-  border-radius: 999px;
+  color: #1e293b;
+  border-radius: 6px;
   padding: 2px 10px;
   font: inherit;
   font-size: 12px;
@@ -691,8 +687,8 @@ onBeforeUnmount(() => {
 }
 
 .text-btn:hover {
-  border-color: #2f7d46;
-  background: #f3faf4;
+  border-color: #1b7a4e;
+  background: #f5f7fa;
 }
 
 .left,
@@ -713,12 +709,12 @@ onBeforeUnmount(() => {
 
 .zone-head h2 {
   font-size: 15px;
-  color: #1d3b28;
+  color: #1e293b;
 }
 
 .zone-head span,
 .legend {
-  color: #5d7364;
+  color: #64748b;
   font-size: 12px;
 }
 
@@ -732,15 +728,15 @@ onBeforeUnmount(() => {
 .tile,
 .env-tile,
 .detail {
-  border: 1px solid #e3eedf;
-  border-radius: 12px;
-  background: #f7fbf4;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background: #fff;
   padding: 8px 10px;
 }
 
 .tile-label {
   margin: 0;
-  color: #5d7364;
+  color: #64748b;
   font-size: 12px;
 }
 
@@ -749,7 +745,7 @@ onBeforeUnmount(() => {
 .detail-code {
   margin: 2px 0 0;
   font-variant-numeric: tabular-nums;
-  color: #2f7d46;
+  color: #2f9e44;
 }
 
 .tile-value {
@@ -768,7 +764,7 @@ onBeforeUnmount(() => {
 .env-value small {
   margin-left: 4px;
   font-size: 11px;
-  color: #5d7364;
+  color: #64748b;
 }
 
 .scroll {
@@ -787,9 +783,9 @@ onBeforeUnmount(() => {
 }
 
 .row {
-  border: 1px solid #e3eedf;
-  border-left: 3px solid #2f7d46;
-  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  border-left: 3px solid #1b7a4e;
+  border-radius: 6px;
   padding: 6px 8px;
   background: #fff;
 }
@@ -822,7 +818,7 @@ onBeforeUnmount(() => {
   display: inline-block;
   flex: none;
   margin-top: 5px;
-  background: #2f7d46;
+  background: #1b7a4e;
 }
 
 .row[data-level='warning'] .pip,
@@ -838,18 +834,18 @@ onBeforeUnmount(() => {
 
 .swatch.info,
 .tone-info .dot {
-  background: #3b82b0;
+  background: #475569;
 }
 
 .swatch.online,
 .status-dot.on,
 .tone-online .dot {
-  background: #2f7d46;
+  background: #1b7a4e;
 }
 
 .status-dot.off,
 .tone-idle .dot {
-  background: #9aafa0;
+  background: #94a3b8;
 }
 
 .legend {
@@ -869,12 +865,12 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 280px;
   overflow: hidden;
-  border: 1px solid #d5e6cf;
-  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   background:
-    linear-gradient(#d7e8cf 1px, transparent 1px),
-    linear-gradient(90deg, #d7e8cf 1px, transparent 1px),
-    linear-gradient(180deg, #f4faef, #e5f3dc);
+    linear-gradient(#e2e8f0 1px, transparent 1px),
+    linear-gradient(90deg, #e2e8f0 1px, transparent 1px),
+    #f0f2f5;
   background-size: 40px 40px, 40px 40px, auto;
 }
 
@@ -887,7 +883,7 @@ onBeforeUnmount(() => {
 
 .aisle path {
   fill: none;
-  stroke: #b7cda8;
+  stroke: #cbd5e1;
   stroke-width: 0.6;
 }
 
@@ -897,7 +893,7 @@ onBeforeUnmount(() => {
   display: grid;
   place-items: center;
   margin: 0;
-  color: #5d7364;
+  color: #64748b;
 }
 
 .point {
@@ -906,18 +902,18 @@ onBeforeUnmount(() => {
   width: 148px;
   padding: 8px 10px 8px 22px;
   text-align: left;
-  color: #24362b;
+  color: #1e293b;
   cursor: pointer;
-  border: 1px solid #d3e4cc;
-  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   background: #fff;
-  box-shadow: 0 8px 18px rgba(47, 90, 48, 0.08);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .point.on,
 .point:hover {
-  border-color: #2f7d46;
-  background: #f3faf4;
+  border-color: #1b7a4e;
+  background: #f5f7fa;
   z-index: 1;
 }
 
@@ -944,7 +940,7 @@ onBeforeUnmount(() => {
 .point-code {
   font-size: 13px;
   font-weight: 600;
-  color: #1d3b28;
+  color: #1e293b;
 }
 
 .point-name,
@@ -959,7 +955,7 @@ onBeforeUnmount(() => {
 }
 
 .point-meta {
-  color: #5d7364;
+  color: #64748b;
   font-size: 11px;
 }
 
@@ -978,7 +974,7 @@ onBeforeUnmount(() => {
 }
 
 .detail dt {
-  color: #5d7364;
+  color: #64748b;
   font-size: 12px;
 }
 
@@ -1007,7 +1003,7 @@ onBeforeUnmount(() => {
   margin: 0;
   font-size: 12px;
   font-weight: 600;
-  color: #2f7d46;
+  color: #1b7a4e;
 }
 
 .ticker-window {
@@ -1041,7 +1037,7 @@ onBeforeUnmount(() => {
 }
 
 .tick[data-tone='info'] {
-  color: #245c48;
+  color: #334155;
 }
 
 @keyframes ticker {
