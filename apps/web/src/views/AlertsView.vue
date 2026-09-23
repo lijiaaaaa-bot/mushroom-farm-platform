@@ -86,11 +86,11 @@ onMounted(load);
       <textarea v-model="form.message" class="field md:col-span-5" placeholder="说明" required />
       <input v-model="note" class="field" placeholder="确认/关闭备注" />
     </form>
-    <p v-if="error" class="text-sm text-red-300">{{ error }}</p>
+    <p v-if="error" class="text-sm text-danger">{{ error }}</p>
     <section class="panel overflow-x-auto">
       <p v-if="loading" class="text-mist">加载中…</p>
-      <p v-else-if="!rows.length" class="text-mist">暂无告警。</p>
-      <table v-else class="data-table">
+      <p v-else-if="!error && !rows.length" class="text-mist">暂无告警。</p>
+      <table v-else-if="rows.length" class="data-table">
         <thead>
           <tr><th>等级</th><th>状态</th><th>棚区</th><th>标题</th><th>时间</th><th></th></tr>
         </thead>

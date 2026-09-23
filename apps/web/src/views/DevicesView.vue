@@ -33,7 +33,7 @@ onMounted(async () => {
   <section class="panel overflow-x-auto">
     <h2 class="mb-3 text-lg">摄像头 / AI 盒 / 传感器</h2>
     <p v-if="loading" class="text-mist">加载中…</p>
-    <p v-else-if="error" class="text-red-300">{{ error }}</p>
+    <p v-else-if="error" class="text-danger">{{ error }}</p>
     <p v-else-if="!rows.length" class="text-mist">暂无设备。识别上报会自动建档。</p>
     <table v-else class="data-table">
       <thead>

@@ -1,0 +1,6 @@
+date	topic	decision	evidence
+2026-09-23	api-wiring	四页已调用现有 /api/v1，不新增后端接口。设备 GET /devices，告警 GET /alerts，采摘 GET /harvest/daily，报表 GET /reports/{file}.xlsx。	apps/web/src/views/DevicesView.vue AlertsView.vue HarvestView.vue ReportsView.vue；apps/api 对应 controller
+2026-09-23	empty-error	空数组显示明确空态文案。请求失败只显示错误文案。告警列表失败时不再同时显示「暂无告警」；采摘失败时清空上次结果，避免失败请求留下旧行。	AlertsView 模板条件；HarvestView load() catch 将 data 置空
+2026-09-23	reports-empty	报表没有列表接口，下载是等价调用。响应 Blob size 为 0 时显示「该报表没有可导出的数据。」并且不创建下载链接，避免空文件冒充有数据。	ReportsView download()；reports.controller 只有 xlsx 下载
+2026-09-23	visual	管理端共用令牌改为 Family B Light：底 #F5F7FA、白卡片、强调 #1B7A4E、悬停 #2F9E44，与 BigScreenView 浅色门户一致。总览图表轴色一并改成同一套浅色色值，避免深色轴字落在浅底上。	apps/web/src/style.css apps/web/tailwind.config.cjs AdminLayout.vue DashboardView.vue
+2026-09-23	rebase-18	main 合入 #18 后本分支变 dirty。rebase 到 0166f0c。冲突只在 STATUS.md 与 agent-progress.md：保留 main 的 Overnight 指针（STATUS「规范」与 progress 两条 #18 日志），保留本分支的四页实现、测试与 evidence。	git rebase origin/main；冲突文件 STATUS.md agent-progress.md

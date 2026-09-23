@@ -28,6 +28,7 @@ async function load() {
     const response = await http.get<Daily>('/harvest/daily', { params: { date: date.value } });
     data.value = response.data;
   } catch (cause) {
+    data.value = null;
     error.value = errorText(cause);
   } finally {
     loading.value = false;
@@ -46,7 +47,7 @@ onMounted(load);
       <button class="btn-primary" type="submit">查询</button>
     </form>
     <p v-if="loading" class="text-mist">加载中…</p>
-    <p v-else-if="error" class="text-red-300">{{ error }}</p>
+    <p v-else-if="error" class="text-danger">{{ error }}</p>
     <template v-else-if="data">
       <div class="grid gap-3 sm:grid-cols-3">
         <article class="panel"><p class="text-mist">可采摄像头</p><p class="font-mono text-3xl">{{ data.summary.harvestableCameras }}</p></article>

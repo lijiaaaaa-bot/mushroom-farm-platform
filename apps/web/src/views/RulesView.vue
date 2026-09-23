@@ -33,7 +33,7 @@ onMounted(async () => {
   <section class="panel overflow-x-auto">
     <h2 class="mb-3 text-lg">阈值规则</h2>
     <p v-if="loading" class="text-mist">加载中…</p>
-    <p v-else-if="error" class="text-red-300">{{ error }}</p>
+    <p v-else-if="error" class="text-danger">{{ error }}</p>
     <table v-else class="data-table">
       <thead><tr><th>名称</th><th>指标</th><th>阈值</th><th>等级</th><th>窗口分钟</th><th>启用</th></tr></thead>
       <tbody>
