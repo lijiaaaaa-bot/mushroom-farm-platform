@@ -16,11 +16,12 @@
 - #3 admin devices/alerts/harvest/reports wired to existing API + vitest + Family B Light; PR #19; Issue closed.
 - #4 console PR #1 merged（https://github.com/lijiaaaaa-bot/mushroom-project-console/pull/1 ，squash f75deeb）；`public/status.json` matches Issues/PR/STATUS；Issue #4 closed.
 - #23 `/alert-rules` writable for admins; PR #24 merged; Issue closed.
+- #26 `/diseases` 列出 diseaseCount>0 的识别，识别页与病害页可打开已存抓拍；PR #29 squash 合入 main（ca8ef58）；Issue closed.
+- #30 `/devices` 摄像头批量导入；PR #31 squash 合入 main（746e224）；Issue closed.
+- #32 站内告警未读入口；PR #33 squash 合入 main（5d104b2）；Issue closed.
 
 ## 进行中
-- #26 `/diseases` 列出 diseaseCount>0 的识别（时间、棚、摄像头、等级、数量），识别页与病害页可打开已存抓拍；棚隔离沿用 ShedScope。PR 未合，不关 Issue
-- #30 `/devices` 摄像头批量导入（CSV 文件或粘贴）；设备编码冲突跳过；棚不存在或无权按行失败。PR #31 未合，不关 Issue
-- #32 F-R3-05 站内告警通知：登录后顶栏未读入口、15 秒轮询、单条/全部已读、棚隔离。PR #33 未合，不关 Issue
+- #27 棚区平面坐标（F-R2-03 / F-R8-03）：`sheds.map_x` / `map_y`、管理端可编辑、大屏点位读取配置坐标；PR https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/28 未合并
 
 ## 规范
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18

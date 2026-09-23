@@ -36,6 +36,8 @@ interface ShedRow {
   code: string;
   name: string;
   location: string | null;
+  mapX?: number | null;
+  mapY?: number | null;
 }
 
 interface AlertRow {
@@ -167,7 +169,7 @@ const points = computed(() =>
     const open = alerts.value.filter((row) => row.shedCode === shed.code && row.status !== 'closed');
     const shedDevices = devices.value.filter((row) => row.shedCode === shed.code);
     const online = shedDevices.filter((row) => row.onlineStatus === 'online').length;
-    const spot = placePoint(sheds.value.length, index);
+    const spot = resolvePoint(shed, sheds.value.length, index);
     return {
       shed,
       x: spot.x,
@@ -264,6 +266,12 @@ const selectedLatest = computed(() =>
   recognitions.value.find((row) => row.shedCode === selectedCode.value) ?? null,
 );
 
+function readCoord(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
 function placePoint(count: number, index: number) {
   if (count <= 1) return { x: 50, y: 46 };
   const cols = count <= 4 ? count : Math.ceil(Math.sqrt(count));
@@ -274,6 +282,13 @@ function placePoint(count: number, index: number) {
     x: 14 + ((col + 0.5) / cols) * 72,
     y: 16 + ((row + 0.5) / rows) * 68,
   };
+}
+
+function resolvePoint(shed: ShedRow, count: number, index: number) {
+  const x = readCoord(shed.mapX);
+  const y = readCoord(shed.mapY);
+  if (x !== null && y !== null) return { x, y };
+  return placePoint(count, index);
 }
 
 function pointTone(open: AlertRow[], online: number): PointTone {

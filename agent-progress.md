@@ -3,8 +3,8 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：#32 F-R3-05 站内告警通知（进行中，PR 未合则不关 Issue）
-- 进行中文件：`apps/api/src/alerts/`、`apps/web/src/components/AlertInbox.vue`、`evidence/overnight-mvp-inapp-alert-notify/decisions.tsv`
+- 本会话目标：Issue #27 棚区平面坐标可配置，大屏点位读取 mapX/mapY，缺省回退
+- 进行中文件：`apps/api/src/sheds/`、`apps/web/src/views/ShedsView.vue`、`apps/web/src/views/BigScreenView.vue`、`infra/migrations/002_shed_map_coords.sql`
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -27,3 +27,4 @@
 | 2026-09-23 | #26 病害页与抓拍打开：GET /diseases 过滤 diseaseCount>0；GET /ingest/recognitions/:id/snapshot 读 MinIO 或原图 URL；棚隔离仍走 ShedScope | `make test` 与 `make gates` 退出码 0（API 19，web vitest 31）；不关 Issue #26 | PR #29 未合 |
 | 2026-09-23 | #32 站内未读：GET /alerts/unread、POST /alerts/:id/read、POST /alerts/read-all。已读按用户记在 alert_reads，不改告警状态。顶栏 15 秒轮询。浏览器通知仅在授权后；拒绝不抛错 | `make test` 与 `make gates` 退出码 0 | PR #33 未合，不关 Issue #32 |
 | 2026-09-23 | #32 验收：API jest 30（alert-unread：创建后范围内计数上升、单条/全部已读、棚外 403）；web vitest 42（列表字段、计数下降、失败非空表、轮询、拒绝通知不抛错） | `make test` && `make gates` 退出码 0 | 本机无 Docker，未跑登录后的浏览器；PR #33 未合 |
+| 2026-09-23 | #27 棚区平面坐标：迁移 `map_x`/`map_y`，超管与生产管理员 PATCH，棚负责人与查看员只读且仍按棚隔离；大屏有坐标用配置、缺一轴则回退网格 | 待 `make test` 与 `make gates` | 不自动合并，不关 Issue #27 |

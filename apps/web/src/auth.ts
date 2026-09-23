@@ -40,3 +40,7 @@ export function canWriteRules(role: Role | undefined) {
 export function canImportDevices(role: Role | undefined) {
   return role === 'super_admin' || role === 'production_admin' || role === 'shed_manager';
 }
+
+export function canConfigureSheds(role: Role | undefined) {
+  return role === 'super_admin' || role === 'production_admin';
+}

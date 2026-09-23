@@ -32,16 +32,14 @@ export class SeedService implements OnModuleInit {
 
   private async seedSheds() {
     const rows = [
-      { code: 'S01', name: '一号菇棚', location: '东区' },
-      { code: 'S02', name: '二号菇棚', location: '西区' },
-      { code: 'S03', name: '育菇棚', location: '北区' },
+      { code: 'S01', name: '一号菇棚', location: '东区', mapX: 25, mapY: 40 },
+      { code: 'S02', name: '二号菇棚', location: '西区', mapX: 50, mapY: 40 },
+      { code: 'S03', name: '育菇棚', location: '北区', mapX: 75, mapY: 40 },
     ];
     for (const row of rows) {
       const found = await this.sheds.findOne({ where: { code: row.code } });
       if (!found) {
-        await this.sheds.save(
-          this.sheds.create({ ...row, enabled: true, location: row.location }),
-        );
+        await this.sheds.save(this.sheds.create({ ...row, enabled: true }));
       }
     }
   }

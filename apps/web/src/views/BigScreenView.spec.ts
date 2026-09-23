@@ -141,6 +141,16 @@ describe('BigScreenView', () => {
     expect(screen.center.text()).toContain('棚区平面');
     expect(screen.center.text()).toContain('S01');
     expect(screen.center.text()).toContain('一号棚');
+    const point = wrapper.get('button.point');
+    expect(point.attributes('style')).toContain('left: 50%');
+    expect(point.attributes('style')).toContain('top: 46%');
+    await point.trigger('click');
+    const detail = wrapper.get('section.detail');
+    expect(detail.text()).toContain('设备在线');
+    expect(detail.text()).toContain('1/1');
+    expect(detail.text()).toContain('未关闭告警');
+    expect(detail.text()).toContain('最近识别');
+    expect(detail.text()).toContain('成熟 4/10');
     expect(screen.right.text()).toContain('环境');
     expect(screen.right.text()).toContain('22.5');
     expect(screen.right.text()).toContain('设备');
@@ -161,6 +171,51 @@ describe('BigScreenView', () => {
     expect(screen.center.text()).toContain('当前账号没有可见棚区');
     expect(screen.right.text()).toContain('暂无设备');
     expect(screen.bottom.text()).toContain('暂无告警与识别记录');
+
+    wrapper.unmount();
+  });
+
+  it('places a shed at its configured coordinates and falls back when either coordinate is missing', async () => {
+    const placed = {
+      id: 'shed-1',
+      code: 'S01',
+      name: '一号棚',
+      location: '东区',
+      mapX: 22.5,
+      mapY: 70,
+    };
+    const missing = {
+      id: 'shed-2',
+      code: 'S02',
+      name: '二号棚',
+      location: null,
+      mapX: 12,
+      mapY: null,
+    };
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/sheds') return Promise.resolve({ data: [placed, missing] });
+      return Promise.resolve({ data: payloadFor(url, false) });
+    });
+    const wrapper = await mountScreen();
+    const points = wrapper.findAll('button.point');
+
+    expect(points).toHaveLength(2);
+    expect(points[0].attributes('style')).toContain('left: 22.5%');
+    expect(points[0].attributes('style')).toContain('top: 70%');
+    expect(points[1].attributes('style')).toContain('left: 68%');
+    expect(points[1].attributes('style')).toContain('top: 50%');
+    expect(points[1].attributes('style')).not.toContain('left: 12%');
+
+    await points[0].trigger('click');
+    const detail = wrapper.get('section.detail');
+    expect(detail.text()).toContain('S01');
+    expect(detail.text()).toContain('一号棚');
+    expect(detail.text()).toContain('设备在线');
+    expect(detail.text()).toContain('1/1');
+    expect(detail.text()).toContain('未关闭告警');
+    expect(detail.text()).toContain('最近识别');
+    expect(detail.text()).toContain('成熟 4/10');
+    expect(detail.text()).toContain('病害 0');
 
     wrapper.unmount();
   });

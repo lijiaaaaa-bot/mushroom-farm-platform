@@ -263,7 +263,14 @@ export class DevicesService {
     const found = await this.sheds.findOne({ where: { code } });
     if (found) return found;
     return this.sheds.save(
-      this.sheds.create({ code, name: code, location: null, enabled: true }),
+      this.sheds.create({
+        code,
+        name: code,
+        location: null,
+        enabled: true,
+        mapX: null,
+        mapY: null,
+      }),
     );
   }
 }
