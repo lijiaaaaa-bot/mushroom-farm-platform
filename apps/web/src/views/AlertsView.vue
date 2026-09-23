@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import {
+  ALERT_CLOSE_REASON_LABEL,
   ALERT_LEVEL_LABEL,
   ALERT_STATUS_LABEL,
   alertLevelSchema,
+  type AlertCloseReason,
   type AlertLevel,
   type AlertStatus,
   type CreateAlertInput,
@@ -20,6 +22,10 @@ interface AlertRow {
   title: string;
   message: string;
   createdAt: string;
+  claimedBy: string | null;
+  claimNote: string | null;
+  closeReason: AlertCloseReason | null;
+  closeNote: string | null;
 }
 
 const rows = ref<AlertRow[]>([]);
@@ -60,7 +66,13 @@ async function createAlert() {
   }
 }
 
-async function act(id: string, action: 'ack' | 'close') {
+function reasonLabel(row: AlertRow) {
+  if (!row.closeReason) return '—';
+  return ALERT_CLOSE_REASON_LABEL[row.closeReason];
+}
+
+async function act(id: string, action: 'ack' | 'close' | 'claim' | 'false-positive') {
+  if (action === 'false-positive' && !note.value.trim()) return;
   error.value = '';
   try {
     await http.post(`/alerts/${id}/${action}`, { note: note.value });
@@ -84,7 +96,7 @@ onMounted(load);
       <input v-model="form.title" class="field md:col-span-2" placeholder="标题" required />
       <button class="btn-primary" type="submit">新建告警</button>
       <textarea v-model="form.message" class="field md:col-span-5" placeholder="说明" required />
-      <input v-model="note" class="field" placeholder="确认/关闭备注" />
+      <input v-model="note" class="field" placeholder="处置备注（误报必填）" />
     </form>
     <p v-if="error" class="text-sm text-danger">{{ error }}</p>
     <section class="panel overflow-x-auto">
@@ -92,18 +104,36 @@ onMounted(load);
       <p v-else-if="!error && !rows.length" class="text-mist">暂无告警。</p>
       <table v-else-if="rows.length" class="data-table">
         <thead>
-          <tr><th>等级</th><th>状态</th><th>棚区</th><th>标题</th><th>时间</th><th></th></tr>
+          <tr><th>等级</th><th>状态</th><th>原因</th><th>认领人</th><th>棚区</th><th>标题</th><th>时间</th><th></th></tr>
         </thead>
         <tbody>
           <tr v-for="row in rows" :key="row.id">
             <td>{{ ALERT_LEVEL_LABEL[row.level] }}</td>
-            <td>{{ ALERT_STATUS_LABEL[row.status] }}</td>
+            <td>
+              {{ ALERT_STATUS_LABEL[row.status] }}
+              <span v-if="row.claimedBy && row.status !== 'closed'"> · 已认领</span>
+            </td>
+            <td>{{ reasonLabel(row) }}</td>
+            <td>{{ row.claimedBy || '—' }}</td>
             <td>{{ row.shedCode }}</td>
-            <td>{{ row.title }}<p class="text-xs text-mist">{{ row.message }}</p></td>
+            <td>
+              {{ row.title }}
+              <p class="text-xs text-mist">{{ row.message }}</p>
+              <p v-if="row.claimNote" class="text-xs text-mist">认领备注 {{ row.claimNote }}</p>
+              <p v-if="row.closeNote" class="text-xs text-mist">关闭备注 {{ row.closeNote }}</p>
+            </td>
             <td class="font-mono text-xs">{{ new Date(row.createdAt).toLocaleString('zh-CN') }}</td>
             <td class="space-x-2 whitespace-nowrap" v-if="canOperate(currentUser?.role)">
               <button v-if="row.status === 'open'" class="btn-ghost" type="button" @click="act(row.id, 'ack')">确认</button>
+              <button v-if="row.status !== 'closed'" class="btn-ghost" type="button" @click="act(row.id, 'claim')">认领</button>
               <button v-if="row.status !== 'closed'" class="btn-ghost" type="button" @click="act(row.id, 'close')">关闭</button>
+              <button
+                v-if="row.status !== 'closed'"
+                class="btn-ghost"
+                type="button"
+                :disabled="!note.trim()"
+                @click="act(row.id, 'false-positive')"
+              >误报关闭</button>
             </td>
             <td v-else></td>
           </tr>

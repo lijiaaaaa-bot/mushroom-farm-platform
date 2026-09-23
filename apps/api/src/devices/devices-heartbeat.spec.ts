@@ -288,6 +288,7 @@ describe('device heartbeat and offline alerts', () => {
       status: 'closed',
       closedBy: 'system',
       closeNote: '心跳恢复，自动关闭',
+      closeReason: 'resolved',
     });
   });
 

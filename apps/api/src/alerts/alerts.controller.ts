@@ -13,6 +13,7 @@ import {
 import {
   ALERT_LEVELS,
   ALERT_METRICS,
+  parseAlertFalsePositive,
   parseAlertNote,
   parseCreateAlert,
 } from '@mushroom/contracts';
@@ -181,7 +182,74 @@ export class AlertsController {
       user,
       action: 'alert.close',
       resource: `alert:${alert.id}`,
-      detail: { note: parsed.value.note ?? null },
+      detail: {
+        note: parsed.value.note ?? null,
+        closeReason: alert.closeReason,
+      },
+      ip: request.ip,
+    });
+    return alert;
+  }
+
+  @Post('alerts/:id/claim')
+  @Roles('super_admin', 'production_admin', 'shed_manager')
+  async claim(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @CurrentUser() user: AuthUser,
+    @Req() request: Request,
+  ) {
+    const parsed = parseAlertNote(body ?? {});
+    if (!parsed.ok) {
+      throw new BadRequestException({
+        code: parsed.code,
+        message: '认领报文被拒绝',
+        errors: parsed.errors,
+      });
+    }
+    const alert = await this.alerts.claim(user, id, parsed.value.note);
+    await this.audit.write({
+      user,
+      action: 'alert.claim',
+      resource: `alert:${alert.id}`,
+      detail: {
+        note: parsed.value.note ?? null,
+        claimedBy: alert.claimedBy,
+      },
+      ip: request.ip,
+    });
+    return alert;
+  }
+
+  @Post('alerts/:id/false-positive')
+  @Roles('super_admin', 'production_admin', 'shed_manager')
+  async falsePositive(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @CurrentUser() user: AuthUser,
+    @Req() request: Request,
+  ) {
+    const parsed = parseAlertFalsePositive(body ?? {});
+    if (!parsed.ok) {
+      throw new BadRequestException({
+        code: parsed.code,
+        message: '误报报文被拒绝',
+        errors: parsed.errors,
+      });
+    }
+    const alert = await this.alerts.closeFalsePositive(
+      user,
+      id,
+      parsed.value.note,
+    );
+    await this.audit.write({
+      user,
+      action: 'alert.false_positive',
+      resource: `alert:${alert.id}`,
+      detail: {
+        note: parsed.value.note,
+        closeReason: alert.closeReason,
+      },
       ip: request.ip,
     });
     return alert;

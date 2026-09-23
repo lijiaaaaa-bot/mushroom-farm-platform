@@ -46,6 +46,15 @@ export const ALERT_STATUS_LABEL: Record<AlertStatus, string> = {
   closed: '已关闭',
 };
 
+/** 关闭原因。误报与普通关闭都落到 closed，用枚举区分。 */
+export const alertCloseReasonSchema = z.enum(['resolved', 'false_positive']);
+export type AlertCloseReason = z.infer<typeof alertCloseReasonSchema>;
+
+export const ALERT_CLOSE_REASON_LABEL: Record<AlertCloseReason, string> = {
+  resolved: '正常关闭',
+  false_positive: '误报',
+};
+
 export const alertLevelSchema = z.enum(['info', 'warning', 'severe']);
 export type AlertLevel = z.infer<typeof alertLevelSchema>;
 
@@ -280,6 +289,14 @@ export const alertNoteSchema = z
   })
   .strict();
 export type AlertNoteInput = z.infer<typeof alertNoteSchema>;
+
+/** 误报关闭必须写处置备注；认领与普通关闭备注可选。 */
+export const alertFalsePositiveSchema = z
+  .object({
+    note: z.string().trim().min(1).max(500),
+  })
+  .strict();
+export type AlertFalsePositiveInput = z.infer<typeof alertFalsePositiveSchema>;
 
 export type ParseResult<T> =
   | { ok: true; value: T }
@@ -678,6 +695,17 @@ export function parseAlertNote(raw: unknown): ParseResult<AlertNoteInput> {
   return { ok: true, value: parsed.data };
 }
 
+export function parseAlertFalsePositive(
+  raw: unknown,
+): ParseResult<AlertFalsePositiveInput> {
+  const parsed = alertFalsePositiveSchema.safeParse(raw ?? {});
+  if (!parsed.success) {
+    const issue = zodErrors(parsed.error);
+    return fail(issue.code, issue.errors);
+  }
+  return { ok: true, value: parsed.data };
+}
+
 export function isRole(value: string): value is Role {
   return roleSchema.safeParse(value).success;
 }
@@ -696,6 +724,7 @@ export function isDeviceType(value: string): value is DeviceType {
 
 export const ROLES = roleSchema.options;
 export const ALERT_STATUSES = alertStatusSchema.options;
+export const ALERT_CLOSE_REASONS = alertCloseReasonSchema.options;
 export const ALERT_LEVELS = alertLevelSchema.options;
 export const ALERT_METRICS = alertMetricSchema.options;
 export const DEVICE_TYPES = deviceTypeSchema.options;

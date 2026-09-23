@@ -6,12 +6,15 @@ import DevicesView from './DevicesView.vue';
 import HarvestView from './HarvestView.vue';
 import ReportsView from './ReportsView.vue';
 
+import { currentUser, type SessionUser } from '../auth';
+
 const httpGet = vi.hoisted(() => vi.fn());
+const httpPost = vi.hoisted(() => vi.fn());
 
 vi.mock('../api', () => ({
   http: {
     get: httpGet,
-    post: vi.fn(),
+    post: httpPost,
   },
   errorText: () => '请求失败',
 }));
@@ -96,10 +99,26 @@ describe('DevicesView', () => {
   });
 });
 
+function asUser(role: SessionUser['role']) {
+  currentUser.value = {
+    id: 'user-1',
+    username: role === 'shed_manager' ? 'shed-a' : role,
+    displayName: role,
+    role,
+    shedCodes: ['S01'],
+  };
+}
+
+function buttonText(wrapper: { findAll: (selector: string) => { text: () => string }[] }, label: string) {
+  return wrapper.findAll('button').some((button) => button.text() === label);
+}
+
 describe('AlertsView', () => {
   beforeEach(() => {
     localStorage.clear();
     httpGet.mockReset();
+    httpPost.mockReset();
+    currentUser.value = null;
   });
 
   it('renders rows from GET /alerts', async () => {
@@ -130,6 +149,129 @@ describe('AlertsView', () => {
     expect(wrapper.text()).toContain('请求失败');
     expect(wrapper.text()).not.toContain('暂无告警');
     expect(wrapper.find('table').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('shows the claimant and posts claim and false-positive close for an operator', async () => {
+    asUser('shed_manager');
+    httpGet.mockResolvedValue({
+      data: {
+        items: [
+          {
+            ...alert,
+            claimedBy: 'shed-a',
+            claimNote: '我来处理',
+            closeReason: null,
+            closeNote: null,
+          },
+        ],
+        total: 1,
+      },
+    });
+    httpPost.mockResolvedValue({ data: {} });
+    const wrapper = await mountView(AlertsView);
+
+    expect(wrapper.text()).toContain('shed-a');
+    expect(wrapper.text()).toContain('已认领');
+    expect(wrapper.text()).toContain('认领备注 我来处理');
+    expect(wrapper.find('button.btn-ghost').exists()).toBe(true);
+    expect(buttonText(wrapper, '认领')).toBe(true);
+    expect(buttonText(wrapper, '误报关闭')).toBe(true);
+
+    await wrapper.get('input[placeholder="处置备注（误报必填）"]').setValue('我来跟进');
+    const claim = wrapper.findAll('button').find((button) => button.text() === '认领');
+    await claim?.trigger('click');
+    await flushPromises();
+    expect(httpPost).toHaveBeenCalledWith('/alerts/alert-1/claim', { note: '我来跟进' });
+
+    await wrapper.get('input[placeholder="处置备注（误报必填）"]').setValue('传感器抖动');
+    const falsePositive = wrapper.findAll('button').find((button) => button.text() === '误报关闭');
+    await falsePositive?.trigger('click');
+    await flushPromises();
+    expect(httpPost).toHaveBeenCalledWith('/alerts/alert-1/false-positive', {
+      note: '传感器抖动',
+    });
+    wrapper.unmount();
+  });
+
+  it('labels a false-positive close apart from a normal close', async () => {
+    asUser('production_admin');
+    httpGet.mockResolvedValue({
+      data: {
+        items: [
+          {
+            ...alert,
+            id: 'alert-fp',
+            status: 'closed',
+            claimedBy: 'shed-a',
+            claimNote: null,
+            closeReason: 'false_positive',
+            closeNote: '现场核对无异常',
+          },
+          {
+            ...alert,
+            id: 'alert-ok',
+            title: '已处置',
+            status: 'closed',
+            claimedBy: null,
+            claimNote: null,
+            closeReason: 'resolved',
+            closeNote: '已恢复',
+          },
+        ],
+        total: 2,
+      },
+    });
+    const wrapper = await mountView(AlertsView);
+
+    expect(wrapper.text()).toContain('误报');
+    expect(wrapper.text()).toContain('正常关闭');
+    expect(wrapper.text()).toContain('关闭备注 现场核对无异常');
+    expect(buttonText(wrapper, '认领')).toBe(false);
+    expect(buttonText(wrapper, '误报关闭')).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('does not post a false-positive close when the note is blank', async () => {
+    asUser('production_admin');
+    httpGet.mockResolvedValue({ data: { items: [alert], total: 1 } });
+    const wrapper = await mountView(AlertsView);
+
+    await wrapper.get('input[placeholder="处置备注（误报必填）"]').setValue('   ');
+    const falsePositive = wrapper.findAll('button').find((button) => button.text() === '误报关闭');
+    expect(falsePositive?.attributes('disabled')).toBeDefined();
+    await falsePositive?.trigger('click');
+    await flushPromises();
+    expect(httpPost).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it('hides claim and false-positive controls for a viewer', async () => {
+    asUser('viewer');
+    httpGet.mockResolvedValue({
+      data: {
+        items: [
+          {
+            ...alert,
+            claimedBy: 'shed-a',
+            claimNote: '已认领',
+            closeReason: null,
+            closeNote: null,
+          },
+        ],
+        total: 1,
+      },
+    });
+    const wrapper = await mountView(AlertsView);
+
+    expect(wrapper.text()).toContain('高温');
+    expect(wrapper.text()).toContain('shed-a');
+    expect(buttonText(wrapper, '认领')).toBe(false);
+    expect(buttonText(wrapper, '误报关闭')).toBe(false);
+    expect(buttonText(wrapper, '确认')).toBe(false);
+    expect(buttonText(wrapper, '关闭')).toBe(false);
+    expect(buttonText(wrapper, '新建告警')).toBe(false);
+    expect(wrapper.find('table').exists()).toBe(true);
     wrapper.unmount();
   });
 });

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   buildSnapshotObjectKey,
+  parseAlertFalsePositive,
   parseAlertNote,
   parseCreateAlert,
   parseEnvironmentIngress,
@@ -54,6 +55,14 @@ describe('golden fixtures', () => {
     const note = load('alert.ack.json');
     const acked = parseAlertNote(note.body);
     assert.equal(acked.ok, note.expect === 'ok');
+    const falsePositive = load('alert.false-positive.json');
+    const closed = parseAlertFalsePositive(falsePositive.body);
+    assert.equal(closed.ok, falsePositive.expect === 'ok');
+    if (closed.ok) assert.equal(closed.value.note, '传感器抖动，现场无异常');
+    const missing = parseAlertFalsePositive({});
+    assert.equal(missing.ok, false);
+    const blank = parseAlertFalsePositive({ note: '   ' });
+    assert.equal(blank.ok, false);
   });
 
   it('loads alert transition cases', () => {

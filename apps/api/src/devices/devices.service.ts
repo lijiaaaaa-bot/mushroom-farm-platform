@@ -372,6 +372,10 @@ export class DevicesService {
         closedBy: null,
         closedAt: null,
         closeNote: null,
+        closeReason: null,
+        claimedBy: null,
+        claimedAt: null,
+        claimNote: null,
       }),
     );
     return true;
@@ -385,6 +389,7 @@ export class DevicesService {
       alert.closedBy = 'system';
       alert.closedAt = now;
       alert.closeNote = OFFLINE_RECOVERED_NOTE;
+      alert.closeReason = 'resolved';
       if (!alert.ackedAt) {
         alert.ackedBy = 'system';
         alert.ackedAt = now;

@@ -66,6 +66,10 @@ export class AlertEngineService {
           closedBy: null,
           closedAt: null,
           closeNote: null,
+          closeReason: null,
+          claimedBy: null,
+          claimedAt: null,
+          claimNote: null,
         }),
       );
       this.logger.log(
