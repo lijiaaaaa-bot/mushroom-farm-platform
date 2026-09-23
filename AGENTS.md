@@ -35,7 +35,7 @@ NestJS + Vue3/TS/Vite/Tailwind + PostgreSQL/Redis/MinIO + MQTT；契约 `package
 - 研究对照（做 / 不做）：`docs/APPLY_MAP.md`
 - 增量条目：`docs/CONTEXT_PLAYBOOK.md`
 - 窗外记忆（只追加）：`agent-progress.md`
-- Overnight 工单（完成看谓词，不看时长）：`docs/OVERNIGHT_TICKET.md`
+- Overnight 工单（协议在 harness `docs/OVERNIGHT.md`，本仓只留指针）：`docs/OVERNIGHT_TICKET.md`
 
 ## 延伸阅读（仓内）
 - `docs/HARNESS.md`

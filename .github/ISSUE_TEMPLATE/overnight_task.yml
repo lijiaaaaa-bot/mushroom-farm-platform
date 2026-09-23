@@ -6,9 +6,9 @@ body:
   - type: markdown
     attributes:
       value: |
-        完成 = 谓词 pass 或 fail。工时、通宵次数、「感觉做完了」都不是完成。
-        卡住就停并写明原因，不放宽谓词。只开 PR，不自动合并。
-        规范：`docs/OVERNIGHT_TICKET.md`
+        协议正文不在本仓。按 harness 填写：
+        https://github.com/lijiaaaaa-bot/project-harness-day0/blob/main/docs/OVERNIGHT.md
+        本仓指针：`docs/OVERNIGHT_TICKET.md`。只开 PR，不自动合并。
   - type: input
     id: slug
     attributes:
