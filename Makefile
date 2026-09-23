@@ -1,4 +1,4 @@
-.PHONY: up api web test smoke migrate contracts lint gates gates-selftest
+.PHONY: up api web test smoke smoke-evidence migrate contracts lint gates gates-selftest
 
 contracts:
 	npm --prefix packages/contracts install
@@ -27,7 +27,7 @@ lint:
 
 test: contracts lint
 	npm --prefix packages/contracts test
-	node --test scripts/boundaries.spec.mjs
+	node --test scripts/boundaries.spec.mjs scripts/evidence.spec.mjs scripts/edge-simulator.spec.mjs
 	npm --prefix apps/api test
 	npm --prefix apps/web run typecheck
 
@@ -38,9 +38,12 @@ gates:
 gates-selftest:
 	node scripts/gates/selftest.mjs
 
-# HTTP 黄金报文，以及 Mosquitto 上的 recognition.mqtt.json（主题 mushroom/+/+/recognition）
+# HTTP 黄金报文，以及 Mosquitto 上的 recognition.mqtt.json / heartbeat.mqtt.json。
+# 发送方是 scripts/edge-simulator.mjs。证据写入 evidence/ingest-last-run/summary.json。
 smoke: contracts
 	npm --prefix apps/api install
 	$(MAKE) up
 	$(MAKE) migrate
 	node scripts/smoke.mjs
+
+smoke-evidence: smoke

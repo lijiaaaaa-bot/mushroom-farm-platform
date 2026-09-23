@@ -1,0 +1,43 @@
+{
+  "id": "alert-ack",
+  "timestamp": "2026-09-23T07:07:24.195Z",
+  "channel": "http",
+  "method": "POST",
+  "path": "/api/v1/alerts/a4a101fe-f64c-4e9e-934e-26643f62976b/ack",
+  "url": "http://127.0.0.1:41821/api/v1/alerts/a4a101fe-f64c-4e9e-934e-26643f62976b/ack",
+  "fixture": "alert.ack.json",
+  "fixtureLabel": "契约黄金报文",
+  "rawBody": {
+    "note": "已确认"
+  },
+  "rawUtf8": "{\"note\":\"已确认\"}",
+  "byteLength": 20,
+  "responseStatus": 201,
+  "responseBody": {
+    "id": "a4a101fe-f64c-4e9e-934e-26643f62976b",
+    "ruleId": null,
+    "metric": null,
+    "shedCode": "S01",
+    "cameraCode": "CAM-S01-01",
+    "level": "warning",
+    "status": "acked",
+    "title": "人工抽查",
+    "message": "架构墙验收告警",
+    "metricValue": null,
+    "threshold": null,
+    "ackedBy": "admin",
+    "ackedAt": "2026-09-23T07:07:24.187Z",
+    "ackNote": "已确认",
+    "closedBy": null,
+    "closedAt": null,
+    "closeNote": null,
+    "createdAt": "2026-09-23T07:07:24.176Z"
+  },
+  "actor": "smoke",
+  "pass": true,
+  "proof": {
+    "alertId": "a4a101fe-f64c-4e9e-934e-26643f62976b",
+    "status": "acked"
+  },
+  "wireBytesFile": "steps/08-alert-ack.body.json"
+}

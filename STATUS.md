@@ -11,6 +11,7 @@
 - 公开 GitHub main；`bid-sample/`、`docs/` 在仓内
 - #7 squash 合入 main、#6 已关闭：接入墙与 CI 门禁在 main
 - #5 squash 合入 main（4dd50a1）、#1 已关闭：MQTT recognition 与 HTTP 同管道
+- CI job `ingest-smoke` 跑 `make smoke`：`scripts/edge-simulator.mjs` 向 Mosquitto / HTTP 发送契约黄金报文，证据目录 `evidence/ingest-last-run/` 上传为 artifact `ingest-smoke-evidence`；可打开的一次真实跑样在 `evidence/ingest-sample/summary.json`
 
 ## 进行中
 - #2 大屏：暗色指挥页路由 + 五区布局接现有 API（#2，`status:doing`）
