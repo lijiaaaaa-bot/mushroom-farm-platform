@@ -36,4 +36,4 @@
 | 2026-09-23 | #36 验收：合法修正后汇总变为成熟 0、蘑菇 6、可采摄像头 0；越权棚 403 且不写审计；查看员 403；审计一行含用户、时间、棚、摄像头、旧值→新值。页面保存后刷新，失败仍留表，查看员无保存 | `make test` 退出码 0（API jest 50，web vitest 54）；`make gates` 退出码 0 | 本机无 Docker，未打开登录后的 /harvest |
 | 2026-09-23 | PR #37 由 lijiaaaaa-bot 合并（squash 418dee1），Issue #36 关闭。本代理未执行合并。STATUS 将 #36 移入已完成 | `make gates` | 进行中无下一条 |
 | 2026-09-23 | #38 心跳：POST /ingest/heartbeat 与 MQTT 共用 parseHeartbeatIngress。lastHeartbeatAt 决定在线；超时开「设备离线」，恢复心跳自动关闭。棚负责人与查看员沿用 ShedScope | 见 decisions.tsv；make test / make gates 待本轮验收 | PR 未合，不关 Issue #38 |
-| 2026-09-23 | #38 验收：心跳更新 lastHeartbeatAt、相同 reportedAt 为 duplicate、超时一条设备离线告警、恢复心跳自动关闭、列表含在线状态、棚负责人不见他棚、失败不渲染空表 | `make test` 退出码 0（API jest 57，web vitest 56）；`make gates` 退出码 0 | 本机无 Docker，未打开登录后的 /devices。PR 未合，不关 Issue #38 |
+| 2026-09-23 | #38 验收：心跳更新 lastHeartbeatAt、相同 reportedAt 为 duplicate、超时一条设备离线告警、恢复心跳自动关闭、列表含在线状态、棚负责人不见他棚、失败不渲染空表 | `make test` 退出码 0（API jest 57，web vitest 56）；`make gates` 退出码 0 | 本机无 Docker，未打开登录后的 /devices。PR #40 未合，不关 Issue #38 |

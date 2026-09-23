@@ -24,7 +24,7 @@
 - #36 `/harvest` 当日清单可修正成熟数与蘑菇数，写入审计（谁、何时、旧值→新值、棚/摄像头）；汇总随修正更新；棚隔离；查看员只读。PR #37 squash 合入 main（418dee1）；Issue closed. https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/37
 
 ## 进行中
-- #38 F-R8-02 设备心跳与离线告警：HTTP/MQTT 心跳写入 lastHeartbeatAt，超时产生设备离线告警，`/devices` 展示在线状态与最近心跳。PR 未合，不关 Issue。
+- #38 F-R8-02 设备心跳与离线告警：HTTP/MQTT 心跳写入 lastHeartbeatAt，超时产生设备离线告警，`/devices` 展示在线状态与最近心跳。PR #40 未合，不关 Issue。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/40
 
 ## 规范
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18
