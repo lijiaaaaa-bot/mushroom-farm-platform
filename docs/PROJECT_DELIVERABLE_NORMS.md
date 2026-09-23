@@ -6,6 +6,8 @@
 
 `facts.json` 从需求原文填写：把原文已经写明的规模、通道、角色等放进 `facts`。这些事实在文稿里按事实写，不要和【假定】或【假设】写在同一行。样例 JSON 以后放进 `json_samples`，门禁只检查文件存在且可 `JSON.parse`。
 
+上下文纪律见根目录 [`AGENTS.md`](../AGENTS.md)；2026 年 6–9 月讨论见 [`CONTEXT_ENGINEERING_2026_Jun-Sep.md`](./CONTEXT_ENGINEERING_2026_Jun-Sep.md)。
+
 当前门禁：
 
 - 文件名和一级标题不得含禁用元词（见 `facts.json` 的 `forbidden_name_substrings`）。
