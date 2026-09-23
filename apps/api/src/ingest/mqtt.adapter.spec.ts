@@ -5,7 +5,11 @@ import { DevicesService } from '../devices';
 import { IngestService } from './ingest.service';
 import { MqttIngestAdapter } from './mqtt.adapter';
 
-function loadFixture(name: string): { body: Record<string, unknown> } {
+function loadFixture(name: string): {
+  body: Record<string, unknown>;
+  shedCode?: string;
+  deviceCode?: string;
+} {
   return JSON.parse(
     readFileSync(
       join(__dirname, '../../../../packages/contracts/fixtures', name),
@@ -89,6 +93,28 @@ describe('MqttIngestAdapter', () => {
     expect(handle).not.toHaveBeenCalled();
     expect(handleEnvironment).not.toHaveBeenCalled();
     expect(heartbeat).toHaveBeenCalledWith('S01', 'BOX-1', 'ai_box', true);
+  });
+
+  it('routes the heartbeat fixture and drops unknown heartbeat fields', async () => {
+    const fixture = loadFixture('heartbeat.mqtt.json');
+    await deliver(
+      `mushroom/${fixture.shedCode}/${fixture.deviceCode}/heartbeat`,
+      fixture.body,
+    );
+    expect(heartbeat).toHaveBeenCalledWith(
+      'S01',
+      'EDGE-SIM-BOX',
+      'ai_box',
+      true,
+    );
+    heartbeat.mockClear();
+    await deliver('mushroom/S01/BOX-1/heartbeat', {
+      deviceType: 'ai_box',
+      online: true,
+      firmware: '1.2.3',
+    });
+    expect(heartbeat).not.toHaveBeenCalled();
+    expect(handle).not.toHaveBeenCalled();
   });
 
   it('routes environment topics away from recognition ingest', async () => {

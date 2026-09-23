@@ -8,17 +8,42 @@ import { ShedScope } from '../common/shed-scope';
 import {
   DEVICE_OFFLINE_AFTER_MS,
   DeviceType,
+  type AlertLevel,
   isDeviceType,
 } from '@mushroom/contracts';
+import { Alert } from '../entities/alert.entity';
 import { Device } from '../entities/device.entity';
 import { Shed } from '../entities/shed.entity';
 import { DeviceImportResult, RawDeviceRow } from './device-import';
+
+const DEVICE_OFFLINE_METRIC = 'device_offline';
+const OFFLINE_RECOVERED_NOTE = '心跳恢复，自动关闭';
+
+export interface HeartbeatResult {
+  accepted: true;
+  duplicate: boolean;
+  code: string;
+  shedCode: string;
+  onlineStatus: 'online' | 'offline';
+  lastHeartbeatAt: string | null;
+}
+
+/** 默认 5 分钟，见 contracts DEVICE_OFFLINE_AFTER_MS。环境变量可覆盖。 */
+export function deviceOfflineAfterMs(
+  raw = process.env.DEVICE_OFFLINE_AFTER_MS,
+): number {
+  if (raw === undefined || raw === '') return DEVICE_OFFLINE_AFTER_MS;
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEVICE_OFFLINE_AFTER_MS;
+  return parsed;
+}
 
 @Injectable()
 export class DevicesService {
   constructor(
     @InjectRepository(Device) private readonly devices: Repository<Device>,
     @InjectRepository(Shed) private readonly sheds: Repository<Shed>,
+    @InjectRepository(Alert) private readonly alerts: Repository<Alert>,
   ) {}
 
   async list(user: AuthUser, query: ListQuery) {
@@ -67,6 +92,7 @@ export class DevicesService {
         parentCode: input.parentCode ?? null,
         onlineStatus: 'offline',
         lastSeenAt: null,
+        lastHeartbeatAt: null,
         meta: {},
       }),
     );
@@ -164,6 +190,7 @@ export class DevicesService {
             parentCode: row.parentCode.trim() || null,
             onlineStatus: 'offline',
             lastSeenAt: null,
+            lastHeartbeatAt: null,
             meta: {},
           }),
         );
@@ -202,24 +229,60 @@ export class DevicesService {
     deviceCode: string,
     deviceType: string | undefined,
     online: boolean,
-  ) {
+    reportedAt?: string,
+  ): Promise<HeartbeatResult> {
     await this.ensureShed(shedCode);
+    const at = reportedAt ? new Date(reportedAt) : new Date();
+    let device = await this.devices.findOne({ where: { code: deviceCode } });
+    if (
+      reportedAt &&
+      device?.lastHeartbeatAt &&
+      at.getTime() <= device.lastHeartbeatAt.getTime()
+    ) {
+      return this.heartbeatResult(device, true);
+    }
     const type: DeviceType =
-      deviceType && isDeviceType(deviceType) ? deviceType : 'sensor';
-    await this.touch(shedCode, deviceCode, type, online);
+      deviceType && isDeviceType(deviceType)
+        ? deviceType
+        : (device?.type ?? 'sensor');
+    if (!device) {
+      device = this.devices.create({
+        code: deviceCode,
+        name: deviceCode,
+        type,
+        shedCode,
+        parentCode: null,
+        onlineStatus: 'offline',
+        lastSeenAt: null,
+        lastHeartbeatAt: null,
+        meta: { autoRegistered: true },
+      });
+    } else if (deviceType && isDeviceType(deviceType)) {
+      device.type = deviceType;
+    }
+    device.shedCode = shedCode;
+    device.lastSeenAt = at;
+    device.lastHeartbeatAt = at;
+    device.onlineStatus = online ? 'online' : 'offline';
+    device = await this.devices.save(device);
+    if (online) await this.closeOfflineAlerts(device, at);
+    else await this.openOfflineAlert(device, '上报离线');
+    return this.heartbeatResult(device, false);
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
-  async markStaleOffline() {
-    const cutoff = Date.now() - DEVICE_OFFLINE_AFTER_MS;
+  async markStaleOffline(now = new Date()) {
+    const cutoff = now.getTime() - deviceOfflineAfterMs();
     const online = await this.devices.find({
       where: { onlineStatus: 'online' },
     });
-    const stale = online.filter(
-      (device) => !device.lastSeenAt || device.lastSeenAt.getTime() < cutoff,
-    );
+    const stale = online.filter((device) => this.isStale(device, cutoff));
     if (!stale.length) return;
-    for (const device of stale) device.onlineStatus = 'offline';
+    for (const device of stale) {
+      device.onlineStatus = 'offline';
+      if (device.lastHeartbeatAt)
+        await this.openOfflineAlert(device, '超时未心跳');
+    }
     await this.devices.save(stale);
   }
 
@@ -239,14 +302,96 @@ export class DevicesService {
         parentCode: null,
         onlineStatus: online ? 'online' : 'offline',
         lastSeenAt: online ? new Date() : null,
+        lastHeartbeatAt: null,
         meta: { autoRegistered: true },
       });
     } else {
       device.shedCode = shedCode;
-      device.onlineStatus = online ? 'online' : 'offline';
       if (online) device.lastSeenAt = new Date();
+      if (!device.lastHeartbeatAt) {
+        device.onlineStatus = online ? 'online' : 'offline';
+      }
     }
     await this.devices.save(device);
+  }
+
+  private isStale(device: Device, cutoff: number): boolean {
+    const beat = device.lastHeartbeatAt?.getTime();
+    if (beat !== undefined && beat !== null) return beat < cutoff;
+    const seen = device.lastSeenAt?.getTime();
+    return seen === undefined || seen === null || seen < cutoff;
+  }
+
+  private heartbeatResult(device: Device, duplicate: boolean): HeartbeatResult {
+    return {
+      accepted: true,
+      duplicate,
+      code: device.code,
+      shedCode: device.shedCode,
+      onlineStatus: device.onlineStatus,
+      lastHeartbeatAt: device.lastHeartbeatAt
+        ? device.lastHeartbeatAt.toISOString()
+        : null,
+    };
+  }
+
+  private async openOfflineAlerts(deviceCode: string): Promise<Alert[]> {
+    const rows = await this.alerts.find({
+      where: { cameraCode: deviceCode, metric: DEVICE_OFFLINE_METRIC },
+    });
+    return rows.filter(
+      (row) => row.status === 'open' || row.status === 'acked',
+    );
+  }
+
+  private async openOfflineAlert(
+    device: Device,
+    reason: string,
+  ): Promise<boolean> {
+    const existing = await this.openOfflineAlerts(device.code);
+    if (existing.length) return false;
+    const timeoutMs = deviceOfflineAfterMs();
+    const minutes = Math.max(1, Math.round(timeoutMs / 60_000));
+    const level: AlertLevel =
+      timeoutMs >= 15 * 60 * 1000 ? 'severe' : 'warning';
+    await this.alerts.save(
+      this.alerts.create({
+        ruleId: null,
+        metric: DEVICE_OFFLINE_METRIC,
+        shedCode: device.shedCode,
+        cameraCode: device.code,
+        level,
+        status: 'open',
+        title: '设备离线',
+        message: `棚区 ${device.shedCode} 设备 ${device.code} ${reason}（阈值 ${minutes} 分钟）`,
+        metricValue: null,
+        threshold: timeoutMs,
+        ackedBy: null,
+        ackedAt: null,
+        ackNote: null,
+        closedBy: null,
+        closedAt: null,
+        closeNote: null,
+      }),
+    );
+    return true;
+  }
+
+  private async closeOfflineAlerts(device: Device, now: Date) {
+    const open = await this.openOfflineAlerts(device.code);
+    if (!open.length) return;
+    for (const alert of open) {
+      alert.status = 'closed';
+      alert.closedBy = 'system';
+      alert.closedAt = now;
+      alert.closeNote = OFFLINE_RECOVERED_NOTE;
+      if (!alert.ackedAt) {
+        alert.ackedBy = 'system';
+        alert.ackedAt = now;
+        alert.ackNote = '心跳恢复，自动确认';
+      }
+    }
+    await this.alerts.save(open);
   }
 
   private rejectRow(result: DeviceImportResult, row: number, reason: string) {

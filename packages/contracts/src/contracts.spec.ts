@@ -7,6 +7,7 @@ import {
   parseAlertNote,
   parseCreateAlert,
   parseEnvironmentIngress,
+  parseHeartbeatIngress,
   parseRecognitionIngress,
   transitionError,
 } from './index';
@@ -76,6 +77,28 @@ describe('golden fixtures', () => {
       const asRecognition = parseRecognitionIngress(fixture.body, new Date(String(fixture.clock)));
       assert.equal(asRecognition.ok, false, name);
     }
+  });
+
+  it('loads heartbeat fixtures', () => {
+    const mqtt = load('heartbeat.mqtt.json');
+    const fromTopic = parseHeartbeatIngress({
+      ...(mqtt.body as Record<string, unknown>),
+      shedCode: mqtt.shedCode,
+    });
+    assert.equal(fromTopic.ok, true);
+    if (fromTopic.ok) {
+      assert.equal(fromTopic.value.shedCode, 'S01');
+      assert.equal(fromTopic.value.deviceCode, 'EDGE-SIM-BOX');
+      assert.equal(fromTopic.value.deviceType, 'ai_box');
+      assert.equal(fromTopic.value.online, true);
+    }
+    const http = load('heartbeat.http.json');
+    const parsed = parseHeartbeatIngress(http.body);
+    assert.equal(parsed.ok, http.expect === 'ok');
+    const extra = load('heartbeat.unknown-field.json');
+    const rejected = parseHeartbeatIngress(extra.body);
+    assert.equal(rejected.ok, false);
+    if (!rejected.ok) assert.equal(rejected.code, extra.expect);
   });
 
   it('loads the snapshot key fixture', () => {

@@ -9,6 +9,7 @@ import { AuditService } from '../audit';
 import { AuthUser } from '../common/auth-user';
 import { RolesGuard } from '../common/guards';
 import { configureApp } from '../configure-app';
+import { Alert } from '../entities/alert.entity';
 import { Device } from '../entities/device.entity';
 import { Shed } from '../entities/shed.entity';
 import { DevicesController } from './devices.controller';
@@ -32,6 +33,7 @@ function memoryDevices() {
         parentCode: null,
         onlineStatus: 'offline' as const,
         lastSeenAt: null,
+        lastHeartbeatAt: null,
         meta: {},
         ...input,
         id: input.id ?? `device-${rows.length + 1}`,
@@ -97,6 +99,14 @@ describe('device batch import HTTP', () => {
         { provide: APP_GUARD, useClass: RolesGuard },
         { provide: getRepositoryToken(Device), useValue: devices },
         { provide: getRepositoryToken(Shed), useValue: sheds },
+        {
+          provide: getRepositoryToken(Alert),
+          useValue: {
+            find: async () => [],
+            create: (row: unknown) => row,
+            save: async (row: unknown) => row,
+          },
+        },
         { provide: AuditService, useValue: audit },
       ],
     }).compile();
@@ -161,6 +171,7 @@ describe('device batch import HTTP', () => {
       parentCode: null,
       onlineStatus: 'offline',
       lastSeenAt: null,
+      lastHeartbeatAt: null,
       meta: {},
       createdAt: new Date(),
     });

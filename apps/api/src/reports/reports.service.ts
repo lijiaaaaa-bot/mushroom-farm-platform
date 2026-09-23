@@ -67,9 +67,13 @@ export class ReportsService {
         { header: '类型', key: 'type', width: 12 },
         { header: '棚区', key: 'shedCode', width: 12 },
         { header: '在线状态', key: 'onlineStatus', width: 12 },
-        { header: '最后心跳', key: 'lastSeenAt', width: 24 },
+        { header: '最近心跳', key: 'lastHeartbeatAt', width: 24 },
+        { header: '最后在线', key: 'lastSeenAt', width: 24 },
       ],
-      rows.map((row) => ({ ...row })),
+      rows.map((row) => ({
+        ...row,
+        lastHeartbeatAt: row.lastHeartbeatAt ?? row.lastSeenAt,
+      })),
     );
   }
 

@@ -149,6 +149,47 @@ describe('DevicesView batch import', () => {
     wrapper.unmount();
   });
 
+  it('shows online, offline, and the latest heartbeat', async () => {
+    httpGet.mockResolvedValue({
+      data: {
+        items: [
+          { ...device, lastHeartbeatAt: device.lastSeenAt },
+          {
+            id: 'device-2',
+            code: 'BOX-S02',
+            name: '二号盒',
+            type: 'ai_box' as const,
+            shedCode: 'S02',
+            onlineStatus: 'offline',
+            lastSeenAt: null,
+            lastHeartbeatAt: null,
+          },
+        ],
+        total: 2,
+      },
+    });
+    const wrapper = await mountView();
+
+    expect(wrapper.text()).toContain('在线');
+    expect(wrapper.text()).toContain('离线');
+    expect(wrapper.text()).toContain('09:02');
+    expect(wrapper.text()).toContain('—');
+    expect(wrapper.text()).toContain('最近心跳');
+    expect(wrapper.html()).toContain('text-accent');
+    expect(wrapper.html()).toContain('bg-canvas');
+    wrapper.unmount();
+  });
+
+  it('does not render an empty table when the device list fails', async () => {
+    httpGet.mockRejectedValue(new Error('down'));
+    const wrapper = await mountView();
+
+    expect(wrapper.text()).toContain('请求失败');
+    expect(wrapper.text()).not.toContain('暂无设备');
+    expect(wrapper.find('table').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
   it('hides the import form for viewers', async () => {
     asUser('viewer');
     httpGet.mockResolvedValue({ data: { items: [device], total: 1 } });
