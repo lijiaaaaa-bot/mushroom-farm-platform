@@ -73,8 +73,6 @@ describe('DashboardView', () => {
     expect(wrapper.find('.kpi-tile').exists()).toBe(false);
     expect(wrapper.find('.tb-kpi-strip').exists()).toBe(false);
     expect(wrapper.text()).toContain('棚区平面');
-    expect(wrapper.text()).toContain('221');
-    expect(wrapper.text()).toContain('22.4℃');
     expect(wrapper.text()).toContain('高温');
     expect(wrapper.text()).toContain('CAM-S01-01');
     expect(wrapper.find('.overview-chart').exists()).toBe(true);
@@ -183,13 +181,15 @@ describe('DashboardView', () => {
     const pin = wrapper.get('.tb-pin');
     expect(pin.attributes('data-tone')).toBe('severe');
     expect(pin.text()).toContain('S01');
-    expect(pin.text()).toContain('22.4℃');
+    expect(pin.find('.tb-plot').exists()).toBe(false);
+    expect(wrapper.find('.tb-bays').exists()).toBe(false);
     expect(pin.attributes('style')).toContain('left: 32%');
     expect(pin.attributes('style')).toContain('top: 48%');
     expect(wrapper.text()).toContain('未标坐标');
     expect(wrapper.text()).toContain('S02');
-    expect(wrapper.text()).toContain('一号棚');
-    expect(wrapper.text()).toContain('1/1');
+    expect(wrapper.get('.tb-entities').text()).toContain('一号棚');
+    expect(wrapper.get('.tb-entities').text()).toContain('22.4℃');
+    expect(wrapper.get('.tb-entities').text()).toContain('1/1');
     expect(wrapper.find('.overview-temp').exists()).toBe(true);
     expect(chartInit).toHaveBeenCalledTimes(2);
     const tempCall = setOption.mock.calls.find((call) =>

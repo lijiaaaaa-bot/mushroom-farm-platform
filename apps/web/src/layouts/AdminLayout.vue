@@ -8,9 +8,9 @@ import AlertInbox from '../components/AlertInbox.vue';
 const route = useRoute();
 const router = useRouter();
 const open = ref(false);
-const links: Array<{ to: string; label: string; prominent?: boolean }> = [
+const links: Array<{ to: string; label: string }> = [
   { to: '/', label: '总览' },
-  { to: '/big-screen', label: '基地大屏', prominent: true },
+  { to: '/big-screen', label: '基地大屏' },
   { to: '/devices', label: '设备' },
   { to: '/recognitions', label: '识别记录' },
   { to: '/environment', label: '环境读数' },
@@ -39,13 +39,7 @@ function leave() {
   <div class="admin-shell flex min-h-screen flex-col bg-canvas text-ink" data-theme="farm-ops-light">
     <header class="admin-topbar flex items-center gap-3 border-b border-line bg-white px-3 py-2 md:px-4">
       <button class="btn-ghost md:hidden" type="button" @click="open = !open">菜单</button>
-      <div class="flex min-w-0 items-center gap-2.5">
-        <span class="admin-mark" aria-hidden="true"></span>
-        <div class="min-w-0">
-          <p class="text-[11px] leading-none text-mist">食用菌基地</p>
-          <p class="truncate text-sm font-semibold leading-5 text-ink">食用菌种植管理</p>
-        </div>
-      </div>
+      <p class="truncate text-sm font-semibold text-ink">食用菌种植管理</p>
       <p class="hidden text-sm text-mist sm:block">{{ route.meta.title }}</p>
       <div class="ml-auto flex items-center gap-2 text-sm">
         <router-link class="btn-ghost" to="/big-screen">基地大屏</router-link>
@@ -64,16 +58,11 @@ function leave() {
             v-for="link in links"
             :key="link.to"
             :to="link.to"
-            class="flex items-center justify-between rounded-md px-2.5 py-1.5 text-[13px] text-ink hover:bg-canvas"
-            :class="link.prominent ? 'font-semibold' : ''"
-            exact-active-class="!bg-sidebar-active !text-accent"
+            class="flex items-center rounded-md px-2.5 py-1.5 text-[13px] text-ink hover:bg-canvas"
+            exact-active-class="!bg-sidebar-active"
             @click="open = false"
           >
             <span>{{ link.label }}</span>
-            <span
-              v-if="link.prominent"
-              class="rounded bg-accent/10 px-1.5 py-0.5 text-[10px] font-medium leading-none text-accent"
-            >大屏</span>
           </router-link>
         </nav>
       </aside>

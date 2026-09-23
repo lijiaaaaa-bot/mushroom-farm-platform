@@ -6,16 +6,33 @@ const props = defineProps<{
   id: string;
   snapshotObjectKey?: string | null;
   snapshotUrl?: string | null;
+  emptyLabel?: string;
 }>();
 
 const open = ref(false);
 const loading = ref(false);
 const error = ref('');
 const imageUrl = ref('');
+const ownedUrl = ref('');
 const hasSnapshot = computed(() => Boolean(props.snapshotObjectKey || props.snapshotUrl));
+const emptyLabel = computed(() => props.emptyLabel || '无抓拍');
+const mediaText = computed(() => {
+  if (error.value === '无抓拍' || error.value === '抓拍不可用') return emptyLabel.value;
+  return error.value || emptyLabel.value;
+});
+
+function directImage(url: string | null | undefined) {
+  const value = url?.trim() ?? '';
+  if (/^data:image\//i.test(value)) return value;
+  if (/^https?:\/\//i.test(value)) return value;
+  return '';
+}
 
 async function load() {
-  if (!hasSnapshot.value || imageUrl.value || loading.value) return;
+  if (!hasSnapshot.value || ownedUrl.value || loading.value) return;
+  const direct = directImage(props.snapshotUrl);
+  if (direct && !imageUrl.value) imageUrl.value = direct;
+  if (direct.startsWith('data:') && !props.snapshotObjectKey) return;
   loading.value = true;
   error.value = '';
   try {
@@ -23,13 +40,15 @@ async function load() {
       responseType: 'blob',
     });
     if (!response.data || response.data.size === 0) {
-      error.value = '无抓拍';
+      if (!imageUrl.value) error.value = emptyLabel.value;
       return;
     }
-    imageUrl.value = URL.createObjectURL(response.data);
+    ownedUrl.value = URL.createObjectURL(response.data);
+    imageUrl.value = ownedUrl.value;
   } catch (cause) {
-    imageUrl.value = '';
-    error.value = errorText(cause);
+    if (!imageUrl.value) {
+      error.value = errorText(cause);
+    }
   } finally {
     loading.value = false;
   }
@@ -45,18 +64,16 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  if (imageUrl.value) URL.revokeObjectURL(imageUrl.value);
+  if (ownedUrl.value) URL.revokeObjectURL(ownedUrl.value);
 });
 </script>
 
 <template>
   <figure class="result-card">
-    <div class="result-card-media">
+    <div class="result-card-media" :class="{ 'is-empty': !imageUrl }">
       <img v-if="imageUrl" :src="imageUrl" alt="抓拍" />
       <span v-else-if="loading">加载中…</span>
-      <span v-else-if="error">{{ error }}</span>
-      <span v-else-if="!hasSnapshot">无抓拍</span>
-      <span v-else>加载中…</span>
+      <span v-else>{{ mediaText }}</span>
     </div>
     <figcaption class="result-card-caption">
       <slot />
@@ -68,8 +85,8 @@ onBeforeUnmount(() => {
       @click.self="open = false"
     >
       <div class="panel max-w-3xl bg-white">
-        <p v-if="loading" class="text-mist">加载中…</p>
-        <p v-else-if="error" class="text-danger">{{ error }}</p>
+        <p v-if="loading && !imageUrl" class="text-mist">加载中…</p>
+        <p v-else-if="error && !imageUrl" class="text-danger">{{ error }}</p>
         <img
           v-else-if="imageUrl"
           :src="imageUrl"

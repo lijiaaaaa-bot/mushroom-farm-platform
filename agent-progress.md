@@ -3,8 +3,8 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：总览与基地大屏向 ThingsBoard 运营台靠拢（浅色窄导航、平面芯片、夜色抓拍卡）
-- 进行中文件：`apps/web/src/layouts/AdminLayout.vue`、`apps/web/src/views/DashboardView.vue`、`apps/web/src/views/BigScreenView.vue`
+- 本会话目标：Issue #63 去掉总览/大屏大色块，拉高状态对比，标题改短
+- 进行中文件：`apps/web/src/layouts/AdminLayout.vue`、`apps/web/src/views/DashboardView.vue`、`apps/web/src/views/BigScreenView.vue`、`apps/web/src/components/ResultCard.vue`
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -55,3 +55,4 @@
 | 2026-09-23 | #55 rebase 到含 #60 的 main。总览浅色运营台不动。`/big-screen` 保留抓拍墙、多区与时间轴，根节点 `data-skin=tb-night` | `make test` 退出码 0（API jest 95，web vitest 93）；`make gates` 退出码 0 | 未打开登录后的页面。PR #59 标为可审，未合，不关 Issue #55 |
 | 2026-09-23 | `GET /api/v1/alerts/unread`：`alert_reads.alert_id` 与 `alerts.id` 同为 uuid。`002` 新库直接建 uuid；`007` 对已有 varchar 列先丢空值和非 uuid，再 `ALTER ... USING btrim(alert_id)::uuid`。未读列表与 unreadCount 在 API jest 中覆盖 varchar=uuid。`.local-sim/live-feeder.mjs` 不在 main 与历史提交，不另加演示脚本 | `make test` 退出码 0（API jest 98，web vitest 93）；`make gates` 退出码 0。PGlite 跑过旧 varchar 与新 uuid 的未读 COUNT | PR #61。不关其他 Issue |
 | 2026-09-23 | 总览去掉 8 格指标条和深绿侧栏。顶栏放名称，左侧 188px 白导航，基地大屏仍在总览后。平面用床位底图和状态色块，芯片写温度、湿度、在线；缺坐标的棚落在底边并写未标坐标。温度图虚线只画已启用的温度过高/过低规则。近 7 日为面积图。大屏夜色仍只在 `.screen[data-skin=tb-night]`，抓拍空态是虚线框「无抓拍」。分支已 rebase 到含 #61 的 main，未改 `007` 与 alert_reads uuid | `make test` 退出码 0（API jest 98，web vitest 93）；`make gates` 退出码 0。本机无 Docker，用本地 mock 打开总览、悬停芯片、窄屏菜单、设备页、大屏指挥/抓拍墙/多区 | 下一人：对照 ThingsBoard 浅色总览和夜色大屏看总览平面与抓拍墙。不改接入接口 |
+| 2026-09-24 | #63：白导航去掉实心绿标和角标口号；总览标题只留短名，平面改为状态色钉，告警程度用红/琥珀胶囊，在线深绿字、离线灰字，温度阈值线加粗。大屏抓拍空态为细框「无图」，`snapshotUrl` 的 http/data 与对象存储 JPEG 直接出图，媒体区不再铺实心品牌绿 | web vitest 93、vue-tsc、web eslint、API jest 98、API eslint、`make gates` 均通过。Chrome 1440 总览与 1600 大屏：品牌绿像素低于 0.2%，侧栏左侧 200px 为 0 | 不关 Issue #63。未跑 `make test` 里的 contracts node 与边界脚本 |

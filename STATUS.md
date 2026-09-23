@@ -1,6 +1,6 @@
 # STATUS｜mushroom-farm-platform
 
-更新：2026-09-23 22:45（Asia/Shanghai）
+更新：2026-09-24 01:50（Asia/Shanghai）
 仓：https://github.com/lijiaaaaa-bot/mushroom-farm-platform
 
 进度只认：已合并 PR + 已关闭 Issue + 本文件一行。聊天文字不算交付。
@@ -30,9 +30,10 @@
 - #54 F-R3-06 严重告警推送企微/钉钉：`WECOM_WEBHOOK_URL` 与/或 `DINGTALK_WEBHOOK_URL`（可选 `DINGTALK_WEBHOOK_SECRET`）。未配置则不发送、不报错。推送失败只记日志。告警页进入 `/phase2/wecom`。PR #58 squash 合入 main（e948335）；Issue #54 已关闭。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/58
 - #60 管理端总览改为 ThingsBoard 浅色运营台：指标条、已配置坐标的棚区平面、棚区表、温度图（阈值来自已启用规则）、近 7 日成熟/总数/病害、右侧告警表。侧栏沿用 #57。PR #60 squash 合入 main（af813be）。
 - `GET /api/v1/alerts/unread`：`alert_reads.alert_id` 与 `alerts.id` 同为 uuid。已有库由 `007_alert_reads_alert_id_uuid.sql` 丢掉空值和非 uuid 行后 `ALTER ... USING btrim(alert_id)::uuid`。未读计数不再因 `character varying = uuid` 返回 500。PR #61。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/61
+- #62 管理端总览浅色顶栏与白导航，棚区平面床位底图与状态芯片，大屏夜色抓拍卡收紧。PR #62 squash 合入 main（54dbcf4）。
 
 ## 进行中
-- 管理端总览改为浅色顶栏加 188px 白导航；棚区平面用床位底图和状态色块，芯片显示温度、湿度、在线；温度图虚线只来自已启用的温度规则。`/big-screen` 夜色仍只在该页根节点，抓拍卡与面板收紧。
+- #63 总览与大屏去掉大色块：白导航、短标题、平面改为状态色钉、抓拍墙无图为细框「无图」，有图出 JPEG。阈值线与在线/离线/一般/严重可扫。PR 未合，不关 Issue。
 - #55 F-R2-04 基地大屏：管理端侧栏与顶栏进入 `/big-screen`。默认一屏为指标、棚区平面、抓拍墙、告警与环境；可切抓拍墙或带时间轴的多区。时间轴跳到 `/growth-trends` 或识别记录的上海日筛选。夜色投屏皮肤 `data-skin=tb-night` 只在这一页。PR #59 已 rebase 到含 #60 的 main，未合，不关 Issue。
 - #48 管理端 Family B 轻量农事风落地（对照调查 04/06 样张；云端改代码中）
 - #47 F-R4-01 / F-R4-02 生长趋势日聚合：`daily_aggregates` 按棚与摄像头保存当日最新蘑菇数和菌盖直径均值；识别入库后刷新，每小时回写昨日与当日；`GET /api/v1/growth-trends?days=7|30` 按棚隔离；`/growth-trends` 只画已有日点。PR #52 未合，不关 Issue。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/52
