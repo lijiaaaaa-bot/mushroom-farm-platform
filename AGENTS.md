@@ -13,7 +13,7 @@ NestJS + Vue3/TS/Vite/Tailwind + PostgreSQL/Redis/MinIO + MQTT；契约 `package
 - 事实源：根目录 `facts.json`、已合并 PR、关闭的 Issue、`STATUS.md`
 
 ## 上游 Day-0
-- 包：`project-harness-day0` v0.1.0，Origin https://origin.cursor.com/lijiaaaaa/tmp-3e65e753ea9c25fb
+- 包：`project-harness-day0` v0.1.0，https://github.com/lijiaaaaa-bot/project-harness-day0
 - 门禁、协议、agent 规范、检出结构先改 harness；本仓是消费方，禁止只在本仓补故事
 - 其他项目 Day-0：按 harness `INSTALL.md` 拷贝
 - 本仓仍跑本地 `make gates`；快照说明见 `docs/HARNESS.md`

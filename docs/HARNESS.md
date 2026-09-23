@@ -1,6 +1,6 @@
 # 上游 Day-0 门禁
 
-本仓消费 [project-harness-day0](https://origin.cursor.com/lijiaaaaa/tmp-3e65e753ea9c25fb)。包标识：`project-harness-day0` v0.1.0。
+本仓消费 [project-harness-day0](https://github.com/lijiaaaaa-bot/project-harness-day0)。包标识：`project-harness-day0` v0.1.0。
 
 ## 改动去向
 

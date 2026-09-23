@@ -21,4 +21,4 @@
 
 ## 上游 harness
 
-元改动（门禁、协议、agent 规范、检出结构）先进入 [project-harness-day0](https://origin.cursor.com/lijiaaaaa/tmp-3e65e753ea9c25fb) v0.1.0。本仓是消费方：禁止只改本仓故事或文稿、不回 harness。其他项目 Day-0 从该仓 `INSTALL.md` 拷贝。本仓 `scripts/gates` 继续由 `make gates` 执行。说明见 [`HARNESS.md`](./HARNESS.md)。
+元改动（门禁、协议、agent 规范、检出结构）先进入 [project-harness-day0](https://github.com/lijiaaaaa-bot/project-harness-day0) v0.1.0。本仓是消费方：禁止只改本仓故事或文稿、不回 harness。其他项目 Day-0 从该仓 `INSTALL.md` 拷贝。本仓 `scripts/gates` 继续由 `make gates` 执行。说明见 [`HARNESS.md`](./HARNESS.md)。
