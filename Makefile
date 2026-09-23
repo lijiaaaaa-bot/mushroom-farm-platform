@@ -31,6 +31,7 @@ test: contracts lint
 	npm --prefix apps/api test
 	npm --prefix apps/web run typecheck
 
+# HTTP 黄金报文，以及 Mosquitto 上的 recognition.mqtt.json（主题 mushroom/+/+/recognition）
 smoke: contracts
 	npm --prefix apps/api install
 	$(MAKE) up

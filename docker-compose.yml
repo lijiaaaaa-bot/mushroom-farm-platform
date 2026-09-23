@@ -36,3 +36,20 @@ services:
       - "1883:1883"
     volumes:
       - ./infra/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mosquitto_pub",
+          "-h",
+          "127.0.0.1",
+          "-p",
+          "1883",
+          "-t",
+          "mushroom/health",
+          "-m",
+          "ok",
+        ]
+      interval: 3s
+      timeout: 3s
+      retries: 30
