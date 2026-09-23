@@ -56,7 +56,10 @@ function memoryReadings() {
       where: { idempotencyKey?: string; id?: string };
     }) =>
       rows.find((row) => {
-        if (where.idempotencyKey && row.idempotencyKey !== where.idempotencyKey) {
+        if (
+          where.idempotencyKey &&
+          row.idempotencyKey !== where.idempotencyKey
+        ) {
           return false;
         }
         if (where.id && row.id !== where.id) return false;
@@ -67,7 +70,11 @@ function memoryReadings() {
         (row) => row.idempotencyKey === input.idempotencyKey,
       );
       if (clash) {
-        throw new QueryFailedError('INSERT', [], { code: '23505' });
+        const driverError = new Error('duplicate key') as Error & {
+          code: string;
+        };
+        driverError.code = '23505';
+        throw new QueryFailedError('INSERT', [], driverError);
       }
       const saved = {
         ...input,
@@ -182,7 +189,11 @@ describe('environment ingest', () => {
         },
         {
           provide: getRepositoryToken(RecognitionRecord),
-          useValue: { create: jest.fn(), save: recognitionSave, findOne: jest.fn() },
+          useValue: {
+            create: jest.fn(),
+            save: recognitionSave,
+            findOne: jest.fn(),
+          },
         },
         { provide: getRepositoryToken(EnvironmentReading), useValue: readings },
         {
@@ -351,12 +362,12 @@ describe('environment ingest', () => {
       .set('x-test-role', 'super_admin');
 
     expect(manager.status).toBe(200);
-    expect(manager.body.items.map((item: { shedCode: string }) => item.shedCode)).toEqual([
-      'S01',
-    ]);
-    expect(viewer.body.items.map((item: { shedCode: string }) => item.shedCode)).toEqual([
-      'S01',
-    ]);
+    expect(
+      manager.body.items.map((item: { shedCode: string }) => item.shedCode),
+    ).toEqual(['S01']);
+    expect(
+      viewer.body.items.map((item: { shedCode: string }) => item.shedCode),
+    ).toEqual(['S01']);
     expect(crossed.status).toBe(403);
     expect(emptyScope.body).toMatchObject({ items: [], total: 0 });
     expect(admin.body.total).toBe(2);
