@@ -1,0 +1,2 @@
+time	phase	decision	reason	evidence	result
+2026-09-23T10:50:00Z	decide	未读用 alert_reads（user_id + alert_id），不改 alerts.status。顶栏每 15 秒 GET /alerts/unread，不用 SSE/WebSocket。浏览器 Notification 仅在 permission=granted 时构造；requestPermission 拒绝或抛错则只留站内。	确认/关闭仍是告警闭环。已读是登录用户自己的未读计数。仓内没有现成的 WS 网关，轮询与 API 测试打同一个接口。	infra/migrations/002_alert_reads.sql	open

@@ -3,8 +3,8 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：#30 `/devices` 摄像头 CSV 批量导入（进行中，PR 未合则不关 Issue）
-- 进行中文件：`apps/api/src/devices/`、`apps/web/src/views/DevicesView.vue`、`evidence/overnight-mvp-device-batch-import/decisions.tsv`
+- 本会话目标：#32 F-R3-05 站内告警通知（进行中，PR 未合则不关 Issue）
+- 进行中文件：`apps/api/src/alerts/`、`apps/web/src/components/AlertInbox.vue`、`evidence/overnight-mvp-inapp-alert-notify/decisions.tsv`
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -25,3 +25,4 @@
 | 2026-09-23 | STATUS：#23 移入已完成。PR #24 squash 合入 main（c560613）；`/alert-rules` 管理员可写；Issue #23 已关闭 | `make gates`；`gh pr view 24` MERGED；`gh issue view 23` CLOSED | 无 |
 | 2026-09-23 | #30 摄像头批量导入：POST /devices/import 接受 CSV 文件、CSV 文本或 JSON 行。设备编码冲突跳过且不改原档案。棚不存在或无权只失败该行。超管、生产管理员、棚负责人可导入；查看员 403 | `make test` 与 `make gates` 退出码 0（API jest 28，web vitest 36） | PR #31 未合，不关 Issue #30 |
 | 2026-09-23 | #26 病害页与抓拍打开：GET /diseases 过滤 diseaseCount>0；GET /ingest/recognitions/:id/snapshot 读 MinIO 或原图 URL；棚隔离仍走 ShedScope | `make test` 与 `make gates` 退出码 0（API 19，web vitest 31）；不关 Issue #26 | PR #29 未合 |
+| 2026-09-23 | #32 站内未读：GET /alerts/unread、POST /alerts/:id/read、POST /alerts/read-all。已读按用户记在 alert_reads，不改告警状态。顶栏 15 秒轮询。浏览器通知仅在授权后；拒绝不抛错 | `make test` 与 `make gates` 待本轮退出码 | PR 未开，不关 Issue #32 |

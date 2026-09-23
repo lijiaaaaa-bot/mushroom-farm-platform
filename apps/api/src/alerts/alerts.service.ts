@@ -17,6 +17,7 @@ import {
   transitionError,
 } from '@mushroom/contracts';
 import { AlertRule } from '../entities/alert-rule.entity';
+import { AlertRead } from '../entities/alert-read.entity';
 import { Alert } from '../entities/alert.entity';
 
 @Injectable()
@@ -24,6 +25,7 @@ export class AlertsService {
   constructor(
     @InjectRepository(Alert) private readonly alerts: Repository<Alert>,
     @InjectRepository(AlertRule) private readonly rules: Repository<AlertRule>,
+    @InjectRepository(AlertRead) private readonly reads: Repository<AlertRead>,
   ) {}
 
   async list(user: AuthUser, query: ListQuery) {
@@ -44,6 +46,40 @@ export class AlertsService {
       .take(page.pageSize)
       .getManyAndCount();
     return { items, total, page: page.page, pageSize: page.pageSize };
+  }
+
+  async listUnread(user: AuthUser) {
+    const limit = 20;
+    const unreadCount = await this.unreadQuery(user).getCount();
+    const rows = await this.unreadQuery(user)
+      .orderBy('a.createdAt', 'DESC')
+      .take(limit)
+      .getMany();
+    return {
+      unreadCount,
+      items: rows.map((row) => ({
+        id: row.id,
+        level: row.level,
+        shedCode: row.shedCode,
+        createdAt: row.createdAt,
+        title: row.title,
+        message: row.message,
+      })),
+    };
+  }
+
+  async markRead(user: AuthUser, id: string) {
+    const alert = await this.require(user, id);
+    await this.saveRead(user.id, alert.id);
+    return { id: alert.id, read: true };
+  }
+
+  async markAllRead(user: AuthUser) {
+    const rows = await this.unreadQuery(user).getMany();
+    for (const row of rows) {
+      await this.saveRead(user.id, row.id);
+    }
+    return { marked: rows.length };
   }
 
   async create(
@@ -180,6 +216,33 @@ export class AlertsService {
       rule.level = patch.level;
     }
     return this.rules.save(rule);
+  }
+
+  private unreadQuery(user: AuthUser) {
+    const scope = ShedScope.fromUser(user);
+    const qb = this.alerts
+      .createQueryBuilder('a')
+      .leftJoin(
+        AlertRead,
+        'r',
+        'r.alertId = a.id AND r.userId = :userId',
+        { userId: user.id },
+      )
+      .where('r.id IS NULL');
+    this.applyScope(qb, scope);
+    return qb;
+  }
+
+  private async saveRead(userId: string, alertId: string) {
+    const existing = await this.reads.findOne({ where: { userId, alertId } });
+    if (existing) return existing;
+    try {
+      return await this.reads.save(this.reads.create({ userId, alertId }));
+    } catch (error) {
+      const again = await this.reads.findOne({ where: { userId, alertId } });
+      if (again) return again;
+      throw error;
+    }
   }
 
   private async require(user: AuthUser, id: string) {
