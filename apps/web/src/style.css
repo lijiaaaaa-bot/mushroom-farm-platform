@@ -12,6 +12,8 @@
   --text-primary: #1F2329;
   --text-secondary: #646A73;
   --accent: #2F9E44;
+  --press: #1B7A4E;
+  --grid: #EEF1F4;
   --warn: #F59E0B;
   --critical: #E03131;
   --line: #E5E6EB;
@@ -35,7 +37,7 @@ body {
 
 @layer components {
   .panel {
-    @apply rounded-lg border border-line bg-panel p-4 shadow-sm;
+    @apply rounded-lg border border-line bg-panel p-4 shadow-none;
   }
   .field {
     @apply w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink outline-none ring-accent/30 placeholder:text-mist focus:ring-2;
@@ -131,4 +133,148 @@ body {
 .level-pill-warn {
   color: var(--warn);
   border-color: var(--warn);
+}
+
+.tb-board {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tb-kpi-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+}
+
+@media (min-width: 1280px) {
+  .tb-kpi-strip {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+}
+
+.tb-kpi-strip .kpi-tile {
+  padding: 10px 12px;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.tb-kpi-strip .kpi-tile p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.tb-kpi-value {
+  margin-top: 2px;
+  color: var(--text-primary);
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.tb-kpi-sub {
+  margin-left: 2px;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.tb-top,
+.tb-bottom {
+  display: grid;
+  gap: 12px;
+}
+
+.tb-top {
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr);
+}
+
+.tb-bottom {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(260px, 0.92fr);
+}
+
+@media (max-width: 1100px) {
+  .tb-top,
+  .tb-bottom {
+    grid-template-columns: 1fr;
+  }
+}
+
+.tb-card {
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--bg-card);
+}
+
+.tb-card h2 {
+  margin: 0 0 8px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tb-floor {
+  position: relative;
+  height: 240px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  background-color: var(--bg-app-alt);
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 32px 32px, 32px 32px;
+}
+
+.tb-floor-empty,
+.tb-note {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.tb-floor-empty {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+}
+
+.tb-pin {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 18px;
+  transform: translate(-50%, -120%);
+}
+
+.tb-pin-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.tb-chart {
+  height: 240px;
+  width: 100%;
+}
+
+.overview-alarms th,
+.overview-alarms td {
+  white-space: nowrap;
 }

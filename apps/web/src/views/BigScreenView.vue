@@ -419,7 +419,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="screen">
+  <div class="screen" data-skin="tb-night">
     <header class="zone top">
       <div class="brand">
         <span class="mark" aria-hidden="true"></span>
@@ -1106,5 +1106,82 @@ onBeforeUnmount(() => {
   .detail dl {
     grid-template-columns: 1fr;
   }
+}
+
+.screen[data-skin='tb-night'] {
+  background: #0b1e33;
+  color: #e7eef6;
+  color-scheme: dark;
+}
+
+.screen[data-skin='tb-night'] .zone,
+.screen[data-skin='tb-night'] .tile,
+.screen[data-skin='tb-night'] .env-tile,
+.screen[data-skin='tb-night'] .detail,
+.screen[data-skin='tb-night'] .row,
+.screen[data-skin='tb-night'] .point,
+.screen[data-skin='tb-night'] .text-btn {
+  background: #12304a;
+  border-color: #1e4a6e;
+  color: #e7eef6;
+}
+
+.screen[data-skin='tb-night'] .top h1,
+.screen[data-skin='tb-night'] .zone-head h2,
+.screen[data-skin='tb-night'] .detail h3,
+.screen[data-skin='tb-night'] .clock,
+.screen[data-skin='tb-night'] .point-code,
+.screen[data-skin='tb-night'] .row-title,
+.screen[data-skin='tb-night'] .detail dd {
+  color: #e7eef6;
+}
+
+.screen[data-skin='tb-night'] .muted,
+.screen[data-skin='tb-night'] .eyebrow,
+.screen[data-skin='tb-night'] .tile-label,
+.screen[data-skin='tb-night'] .caption,
+.screen[data-skin='tb-night'] .sync,
+.screen[data-skin='tb-night'] .who,
+.screen[data-skin='tb-night'] .row-sub,
+.screen[data-skin='tb-night'] .row-meta,
+.screen[data-skin='tb-night'] .point-meta,
+.screen[data-skin='tb-night'] .zone-head span,
+.screen[data-skin='tb-night'] .legend,
+.screen[data-skin='tb-night'] .detail dt,
+.screen[data-skin='tb-night'] .floor-empty,
+.screen[data-skin='tb-night'] .ticker-count {
+  color: #9fb3c8;
+}
+
+.screen[data-skin='tb-night'] .floor {
+  border-color: #1e4a6e;
+  background:
+    linear-gradient(#1e4666 1px, transparent 1px),
+    linear-gradient(90deg, #1e4666 1px, transparent 1px),
+    #0e2942;
+  background-size: 40px 40px, 40px 40px, auto;
+}
+
+.screen[data-skin='tb-night'] .mark {
+  background: #1f6b4a;
+  border-color: #1f6b4a;
+}
+
+.screen[data-skin='tb-night'] .tile-value,
+.screen[data-skin='tb-night'] .env-value,
+.screen[data-skin='tb-night'] .detail-code,
+.screen[data-skin='tb-night'] .ticker-label {
+  color: #6fce8a;
+}
+
+.screen[data-skin='tb-night'] .point.on,
+.screen[data-skin='tb-night'] .point:hover,
+.screen[data-skin='tb-night'] .text-btn:hover {
+  background: #184060;
+  border-color: #6fce8a;
+}
+
+.screen[data-skin='tb-night'] .aisle path {
+  stroke: #2a5a80;
 }
 </style>
