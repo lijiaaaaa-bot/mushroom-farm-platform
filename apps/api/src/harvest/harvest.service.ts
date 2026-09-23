@@ -1,4 +1,8 @@
-import { Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuthUser } from '../common/auth-user';
@@ -16,6 +20,19 @@ export interface HarvestItem {
   avgCapDiameter: number | null;
   diseaseCount: number;
   diseaseLevel: number;
+}
+
+export interface HarvestCountChange {
+  old: number;
+  new: number;
+}
+
+export interface HarvestCorrection {
+  item: HarvestItem;
+  changes: {
+    matureCount?: HarvestCountChange;
+    mushroomCount?: HarvestCountChange;
+  };
 }
 
 @Injectable()
@@ -62,4 +79,51 @@ export class HarvestService {
     );
     return rows as HarvestItem[];
   }
+
+  async correct(
+    user: AuthUser,
+    id: string,
+    patch: { matureCount?: number; mushroomCount?: number },
+  ): Promise<HarvestCorrection> {
+    if (patch.matureCount === undefined && patch.mushroomCount === undefined) {
+      throw new BadRequestException('请提供成熟数或蘑菇数');
+    }
+    const record = await this.records.findOne({ where: { id } });
+    if (!record) throw new NotFoundException('采摘记录不存在');
+    ShedScope.fromUser(user).assert(record.shedCode);
+
+    const matureCount = patch.matureCount ?? record.matureCount;
+    const mushroomCount = patch.mushroomCount ?? record.mushroomCount;
+    if (matureCount > mushroomCount) {
+      throw new BadRequestException('成熟数不能大于蘑菇数');
+    }
+
+    const changes: HarvestCorrection['changes'] = {};
+    if (matureCount !== record.matureCount) {
+      changes.matureCount = { old: record.matureCount, new: matureCount };
+    }
+    if (mushroomCount !== record.mushroomCount) {
+      changes.mushroomCount = { old: record.mushroomCount, new: mushroomCount };
+    }
+    if (changes.matureCount || changes.mushroomCount) {
+      record.matureCount = matureCount;
+      record.mushroomCount = mushroomCount;
+      await this.records.save(record);
+    }
+    return { item: toHarvestItem(record), changes };
+  }
+}
+
+function toHarvestItem(record: RecognitionRecord): HarvestItem {
+  return {
+    id: record.id,
+    shedCode: record.shedCode,
+    cameraCode: record.cameraCode,
+    recognizedAt: record.recognizedAt,
+    mushroomCount: record.mushroomCount,
+    matureCount: record.matureCount,
+    avgCapDiameter: record.avgCapDiameter,
+    diseaseCount: record.diseaseCount,
+    diseaseLevel: record.diseaseLevel,
+  };
 }
