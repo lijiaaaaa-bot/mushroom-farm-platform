@@ -128,7 +128,8 @@ export const LIMITS = {
   humidityPct: { min: 0, max: 100 },
   co2Ppm: { min: 0, max: 20_000 },
   substrateMoisturePct: { min: 0, max: 100 },
-  recognizedAtPastDays: 7,
+  /** 识别与环境补传窗口，与时序明细在线保留（TIMESERIES_RETENTION_DAYS）一致。 */
+  recognizedAtPastDays: TIMESERIES_RETENTION_DAYS,
   recognizedAtFutureMinutes: 10,
 } as const;
 

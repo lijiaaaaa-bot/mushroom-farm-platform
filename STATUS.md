@@ -1,6 +1,6 @@
 # STATUS｜mushroom-farm-platform
 
-更新：2026-09-23 21:05（Asia/Shanghai）  
+更新：2026-09-23 21:43（Asia/Shanghai）  
 仓：https://github.com/lijiaaaaa-bot/mushroom-farm-platform
 
 进度只认：已合并 PR + 已关闭 Issue + 本文件一行。聊天文字不算交付。
@@ -38,6 +38,7 @@
 
 ## 规范
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18
+- 识别与环境补传窗口为 90 天（`LIMITS.recognizedAtPastDays`），与时序明细在线保留一致。
 
 ## 阻塞
 - 无
