@@ -3,8 +3,8 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：#38 F-R8-02 设备心跳与离线告警（进行中，PR 未合则不关 Issue）
-- 进行中文件：`apps/api/src/devices/devices.service.ts`、`apps/web/src/views/DevicesView.vue`、`evidence/overnight-mvp-device-heartbeat-offline/decisions.tsv`
+- 本会话目标：#41 F-R1-07 接入可观测（进行中，PR 未合则不关 Issue）
+- 进行中文件：`apps/api/src/ingest/ingest.service.ts`、`apps/web/src/views/IngestObservabilityView.vue`、`evidence/overnight-mvp-ingest-observability/decisions.tsv`
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |

@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { QueryFailedError, Repository } from 'typeorm';
+import { ObjectLiteral, QueryFailedError, Repository } from 'typeorm';
 import { ListQuery, parsePage } from '../common/pagination';
 import { ShedScope } from '../common/shed-scope';
 import {
@@ -12,7 +12,8 @@ import {
   parseRecognitionIngress,
 } from '@mushroom/contracts';
 import { EnvironmentReading } from '../entities/environment-reading.entity';
-import { IngestReject } from '../entities/ingest-reject.entity';
+import { HeartbeatReceipt } from '../entities/heartbeat-receipt.entity';
+import { IngestChannel, IngestReject } from '../entities/ingest-reject.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { RedisService } from '../redis';
 import { MinioStorageService } from '../storage';
@@ -29,6 +30,49 @@ export interface IngestResult {
   snapshotStored?: boolean;
 }
 
+export interface IngestObservabilityChannel {
+  channel: IngestChannel;
+  transport: 'http' | 'mqtt';
+  accepted: number;
+  rejected: number;
+  latencyP50Ms: number | null;
+  latencyLatestMs: number | null;
+}
+
+export interface IngestObservabilityError {
+  id: string;
+  channel: IngestChannel;
+  transport: 'http' | 'mqtt';
+  shedCode: string | null;
+  code: string | null;
+  errors: string[];
+  createdAt: string;
+}
+
+export interface IngestObservability {
+  windowMinutes: number;
+  from: string;
+  accepted: number;
+  rejected: number;
+  latencyP50Ms: number | null;
+  latencyLatestMs: number | null;
+  channels: IngestObservabilityChannel[];
+  recentErrors: IngestObservabilityError[];
+}
+
+const OBSERVABILITY_CHANNELS: Array<[IngestChannel, 'http' | 'mqtt']> = [
+  ['recognition', 'http'],
+  ['recognition', 'mqtt'],
+  ['environment', 'http'],
+  ['environment', 'mqtt'],
+  ['heartbeat', 'http'],
+  ['heartbeat', 'mqtt'],
+];
+
+const DEFAULT_WINDOW_MINUTES = 60;
+const MAX_WINDOW_MINUTES = 24 * 60;
+const RECENT_ERROR_LIMIT = 20;
+
 @Injectable()
 export class IngestService {
   private readonly logger = new Logger(IngestService.name);
@@ -40,6 +84,8 @@ export class IngestService {
     private readonly readings: Repository<EnvironmentReading>,
     @InjectRepository(IngestReject)
     private readonly rejects: Repository<IngestReject>,
+    @InjectRepository(HeartbeatReceipt)
+    private readonly heartbeats: Repository<HeartbeatReceipt>,
     private readonly redis: RedisService,
     private readonly storage: MinioStorageService,
     private readonly devices: DevicesService,
@@ -49,13 +95,13 @@ export class IngestService {
   async handle(raw: unknown, source: 'http' | 'mqtt'): Promise<IngestResult> {
     const parsed = parseRecognitionIngress(raw);
     if (!parsed.ok) {
-      await this.rejects.save(
-        this.rejects.create({
-          source,
-          errors: parsed.errors,
-          payload: redactIngress(raw),
-        }),
-      );
+      await this.recordReject({
+        source,
+        channel: 'recognition',
+        code: parsed.code,
+        errors: parsed.errors,
+        payload: raw,
+      });
       this.logger.warn(`丢弃${source}上报：${parsed.errors.join('；')}`);
       return { accepted: false, code: parsed.code, errors: parsed.errors };
     }
@@ -147,13 +193,13 @@ export class IngestService {
   ): Promise<IngestResult> {
     const parsed = parseEnvironmentIngress(raw);
     if (!parsed.ok) {
-      await this.rejects.save(
-        this.rejects.create({
-          source,
-          errors: parsed.errors,
-          payload: raw,
-        }),
-      );
+      await this.recordReject({
+        source,
+        channel: 'environment',
+        code: parsed.code,
+        errors: parsed.errors,
+        payload: raw,
+      });
       this.logger.warn(`丢弃${source}环境上报：${parsed.errors.join('；')}`);
       return { accepted: false, code: parsed.code, errors: parsed.errors };
     }
@@ -212,6 +258,157 @@ export class IngestService {
       }
       throw error;
     }
+  }
+
+  async recordReject(input: {
+    source: 'http' | 'mqtt';
+    channel: IngestChannel;
+    code?: string;
+    errors: string[];
+    payload?: unknown;
+    shedCode?: string | null;
+  }): Promise<void> {
+    const shedCode =
+      input.shedCode !== undefined
+        ? input.shedCode
+        : shedFromPayload(input.payload);
+    await this.rejects.save(
+      this.rejects.create({
+        source: input.source,
+        channel: input.channel,
+        shedCode,
+        code: input.code ?? null,
+        errors: input.errors,
+        payload:
+          input.channel === 'recognition'
+            ? redactIngress(input.payload)
+            : (input.payload ?? null),
+      }),
+    );
+  }
+
+  async recordHeartbeat(input: {
+    source: 'http' | 'mqtt';
+    shedCode: string;
+    deviceCode: string;
+    duplicate: boolean;
+    reportedAt?: string;
+  }): Promise<void> {
+    await this.heartbeats.save(
+      this.heartbeats.create({
+        source: input.source,
+        shedCode: input.shedCode,
+        deviceCode: input.deviceCode,
+        duplicate: input.duplicate,
+        latencyMs: heartbeatLatencyMs(input.reportedAt),
+      }),
+    );
+  }
+
+  async observability(
+    user: AuthUser,
+    windowMinutes?: string | number,
+  ): Promise<IngestObservability> {
+    const minutes = parseWindowMinutes(windowMinutes);
+    const since = new Date(Date.now() - minutes * 60_000);
+    const scope = ShedScope.fromUser(user);
+    const [recognitions, readings, beats, errors] = await Promise.all([
+      this.loadSince(this.records, 'r', since, scope),
+      this.loadSince(this.readings, 'e', since, scope),
+      this.loadSince(this.heartbeats, 'h', since, scope),
+      this.loadSince(this.rejects, 'j', since, scope),
+    ]);
+    const buckets = new Map<string, LatencyBucket>(
+      OBSERVABILITY_CHANNELS.map(([channel, transport]) => [
+        bucketKey(channel, transport),
+        { channel, transport, accepted: 0, rejected: 0, samples: [] },
+      ]),
+    );
+    for (const row of recognitions) {
+      addAccepted(
+        buckets,
+        'recognition',
+        row.source,
+        row.createdAt,
+        latencyBetween(row.createdAt, row.recognizedAt),
+      );
+    }
+    for (const row of readings) {
+      addAccepted(
+        buckets,
+        'environment',
+        row.source,
+        row.createdAt,
+        latencyBetween(row.createdAt, row.observedAt),
+      );
+    }
+    for (const row of beats) {
+      addAccepted(
+        buckets,
+        'heartbeat',
+        row.source,
+        row.createdAt,
+        row.latencyMs,
+      );
+    }
+    for (const row of errors) {
+      const bucket = buckets.get(bucketKey(row.channel, row.source));
+      if (bucket) bucket.rejected += 1;
+    }
+    const channels = OBSERVABILITY_CHANNELS.map(([channel, transport]) => {
+      const bucket = buckets.get(bucketKey(channel, transport))!;
+      const stats = percentile50(bucket.samples);
+      return {
+        channel,
+        transport,
+        accepted: bucket.accepted,
+        rejected: bucket.rejected,
+        latencyP50Ms: stats.p50,
+        latencyLatestMs: stats.latest,
+      };
+    });
+    const allSamples = [...buckets.values()].flatMap(
+      (bucket) => bucket.samples,
+    );
+    const totals = percentile50(allSamples);
+    return {
+      windowMinutes: minutes,
+      from: since.toISOString(),
+      accepted: channels.reduce((sum, row) => sum + row.accepted, 0),
+      rejected: channels.reduce((sum, row) => sum + row.rejected, 0),
+      latencyP50Ms: totals.p50,
+      latencyLatestMs: totals.latest,
+      channels,
+      recentErrors: errors.slice(0, RECENT_ERROR_LIMIT).map((row) => ({
+        id: row.id,
+        channel: row.channel,
+        transport: row.source,
+        shedCode: row.shedCode,
+        code: row.code,
+        errors: row.errors,
+        createdAt: row.createdAt.toISOString(),
+      })),
+    };
+  }
+
+  private async loadSince<T extends ObjectLiteral>(
+    repo: Repository<T>,
+    alias: string,
+    since: Date,
+    scope: ShedScope,
+    take?: number,
+  ): Promise<T[]> {
+    const qb = repo
+      .createQueryBuilder(alias)
+      .where(`${alias}.createdAt >= :since`, { since });
+    if (scope.codes) {
+      if (!scope.codes.length) qb.andWhere('1 = 0');
+      else
+        qb.andWhere(`${alias}.shedCode IN (:...codes)`, { codes: scope.codes });
+    }
+    qb.orderBy(`${alias}.createdAt`, 'DESC');
+    if (take) qb.take(take);
+    return qb.getMany();
   }
 
   async list(user: AuthUser, query: ListQuery) {
@@ -328,6 +525,85 @@ export class IngestService {
     const driver = error.driverError as { code?: string };
     return driver?.code === '23505';
   }
+}
+
+interface LatencySample {
+  at: number;
+  latencyMs: number;
+}
+
+interface LatencyBucket {
+  channel: IngestChannel;
+  transport: 'http' | 'mqtt';
+  accepted: number;
+  rejected: number;
+  samples: LatencySample[];
+}
+
+function bucketKey(channel: IngestChannel, transport: 'http' | 'mqtt'): string {
+  return `${channel}:${transport}`;
+}
+
+function addAccepted(
+  buckets: Map<string, LatencyBucket>,
+  channel: IngestChannel,
+  transport: 'http' | 'mqtt',
+  at: Date,
+  latencyMs: number | null,
+) {
+  const bucket = buckets.get(bucketKey(channel, transport));
+  if (!bucket) return;
+  bucket.accepted += 1;
+  if (latencyMs !== null && Number.isFinite(latencyMs)) {
+    bucket.samples.push({ at: at.getTime(), latencyMs });
+  }
+}
+
+function latencyBetween(received: Date, event: Date): number | null {
+  if (!received || !event) return null;
+  const latency = received.getTime() - event.getTime();
+  if (!Number.isFinite(latency)) return null;
+  return Math.max(0, latency);
+}
+
+function heartbeatLatencyMs(reportedAt?: string): number | null {
+  if (!reportedAt) return null;
+  const at = new Date(reportedAt);
+  if (Number.isNaN(at.getTime())) return null;
+  return Math.max(0, Date.now() - at.getTime());
+}
+
+function percentile50(samples: LatencySample[]): {
+  p50: number | null;
+  latest: number | null;
+} {
+  if (!samples.length) return { p50: null, latest: null };
+  const latest = samples.reduce((best, item) =>
+    item.at >= best.at ? item : best,
+  ).latencyMs;
+  const sorted = samples.map((item) => item.latencyMs).sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  const p50 =
+    sorted.length % 2 === 1
+      ? sorted[mid]
+      : Math.round((sorted[mid - 1] + sorted[mid]) / 2);
+  return { p50, latest };
+}
+
+function parseWindowMinutes(raw?: string | number): number {
+  if (raw === undefined || raw === '') return DEFAULT_WINDOW_MINUTES;
+  const value = typeof raw === 'number' ? raw : Number(raw);
+  if (!Number.isFinite(value)) return DEFAULT_WINDOW_MINUTES;
+  return Math.min(MAX_WINDOW_MINUTES, Math.max(1, Math.floor(value)));
+}
+
+function shedFromPayload(raw: unknown): string | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const body = raw as Record<string, unknown>;
+  const value = body.shedCode ?? body['棚区编号'];
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed || null;
 }
 
 function isDiseasedQuery(value: string | undefined): boolean {

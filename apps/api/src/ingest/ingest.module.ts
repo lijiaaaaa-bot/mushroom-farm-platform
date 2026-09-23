@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AlertsModule } from '../alerts';
 import { DevicesModule } from '../devices';
 import { EnvironmentReading } from '../entities/environment-reading.entity';
+import { HeartbeatReceipt } from '../entities/heartbeat-receipt.entity';
 import { IngestReject } from '../entities/ingest-reject.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { IngestController } from './ingest.controller';
@@ -15,6 +16,7 @@ import { MqttIngestAdapter } from './mqtt.adapter';
       RecognitionRecord,
       EnvironmentReading,
       IngestReject,
+      HeartbeatReceipt,
     ]),
     DevicesModule,
     AlertsModule,

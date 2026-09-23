@@ -21,12 +21,19 @@ function loadFixture(name: string): {
 describe('MqttIngestAdapter', () => {
   const handle = jest.fn();
   const handleEnvironment = jest.fn();
+  const recordReject = jest.fn();
+  const recordHeartbeat = jest.fn();
   const heartbeat = jest.fn();
 
   function adapter() {
     return new MqttIngestAdapter(
       { get: () => false } as unknown as ConfigService,
-      { handle, handleEnvironment } as unknown as IngestService,
+      {
+        handle,
+        handleEnvironment,
+        recordReject,
+        recordHeartbeat,
+      } as unknown as IngestService,
       { heartbeat } as unknown as DevicesService,
     );
   }
@@ -40,6 +47,8 @@ describe('MqttIngestAdapter', () => {
   beforeEach(() => {
     handle.mockReset();
     handleEnvironment.mockReset();
+    recordReject.mockReset();
+    recordHeartbeat.mockReset();
     heartbeat.mockReset();
     handle.mockResolvedValue({ accepted: true });
     handleEnvironment.mockResolvedValue({ accepted: true });
@@ -83,6 +92,14 @@ describe('MqttIngestAdapter', () => {
   it('does not ingest a payload that is not JSON', async () => {
     await deliver('mushroom/S01/CAM-S01-01/recognition', '{');
     expect(handle).not.toHaveBeenCalled();
+    expect(recordReject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'mqtt',
+        channel: 'recognition',
+        shedCode: 'S01',
+        errors: ['载荷不是 JSON'],
+      }),
+    );
   });
 
   it('routes heartbeat to devices and leaves recognition ingest alone', async () => {
@@ -93,6 +110,13 @@ describe('MqttIngestAdapter', () => {
     expect(handle).not.toHaveBeenCalled();
     expect(handleEnvironment).not.toHaveBeenCalled();
     expect(heartbeat).toHaveBeenCalledWith('S01', 'BOX-1', 'ai_box', true);
+    expect(recordHeartbeat).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'mqtt',
+        shedCode: 'S01',
+        deviceCode: 'BOX-1',
+      }),
+    );
   });
 
   it('routes the heartbeat fixture and drops unknown heartbeat fields', async () => {
@@ -115,6 +139,14 @@ describe('MqttIngestAdapter', () => {
     });
     expect(heartbeat).not.toHaveBeenCalled();
     expect(handle).not.toHaveBeenCalled();
+    expect(recordReject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        source: 'mqtt',
+        channel: 'heartbeat',
+        shedCode: 'S01',
+        code: 'UNKNOWN_FIELD',
+      }),
+    );
   });
 
   it('routes environment topics away from recognition ingest', async () => {
@@ -140,5 +172,12 @@ describe('MqttIngestAdapter', () => {
     await deliver('mushroom/S01/SENSOR-S01/environment', '{');
     expect(handle).not.toHaveBeenCalled();
     expect(handleEnvironment).not.toHaveBeenCalled();
+    expect(recordReject).toHaveBeenCalledWith(
+      expect.objectContaining({
+        channel: 'environment',
+        shedCode: 'S01',
+        errors: ['载荷不是 JSON'],
+      }),
+    );
   });
 });

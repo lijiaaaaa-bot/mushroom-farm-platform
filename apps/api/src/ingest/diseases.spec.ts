@@ -13,6 +13,7 @@ import { configureApp } from '../configure-app';
 import { DevicesService } from '../devices';
 import { DiseasesController } from '../diseases/diseases.controller';
 import { EnvironmentReading } from '../entities/environment-reading.entity';
+import { HeartbeatReceipt } from '../entities/heartbeat-receipt.entity';
 import { IngestReject } from '../entities/ingest-reject.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { RedisService } from '../redis';
@@ -178,6 +179,7 @@ describe('disease list and snapshot access', () => {
         { provide: getRepositoryToken(RecognitionRecord), useValue: records },
         { provide: getRepositoryToken(EnvironmentReading), useValue: {} },
         { provide: getRepositoryToken(IngestReject), useValue: {} },
+        { provide: getRepositoryToken(HeartbeatReceipt), useValue: {} },
         { provide: RedisService, useValue: {} },
         {
           provide: MinioStorageService,
