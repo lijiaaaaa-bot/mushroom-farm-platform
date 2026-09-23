@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils';
+import { createMemoryHistory, createRouter } from 'vue-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import GrowthTrendsView from './GrowthTrendsView.vue';
 
@@ -65,8 +66,13 @@ function mockTrends(payload: unknown = series) {
   });
 }
 
-async function mountView() {
-  const wrapper = mount(GrowthTrendsView);
+async function mountView(query: Record<string, string> = {}) {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: '/growth-trends', component: GrowthTrendsView }],
+  });
+  await router.push({ path: '/growth-trends', query });
+  const wrapper = mount(GrowthTrendsView, { global: { plugins: [router] } });
   await flushPromises();
   return wrapper;
 }
@@ -136,6 +142,19 @@ describe('GrowthTrendsView', () => {
     await wrapper.get('[data-mode="camera"]').trigger('click');
     await flushPromises();
     expect(wrapper.text()).toContain('CAM-1');
+    wrapper.unmount();
+  });
+
+  it('opens on the shed, window, and camera named in the route', async () => {
+    mockTrends();
+    const wrapper = await mountView({ days: '30', shedCode: 'S01', cameraCode: 'CAM-1' });
+
+    expect(httpGet).toHaveBeenCalledWith('/growth-trends', {
+      params: { days: 30, shedCode: 'S01' },
+    });
+    expect(wrapper.text()).toContain('摄像头 CAM-1');
+    expect(wrapper.text()).toContain('CAM-1');
+    expect(wrapper.text()).not.toContain('没有日聚合');
     wrapper.unmount();
   });
 

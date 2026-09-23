@@ -3,8 +3,8 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：PR #60 rebase 到 main。保留 #57 侧栏与 #58 企微，总览继续用 ThingsBoard 浅色运营台
-- 进行中文件：`apps/web/src/views/DashboardView.vue`、`STATUS.md`
+- 本会话目标：#55 精装大屏（抓拍墙、多区布局、对比时间轴入口）
+- 进行中文件：`apps/web/src/views/BigScreenView.vue`、`GrowthTrendsView.vue`、`RecognitionsView.vue`、`STATUS.md`
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -50,3 +50,4 @@
 | 2026-09-23 | #54 rebase 到 main（含 #56/#57）。侧栏不放企微入口、不写「二期槽位」。告警页「企微/钉钉推送」链到 `/phase2/wecom` | `make test` 退出码 0（API jest 95，web vitest 82）；`make gates` 退出码 0 | PR #58 待标为可审。不关 Issue #54 |
 | 2026-09-23 | 管理端总览改成 ThingsBoard 浅色运营台：指标条、已配置坐标的棚区平面、棚区表、温度曲线（阈值只画已启用的温度规则）、近 7 日成熟/总数/病害、右侧告警表、最近识别表。/big-screen 加 data-skin=tb-night | `make test` 退出码 0（API jest 85，web vitest 81）；`make gates` 退出码 0 | 未打开登录后的总览。侧栏导航以 #57 为准 |
 | 2026-09-23 | PR #60 rebase 到含 #56/#57/#58 的 main。侧栏保留「基地大屏」徽标与绿色底，不恢复「二期槽位」，不把企微放回导航。总览仍是浅色运营台 | 待 `make test` 与 `make gates` | 不关未合并 Issue |
+| 2026-09-23 | #55 `/big-screen` 增加抓拍墙、多区布局和对比时间轴。时间轴链到 `/growth-trends` 与识别记录的 from/to。暗色只挂在大屏根节点，默认浅色 | 待 `make test` 与 `make gates` | PR 未合，不关 Issue #55 |

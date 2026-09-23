@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import * as echarts from 'echarts';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { errorText, http } from '../api';
 
 type WindowDays = 7 | 30;
@@ -41,12 +42,16 @@ interface Line {
   points: Point[];
 }
 
+const route = useRoute();
 const loading = ref(true);
 const error = ref('');
 const sheds = ref<ShedOption[]>([]);
-const shedCode = ref('');
-const days = ref<WindowDays>(7);
+const shedCode = ref(typeof route.query.shedCode === 'string' ? route.query.shedCode : '');
+const days = ref<WindowDays>(route.query.days === '30' ? 30 : 7);
 const mode = ref<Mode>('shed');
+const cameraQuery = computed(() =>
+  typeof route.query.cameraCode === 'string' ? route.query.cameraCode : '',
+);
 const data = ref<TrendResponse | null>(null);
 const countEl = ref<HTMLDivElement | null>(null);
 const diameterEl = ref<HTMLDivElement | null>(null);
@@ -65,6 +70,11 @@ const current = computed(() => {
 const lines = computed<Line[]>(() => {
   const shed = current.value;
   if (!shed) return [];
+  if (cameraQuery.value) {
+    return shed.cameras
+      .filter((camera) => camera.cameraCode === cameraQuery.value && camera.points.length)
+      .map((camera) => ({ name: camera.cameraCode, points: camera.points }));
+  }
   if (mode.value === 'shed') {
     return shed.points.length ? [{ name: shed.shedCode, points: shed.points }] : [];
   }
@@ -250,6 +260,7 @@ onBeforeUnmount(() => {
           30 天
         </button>
       </div>
+      <p v-if="cameraQuery" class="text-sm text-mist">摄像头 {{ cameraQuery }}</p>
       <div class="flex gap-2">
         <button type="button" data-mode="shed" :class="mode === 'shed' ? 'btn-primary' : 'btn-ghost'" @click="mode = 'shed'">
           棚汇总
@@ -264,7 +275,8 @@ onBeforeUnmount(() => {
     <p v-else-if="error" class="text-danger">{{ error }}</p>
     <p v-else-if="!sheds.length" class="text-mist">没有可查看的棚区。</p>
     <p v-else-if="data && !hasPoints" class="text-mist">
-      {{ data.from }} 至 {{ data.to }} 没有日聚合，未绘制曲线。
+      <template v-if="cameraQuery">{{ cameraQuery }} 在 {{ data.from }} 至 {{ data.to }} 没有日聚合，未绘制曲线。</template>
+      <template v-else>{{ data.from }} 至 {{ data.to }} 没有日聚合，未绘制曲线。</template>
     </p>
     <template v-else-if="data && hasPoints">
       <section class="panel bg-white">

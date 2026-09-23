@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
+import * as echarts from 'echarts';
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
   ALERT_LEVEL_LABEL,
@@ -7,6 +8,8 @@ import {
   DEVICE_OFFLINE_AFTER_MS,
   DEVICE_TYPE_LABEL,
   ROLE_LABEL,
+  shanghaiDate,
+  shanghaiDayRange,
   type AlertLevel,
   type AlertStatus,
   type DeviceType,
@@ -14,6 +17,7 @@ import {
 } from '@mushroom/contracts';
 import { errorText, http } from '../api';
 import { currentUser, logout } from '../auth';
+import ResultCard from '../components/ResultCard.vue';
 
 interface Overview {
   shedCount: number;
@@ -73,6 +77,8 @@ interface RecognitionRow {
   humidity: number | null;
   co2: number | null;
   substrateMoisture: number | null;
+  snapshotObjectKey: string | null;
+  snapshotUrl: string | null;
 }
 
 interface Page<T> {
@@ -80,10 +86,35 @@ interface Page<T> {
   total: number;
 }
 
+interface TrendPoint {
+  day: string;
+  mushroomCount: number;
+  capDiameterMean: number | null;
+  sampleCount: number;
+}
+
+interface TrendShed {
+  shedCode: string;
+  points: TrendPoint[];
+  cameras: { cameraCode: string; points: TrendPoint[] }[];
+}
+
+interface TrendResponse {
+  days: number;
+  from: string;
+  to: string;
+  sheds: TrendShed[];
+}
+
+type LayoutMode = 'command' | 'wall' | 'panels';
+type SkinMode = 'light' | 'dark';
+
 type PointTone = 'severe' | 'warning' | 'info' | 'online' | 'idle';
 
 const REFRESH_MS = 30_000;
+const SKIN_KEY = 'big-screen-skin';
 const offlineMinutes = DEVICE_OFFLINE_AFTER_MS / 60_000;
+const timelinePalette = ['#2F9E44', '#1B7A4E', '#F59E0B', '#6B8F71', '#E03131', '#8C6A43'];
 
 const router = useRouter();
 const now = ref(new Date());
@@ -93,10 +124,16 @@ const sheds = ref<ShedRow[]>([]);
 const alerts = ref<AlertRow[]>([]);
 const devices = ref<DeviceRow[]>([]);
 const recognitions = ref<RecognitionRow[]>([]);
+const trend = ref<TrendResponse | null>(null);
 const deviceTotal = ref(0);
 const alertTotal = ref(0);
 const recognitionTotal = ref(0);
 const selectedCode = ref<string | null>(null);
+const layout = ref<LayoutMode>('command');
+const skin = ref<SkinMode>('light');
+const pinnedId = ref<string | null>(null);
+const focusedDay = ref<string | null>(null);
+const timelineEl = ref<HTMLDivElement | null>(null);
 const syncedAt = ref<Date | null>(null);
 const zoneError = reactive({
   overview: '',
@@ -104,7 +141,9 @@ const zoneError = reactive({
   alerts: '',
   devices: '',
   recognitions: '',
+  trends: '',
 });
+let timelineChart: echarts.ECharts | null = null;
 
 let clockTimer = 0;
 let pollTimer = 0;
@@ -266,6 +305,67 @@ const selectedLatest = computed(() =>
   recognitions.value.find((row) => row.shedCode === selectedCode.value) ?? null,
 );
 
+const wallCells = computed(() => {
+  const seen = new Set<string>();
+  const cells: RecognitionRow[] = [];
+  for (const row of recognitions.value) {
+    if (layout.value === 'panels' && selectedCode.value && row.shedCode !== selectedCode.value) continue;
+    const key = `${row.shedCode}\0${row.cameraCode}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    cells.push(row);
+    if (cells.length >= 12) break;
+  }
+  return cells;
+});
+
+const chartSheds = computed(() => {
+  const rows = trend.value?.sheds ?? [];
+  const picked = selectedCode.value ? rows.filter((item) => item.shedCode === selectedCode.value) : rows;
+  return picked.filter((item) => item.points.length > 0).slice(0, 6);
+});
+
+const axisDays = computed(() =>
+  [...new Set(chartSheds.value.flatMap((item) => item.points.map((point) => point.day)))].sort(),
+);
+
+const pinned = computed(() => recognitions.value.find((row) => row.id === pinnedId.value) ?? null);
+
+const linkDay = computed(() => {
+  if (pinned.value) return shanghaiDate(new Date(pinned.value.recognizedAt));
+  if (focusedDay.value) return focusedDay.value;
+  const latest = recognitions.value[0];
+  return latest ? shanghaiDate(new Date(latest.recognizedAt)) : '';
+});
+
+const linkShed = computed(
+  () =>
+    pinned.value?.shedCode ||
+    selectedCode.value ||
+    chartSheds.value[0]?.shedCode ||
+    recognitions.value[0]?.shedCode ||
+    '',
+);
+
+const trendsTo = computed(() => {
+  const query: Record<string, string> = { days: '7' };
+  if (linkShed.value) query.shedCode = linkShed.value;
+  if (pinned.value) query.cameraCode = pinned.value.cameraCode;
+  return { path: '/growth-trends', query };
+});
+
+const filterTo = computed(() => {
+  if (!linkDay.value) return null;
+  const { start, end } = shanghaiDayRange(linkDay.value);
+  const query: Record<string, string> = {
+    from: start.toISOString(),
+    to: new Date(end.getTime() - 1).toISOString(),
+  };
+  if (linkShed.value) query.shedCode = linkShed.value;
+  if (pinned.value) query.cameraCode = pinned.value.cameraCode;
+  return { path: '/recognitions', query };
+});
+
 function readCoord(value: unknown): number | null {
   if (value === null || value === undefined || value === '') return null;
   const parsed = typeof value === 'number' ? value : Number(value);
@@ -332,6 +432,74 @@ function selectShed(code: string) {
   selectedCode.value = selectedCode.value === code ? null : code;
 }
 
+function pinRecognition(id: string) {
+  pinnedId.value = pinnedId.value === id ? null : id;
+}
+
+function applyStoredSkin() {
+  skin.value = sessionStorage.getItem(SKIN_KEY) === 'dark' ? 'dark' : 'light';
+}
+
+function toggleSkin() {
+  skin.value = skin.value === 'dark' ? 'light' : 'dark';
+  sessionStorage.setItem(SKIN_KEY, skin.value);
+}
+
+function onTimelineClick(params: { dataIndex?: number | number[] }) {
+  const index = Array.isArray(params.dataIndex) ? params.dataIndex[0] : params.dataIndex;
+  const day = axisDays.value[index ?? -1];
+  if (!day) return;
+  focusedDay.value = day;
+  pinnedId.value = null;
+}
+
+function timelineOption() {
+  const dark = skin.value === 'dark';
+  const ink = dark ? '#e7eee9' : '#1F2329';
+  const mist = dark ? '#a8b5ac' : '#646A73';
+  const split = dark ? '#3e4d44' : '#E5E6EB';
+  const days = axisDays.value;
+  return {
+    backgroundColor: 'transparent',
+    animation: false,
+    textStyle: { color: mist },
+    tooltip: { trigger: 'axis' },
+    legend: { textStyle: { color: ink }, top: 0 },
+    grid: { left: 48, right: 16, top: 28, bottom: 24 },
+    xAxis: {
+      type: 'category',
+      data: days.map((day) => day.slice(5)),
+      axisLabel: { color: mist },
+      axisLine: { lineStyle: { color: split } },
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: mist },
+      splitLine: { lineStyle: { color: split } },
+    },
+    series: chartSheds.value.map((item, index) => ({
+      name: item.shedCode,
+      type: 'line',
+      connectNulls: false,
+      showSymbol: true,
+      itemStyle: { color: timelinePalette[index % timelinePalette.length] },
+      data: days.map((day) => item.points.find((point) => point.day === day)?.mushroomCount ?? null),
+    })),
+  };
+}
+
+function renderTimeline() {
+  if (layout.value !== 'panels' || !timelineEl.value || !axisDays.value.length) {
+    timelineChart?.dispose();
+    timelineChart = null;
+    return;
+  }
+  timelineChart ??= echarts.init(timelineEl.value);
+  timelineChart.off('click');
+  timelineChart.on('click', onTimelineClick);
+  timelineChart.setOption(timelineOption(), true);
+}
+
 function clearShed() {
   selectedCode.value = null;
 }
@@ -343,13 +511,14 @@ function leave() {
 
 async function load() {
   const seq = ++loadSeq;
-  const [overviewResult, shedsResult, alertsResult, devicesResult, recognitionsResult] =
+  const [overviewResult, shedsResult, alertsResult, devicesResult, recognitionsResult, trendsResult] =
     await Promise.allSettled([
       http.get<Overview>('/dashboard/overview'),
       http.get<ShedRow[]>('/sheds'),
       http.get<Page<AlertRow>>('/alerts', { params: { pageSize: 50 } }),
       http.get<Page<DeviceRow>>('/devices', { params: { pageSize: 100 } }),
-      http.get<Page<RecognitionRow>>('/ingest/recognitions', { params: { pageSize: 30 } }),
+      http.get<Page<RecognitionRow>>('/ingest/recognitions', { params: { pageSize: 100 } }),
+      http.get<TrendResponse>('/growth-trends', { params: { days: 7 } }),
     ]);
   if (seq !== loadSeq) return;
 
@@ -390,18 +559,42 @@ async function load() {
     recognitions.value = recognitionsResult.value.data.items;
     recognitionTotal.value = recognitionsResult.value.data.total;
     zoneError.recognitions = '';
+    if (pinnedId.value && !recognitions.value.some((row) => row.id === pinnedId.value)) {
+      pinnedId.value = null;
+    }
   } else {
     zoneError.recognitions = errorText(recognitionsResult.reason);
   }
 
-  const anyOk = [overviewResult, shedsResult, alertsResult, devicesResult, recognitionsResult].some(
+  if (trendsResult.status === 'fulfilled') {
+    trend.value = trendsResult.value.data;
+    zoneError.trends = '';
+  } else {
+    trend.value = null;
+    zoneError.trends = errorText(trendsResult.reason);
+  }
+
+  const anyOk = [overviewResult, shedsResult, alertsResult, devicesResult, recognitionsResult, trendsResult].some(
     (result) => result.status === 'fulfilled',
   );
   if (anyOk) syncedAt.value = new Date();
   loading.value = false;
+  await nextTick();
+  renderTimeline();
 }
 
+watch(axisDays, (days) => {
+  if (!focusedDay.value || !days.includes(focusedDay.value)) {
+    focusedDay.value = days[days.length - 1] ?? null;
+  }
+});
+
+watch([layout, skin, chartSheds, axisDays], () => {
+  void nextTick().then(renderTimeline);
+});
+
 onMounted(() => {
+  applyStoredSkin();
   void load();
   clockTimer = window.setInterval(() => {
     now.value = new Date();
@@ -415,11 +608,13 @@ onBeforeUnmount(() => {
   window.clearInterval(clockTimer);
   window.clearInterval(pollTimer);
   loadSeq += 1;
+  timelineChart?.dispose();
+  timelineChart = null;
 });
 </script>
 
 <template>
-  <div class="screen" data-skin="tb-night">
+  <div class="screen" :data-layout="layout" data-skin="tb-night" :class="{ 'skin-dark': skin === 'dark' }">
     <header class="zone top">
       <div class="brand">
         <span class="mark" aria-hidden="true"></span>
@@ -433,13 +628,21 @@ onBeforeUnmount(() => {
         <p class="sync">{{ syncLabel }} · {{ REFRESH_MS / 1000 }}s</p>
         <p v-if="currentUser" class="who">{{ currentUser.displayName }} · {{ roleLabel }}</p>
         <div class="top-actions">
+          <div class="layout-switch" role="group" aria-label="布局">
+            <button type="button" class="text-btn" data-layout-choice="command" :aria-pressed="layout === 'command'" @click="layout = 'command'">指挥</button>
+            <button type="button" class="text-btn" data-layout-choice="wall" :aria-pressed="layout === 'wall'" @click="layout = 'wall'">抓拍墙</button>
+            <button type="button" class="text-btn" data-layout-choice="panels" :aria-pressed="layout === 'panels'" @click="layout = 'panels'">多区</button>
+          </div>
+          <button class="text-btn skin-toggle" type="button" :aria-pressed="skin === 'dark'" @click="toggleSkin">
+            {{ skin === 'dark' ? '浅色' : '暗色' }}
+          </button>
           <router-link class="text-btn" to="/">管理端</router-link>
           <button class="text-btn" type="button" @click="leave">退出</button>
         </div>
       </div>
     </header>
 
-    <aside class="zone left">
+    <aside v-show="layout !== 'wall'" class="zone left">
       <div class="zone-head">
         <h2>指标</h2>
       </div>
@@ -477,7 +680,7 @@ onBeforeUnmount(() => {
       </div>
     </aside>
 
-    <main class="zone center">
+    <main v-show="layout !== 'wall'" class="zone center">
       <div class="zone-head split">
         <h2>棚区平面</h2>
         <div class="legend">
@@ -531,7 +734,7 @@ onBeforeUnmount(() => {
       </section>
     </main>
 
-    <aside class="zone right">
+    <aside v-show="layout !== 'wall'" class="zone right">
       <div class="zone-head split">
         <h2>环境</h2>
         <span class="caption">{{ envReadout.caption }}</span>
@@ -571,7 +774,47 @@ onBeforeUnmount(() => {
       </div>
     </aside>
 
+    <section v-if="layout === 'wall' || layout === 'panels'" class="zone wall">
+      <div class="zone-head split">
+        <h2>抓拍墙</h2>
+        <span>
+          各摄像头最近一张 · 最近 {{ recognitions.length }} 条
+          <template v-if="recognitionTotal > recognitions.length"> / 共 {{ recognitionTotal }}</template>
+        </span>
+      </div>
+      <p v-if="zoneError.recognitions" class="zone-error">{{ zoneError.recognitions }}</p>
+      <p v-else-if="loading && !wallCells.length" class="muted">加载中…</p>
+      <p v-else-if="!wallCells.length" class="muted">暂无识别记录，抓拍墙没有画面。</p>
+      <div v-else class="wall-grid">
+        <article v-for="cell in wallCells" :key="cell.id" class="wall-cell" :class="{ on: pinnedId === cell.id }">
+          <ResultCard
+            :id="cell.id"
+            :snapshot-object-key="cell.snapshotObjectKey"
+            :snapshot-url="cell.snapshotUrl"
+          >
+            <p>{{ cell.shedCode }} · {{ cell.cameraCode }}</p>
+            <p>{{ shortTime(cell.recognizedAt) }} · 成熟 {{ cell.matureCount }}/{{ cell.mushroomCount }} · 病害 {{ cell.diseaseCount }}</p>
+          </ResultCard>
+          <button type="button" class="text-btn" @click="pinRecognition(cell.id)">对比此时段</button>
+        </article>
+      </div>
+    </section>
+
     <footer class="zone bottom">
+      <div v-if="layout === 'panels'" class="timeline-chart-wrap">
+        <p v-if="zoneError.trends" class="zone-error">{{ zoneError.trends }}</p>
+        <p v-else-if="loading && !trend" class="muted">加载中…</p>
+        <p v-else-if="!axisDays.length" class="muted">近 7 日没有日聚合，时间轴没有点。</p>
+        <div v-else ref="timelineEl" class="timeline-chart"></div>
+      </div>
+      <nav class="timeline-entry" aria-label="对比时间轴">
+        <p class="ticker-label">时间轴</p>
+        <router-link class="text-btn timeline-trends" :to="trendsTo">生长趋势</router-link>
+        <router-link v-if="filterTo" class="text-btn timeline-filter" :to="filterTo">识别时段</router-link>
+        <p v-else class="muted">暂无识别时间，不能按抓拍时段筛选。</p>
+        <p v-if="layout !== 'panels' && zoneError.trends" class="zone-error">{{ zoneError.trends }}</p>
+      </nav>
+      <div class="bottom-row">
       <p class="ticker-label">滚动</p>
       <div class="ticker-window">
         <p v-if="zoneError.recognitions && !tickerItems.length" class="muted">{{ zoneError.recognitions }}</p>
@@ -587,12 +830,15 @@ onBeforeUnmount(() => {
         </div>
       </div>
       <p v-if="recognitionTotal" class="ticker-count">记录 {{ recognitionTotal }}</p>
+      </div>
     </footer>
   </div>
 </template>
 
 <style scoped>
 .screen {
+  --warn-ink: #9a6700;
+  --idle: #94a3b8;
   box-sizing: border-box;
   height: 100vh;
   min-height: 640px;
@@ -601,18 +847,34 @@ onBeforeUnmount(() => {
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: 12px;
   padding: 12px;
-  color: #1e293b;
+  color: var(--text-primary);
   color-scheme: light;
-  background: #f5f7fa;
+  background: var(--bg-app);
+}
+
+.screen.skin-dark {
+  --bg-app: #24302a;
+  --bg-app-alt: #1e2822;
+  --bg-card: #2c3830;
+  --text-primary: #e7eee9;
+  --text-secondary: #a8b5ac;
+  --line: #3e4d44;
+  --accent: #3d9a62;
+  --bg-sidebar: #1b7a4e;
+  --warn: #f59e0b;
+  --critical: #e03131;
+  --warn-ink: #f59e0b;
+  --idle: #6d7b72;
+  color-scheme: dark;
 }
 
 .zone {
   min-width: 0;
   min-height: 0;
   position: relative;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
@@ -635,14 +897,14 @@ onBeforeUnmount(() => {
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: #1b7a4e;
-  border: 1px solid #1b7a4e;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--bg-sidebar);
 }
 
 .eyebrow {
   margin: 0;
   font-size: 12px;
-  color: #64748b;
+  color: var(--text-secondary);
 }
 
 .top h1,
@@ -654,14 +916,14 @@ onBeforeUnmount(() => {
 
 .top h1 {
   font-size: 22px;
-  color: #1e293b;
+  color: var(--text-primary);
 }
 
 .clock {
   margin: 0;
   font-variant-numeric: tabular-nums;
   font-size: 20px;
-  color: #1e293b;
+  color: var(--text-primary);
 }
 
 .top-side {
@@ -678,21 +940,22 @@ onBeforeUnmount(() => {
 .row-sub,
 .row-meta {
   margin: 0;
-  color: #64748b;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
 .top-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 6px;
 }
 
 .text-btn {
-  border: 1px solid #e2e8f0;
-  background: #fff;
-  color: #1e293b;
+  border: 1px solid var(--line);
+  background: var(--bg-card);
+  color: var(--text-primary);
   border-radius: 6px;
   padding: 2px 10px;
   font: inherit;
@@ -702,8 +965,8 @@ onBeforeUnmount(() => {
 }
 
 .text-btn:hover {
-  border-color: #1b7a4e;
-  background: #f5f7fa;
+  border-color: var(--bg-sidebar);
+  background: var(--bg-app);
 }
 
 .left,
@@ -724,12 +987,12 @@ onBeforeUnmount(() => {
 
 .zone-head h2 {
   font-size: 15px;
-  color: #1e293b;
+  color: var(--text-primary);
 }
 
 .zone-head span,
 .legend {
-  color: #64748b;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
@@ -743,15 +1006,15 @@ onBeforeUnmount(() => {
 .tile,
 .env-tile,
 .detail {
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--bg-card);
   padding: 8px 10px;
 }
 
 .tile-label {
   margin: 0;
-  color: #64748b;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
@@ -760,7 +1023,7 @@ onBeforeUnmount(() => {
 .detail-code {
   margin: 2px 0 0;
   font-variant-numeric: tabular-nums;
-  color: #2f9e44;
+  color: var(--accent);
 }
 
 .tile-value {
@@ -769,7 +1032,7 @@ onBeforeUnmount(() => {
 }
 
 .tile.hot .tile-value {
-  color: #c44536;
+  color: var(--critical);
 }
 
 .env-value {
@@ -779,7 +1042,7 @@ onBeforeUnmount(() => {
 .env-value small {
   margin-left: 4px;
   font-size: 11px;
-  color: #64748b;
+  color: var(--text-secondary);
 }
 
 .scroll {
@@ -798,19 +1061,19 @@ onBeforeUnmount(() => {
 }
 
 .row {
-  border: 1px solid #e2e8f0;
-  border-left: 3px solid #1b7a4e;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--bg-sidebar);
   border-radius: 6px;
   padding: 6px 8px;
-  background: #fff;
+  background: var(--bg-card);
 }
 
 .row[data-level='warning'] {
-  border-left-color: #c48a16;
+  border-left-color: var(--warn);
 }
 
 .row[data-level='severe'] {
-  border-left-color: #c44536;
+  border-left-color: var(--critical);
 }
 
 .row-main {
@@ -833,34 +1096,34 @@ onBeforeUnmount(() => {
   display: inline-block;
   flex: none;
   margin-top: 5px;
-  background: #1b7a4e;
+  background: var(--bg-sidebar);
 }
 
 .row[data-level='warning'] .pip,
 .swatch.warning {
-  background: #c48a16;
+  background: var(--warn);
 }
 
 .row[data-level='severe'] .pip,
 .swatch.severe,
 .tone-severe .dot {
-  background: #c44536;
+  background: var(--critical);
 }
 
 .swatch.info,
 .tone-info .dot {
-  background: #475569;
+  background: var(--text-secondary);
 }
 
 .swatch.online,
 .status-dot.on,
 .tone-online .dot {
-  background: #1b7a4e;
+  background: var(--bg-sidebar);
 }
 
 .status-dot.off,
 .tone-idle .dot {
-  background: #94a3b8;
+  background: var(--idle);
 }
 
 .legend {
@@ -880,12 +1143,12 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 280px;
   overflow: hidden;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line);
   border-radius: 8px;
   background:
-    linear-gradient(#e2e8f0 1px, transparent 1px),
-    linear-gradient(90deg, #e2e8f0 1px, transparent 1px),
-    #f0f2f5;
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px),
+    var(--bg-app-alt);
   background-size: 40px 40px, 40px 40px, auto;
 }
 
@@ -898,7 +1161,7 @@ onBeforeUnmount(() => {
 
 .aisle path {
   fill: none;
-  stroke: #cbd5e1;
+  stroke: var(--line);
   stroke-width: 0.6;
 }
 
@@ -908,7 +1171,7 @@ onBeforeUnmount(() => {
   display: grid;
   place-items: center;
   margin: 0;
-  color: #64748b;
+  color: var(--text-secondary);
 }
 
 .point {
@@ -917,18 +1180,18 @@ onBeforeUnmount(() => {
   width: 148px;
   padding: 8px 10px 8px 22px;
   text-align: left;
-  color: #1e293b;
+  color: var(--text-primary);
   cursor: pointer;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
 }
 
 .point.on,
 .point:hover {
-  border-color: #1b7a4e;
-  background: #f5f7fa;
+  border-color: var(--bg-sidebar);
+  background: var(--bg-app);
   z-index: 1;
 }
 
@@ -942,7 +1205,7 @@ onBeforeUnmount(() => {
 }
 
 .tone-warning .dot {
-  background: #c48a16;
+  background: var(--warn);
 }
 
 .point-code,
@@ -955,7 +1218,7 @@ onBeforeUnmount(() => {
 .point-code {
   font-size: 13px;
   font-weight: 600;
-  color: #1e293b;
+  color: var(--text-primary);
 }
 
 .point-name,
@@ -970,7 +1233,7 @@ onBeforeUnmount(() => {
 }
 
 .point-meta {
-  color: #64748b;
+  color: var(--text-secondary);
   font-size: 11px;
 }
 
@@ -989,7 +1252,7 @@ onBeforeUnmount(() => {
 }
 
 .detail dt {
-  color: #64748b;
+  color: var(--text-secondary);
   font-size: 12px;
 }
 
@@ -1000,25 +1263,47 @@ onBeforeUnmount(() => {
 
 .zone-error {
   margin: 0;
-  color: #a33b32;
+  color: var(--critical);
   font-size: 12px;
 }
 
 .bottom {
   grid-column: 1 / -1;
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 8px 12px;
+}
+
+.bottom-row,
+.timeline-entry {
+  display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 46px;
-  padding: 0 12px;
+  min-width: 0;
+}
+
+.bottom-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+
+.timeline-chart {
+  height: 140px;
+  width: 100%;
+}
+
+.timeline-chart-wrap {
+  min-width: 0;
 }
 
 .ticker-label {
   margin: 0;
   font-size: 12px;
   font-weight: 600;
-  color: #1b7a4e;
+  color: var(--bg-sidebar);
 }
 
 .ticker-window {
@@ -1044,15 +1329,15 @@ onBeforeUnmount(() => {
 }
 
 .tick[data-tone='severe'] {
-  color: #c44536;
+  color: var(--critical);
 }
 
 .tick[data-tone='warning'] {
-  color: #9a6700;
+  color: var(--warn-ink);
 }
 
 .tick[data-tone='info'] {
-  color: #334155;
+  color: var(--text-primary);
 }
 
 @keyframes ticker {
@@ -1062,6 +1347,79 @@ onBeforeUnmount(() => {
   to {
     transform: translateX(-50%);
   }
+}
+
+.screen[data-layout='wall'] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+.screen[data-layout='panels'] {
+  grid-template-columns: minmax(240px, 20vw) minmax(0, 1fr) minmax(280px, 26vw);
+  grid-template-rows: auto minmax(220px, 1fr) minmax(220px, 0.8fr) auto;
+}
+
+.screen[data-layout='panels'] .left {
+  grid-column: 1;
+  grid-row: 2 / span 2;
+}
+
+.screen[data-layout='panels'] .center {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.screen[data-layout='panels'] .right {
+  grid-column: 3;
+  grid-row: 2;
+}
+
+.screen[data-layout='panels'] .top {
+  grid-row: 1;
+}
+
+.screen[data-layout='panels'] .wall {
+  grid-column: 2 / span 2;
+  grid-row: 3;
+}
+
+.screen[data-layout='panels'] .bottom {
+  grid-row: 4;
+}
+
+.layout-switch {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.layout-switch button[aria-pressed='true'] {
+  border-color: var(--bg-sidebar);
+  color: var(--bg-sidebar);
+  background: var(--bg-app);
+}
+
+.wall {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  overflow: auto;
+  padding: 12px;
+}
+
+.wall-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.wall-cell.on {
+  outline: 2px solid var(--accent);
+  border-radius: var(--radius-card);
+}
+
+.wall-cell .text-btn {
+  margin-top: 8px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1105,6 +1463,14 @@ onBeforeUnmount(() => {
   .detail,
   .detail dl {
     grid-template-columns: 1fr;
+  }
+
+  .screen[data-layout='panels'] .left,
+  .screen[data-layout='panels'] .center,
+  .screen[data-layout='panels'] .right,
+  .screen[data-layout='panels'] .wall {
+    grid-column: 1;
+    grid-row: auto;
   }
 }
 

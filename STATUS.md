@@ -28,16 +28,17 @@
 - #48 管理端总览在 `/dashboard/overview` 有序列时用 ECharts 画成熟、总数、病害，并列出未关闭告警与最近识别；识别页与病害页为抓拍图卡。侧栏 `#1B7A4E`，页面底 `#F5F7FA`，白卡片 8px 圆角、1px `#E5E6EB`。PR #51。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/51
 - #57 侧栏「基地大屏」紧跟总览并链到 `/big-screen`，去掉「二期槽位」；企微不进侧栏。PR #57 squash 合入 main（199bc05）。
 - #54 F-R3-06 严重告警推送企微/钉钉：`WECOM_WEBHOOK_URL` 与/或 `DINGTALK_WEBHOOK_URL`（可选 `DINGTALK_WEBHOOK_SECRET`）。未配置则不发送、不报错。推送失败只记日志。告警页进入 `/phase2/wecom`。PR #58 squash 合入 main（e948335）；Issue #54 已关闭。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/58
+- #60 管理端总览改为 ThingsBoard 浅色运营台：指标条、已配置坐标的棚区平面、棚区表、温度图（阈值来自已启用规则）、近 7 日成熟/总数/病害、右侧告警表。侧栏沿用 #57。PR #60 squash 合入 main（af813be）。
 
 ## 进行中
-- 管理端总览按 ThingsBoard 浅色运营台排布：指标条、棚区平面、棚区表、温度图（阈值来自已启用规则）、近 7 日成熟/总数/病害、右侧告警表。侧栏沿用 #57。`/big-screen` 使用夜色皮肤。
+- #55 F-R2-04 精装大屏：`/big-screen` 在指挥五区之外提供抓拍墙与多区布局；对比时间轴跳到 `/growth-trends`（棚、天数、摄像头）或 `/recognitions` 的上海日时段筛选。默认 Family B 浅色，暗色仅大屏路由可选。PR 未合，不关 Issue。
 - #48 管理端 Family B 轻量农事风落地（对照调查 04/06 样张；云端改代码中）
 - #47 F-R4-01 / F-R4-02 生长趋势日聚合：`daily_aggregates` 按棚与摄像头保存当日最新蘑菇数和菌盖直径均值；识别入库后刷新，每小时回写昨日与当日；`GET /api/v1/growth-trends?days=7|30` 按棚隔离；`/growth-trends` 只画已有日点。PR #52 未合，不关 Issue。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/52
 - #49 F-R6-03 近 2–3 日产量估计：`GET /api/v1/harvest/yield-estimate` 用近 30 个上海自然日、各摄像头当日最新成熟数之和做线性外推，响应与 `/harvest` 标注「估计」。不满 30 天只返回说明、`days` 为空。棚隔离；棚外 `shedCode` 403。PR #53 未合，不关 Issue。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/53
 - #50 F-R5-02 病害与同期环境同屏：`GET /api/v1/diseases/:id/environment` 按识别棚对齐识别时间前后各 30 分钟的温度、湿度、CO₂、基质含水率，可选传感器再收窄；无读数返回「该时间窗内无环境读数」，不用识别报文里的环境字段充数。`/diseases` 选中一条同屏展示。棚外 403。PR #53 未合，不关 Issue。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/53
 
 ## 待开
-- 无（全量需求切片已开；精装大屏 F-R2-04 下一波）
+- 无（全量需求切片已开）
 
 ## 规范
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18
