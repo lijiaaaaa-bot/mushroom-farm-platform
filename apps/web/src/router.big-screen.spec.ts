@@ -36,14 +36,25 @@ describe('/big-screen route', () => {
     expect(router.currentRoute.value.matched[0]?.components?.default).toBe(BigScreenView);
   });
 
-  it('links 菇棚监测 to /big-screen from the admin nav', async () => {
+  it('places 基地大屏 right after 总览 and opens /big-screen', async () => {
     localStorage.setItem('token', 'test-token');
     await router.push('/');
     await flushPromises();
 
     const wrapper = mount(AdminLayout, { global: { plugins: [router] } });
-    const link = wrapper.findAll('a').find((anchor) => anchor.text() === '菇棚监测');
-    expect(link?.attributes('href')).toBe('/big-screen');
+    const navLinks = wrapper.get('nav').findAll('a');
+    expect(navLinks[0]?.text()).toBe('总览');
+    const screenLink = navLinks[1];
+    expect(screenLink?.attributes('href')).toBe('/big-screen');
+    expect(screenLink?.classes()).toContain('font-semibold');
+    const marks = screenLink?.findAll('span') ?? [];
+    expect(marks[0]?.text()).toBe('基地大屏');
+    expect(marks[1]?.text()).toBe('大屏');
+    const hrefs = navLinks.map((anchor) => anchor.attributes('href'));
+    expect(hrefs).not.toContain('/phase2/big-screen');
+    expect(hrefs).not.toContain('/phase2/wecom');
+    expect(wrapper.get('nav').text()).not.toContain('二期槽位');
+    expect(wrapper.get('nav').text()).not.toMatch(/phase-?2|槽位|企微/i);
     wrapper.unmount();
   });
 });
