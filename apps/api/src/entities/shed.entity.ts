@@ -19,6 +19,14 @@ export class Shed {
   @Column({ type: 'varchar', nullable: true })
   location: string | null;
 
+  /** 平面示意图横坐标，0–100。空值表示尚未配置。 */
+  @Column({ type: 'double precision', nullable: true })
+  mapX: number | null;
+
+  /** 平面示意图纵坐标，0–100。空值表示尚未配置。 */
+  @Column({ type: 'double precision', nullable: true })
+  mapY: number | null;
+
   @Column({ default: true })
   enabled: boolean;
 
