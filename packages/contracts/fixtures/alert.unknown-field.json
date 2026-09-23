@@ -1,0 +1,10 @@
+{
+  "expect": "UNKNOWN_FIELD",
+  "body": {
+    "shedCode": "S01",
+    "level": "warning",
+    "title": "多余字段",
+    "message": "应被拒绝",
+    "extra": true
+  }
+}

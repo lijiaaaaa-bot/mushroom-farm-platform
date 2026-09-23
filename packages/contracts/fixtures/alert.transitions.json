@@ -1,0 +1,10 @@
+{
+  "expect": "cases",
+  "cases": [
+    { "from": "open", "to": "acked", "ok": true },
+    { "from": "acked", "to": "closed", "ok": true },
+    { "from": "open", "to": "closed", "ok": true },
+    { "from": "closed", "to": "acked", "ok": false },
+    { "from": "acked", "to": "open", "ok": false }
+  ]
+}

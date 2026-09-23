@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  font-family: "Noto Sans SC", ui-sans-serif, system-ui, sans-serif;
+  background: #07120e;
+  color: #e7f6ee;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background:
+    radial-gradient(1200px 500px at 10% -10%, rgba(61, 220, 151, 0.16), transparent 55%),
+    linear-gradient(180deg, #07120e, #0b1a14 40%, #07120e);
+}
+
+#app {
+  min-height: 100vh;
+}
+
+@layer components {
+  .panel {
+    @apply rounded-2xl border border-line bg-panel/90 p-4 shadow-lg shadow-black/20;
+  }
+  .field {
+    @apply w-full rounded-lg border border-line bg-ink px-3 py-2 text-sm text-white outline-none ring-accent/40 placeholder:text-mist/60 focus:ring-2;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-medium transition;
+  }
+  .btn-primary {
+    @apply btn bg-accent text-ink hover:brightness-110;
+  }
+  .btn-ghost {
+    @apply btn border border-line text-mist hover:text-white;
+  }
+  .data-table {
+    @apply w-full text-left text-sm;
+  }
+  .data-table th {
+    @apply border-b border-line px-3 py-2 font-medium text-mist;
+  }
+  .data-table td {
+    @apply border-b border-line/70 px-3 py-2;
+  }
+}

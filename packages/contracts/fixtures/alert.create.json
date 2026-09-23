@@ -1,0 +1,10 @@
+{
+  "expect": "ok",
+  "body": {
+    "shedCode": "S01",
+    "cameraCode": "CAM-S01-01",
+    "level": "warning",
+    "title": "人工抽查",
+    "message": "架构墙验收告警"
+  }
+}
