@@ -33,7 +33,7 @@ make gates   # 交付物门禁（与 test 分开；CI 的 deliverable-gates 跑�
 
 - MQTT 主题：`mushroom/+/+/recognition`，心跳 `mushroom/+/+/heartbeat`
 - HTTP：`POST /api/v1/ingest/recognition`
-- 抓拍保留 30 天，时序保留 90 天
+- 抓拍保留 30 天，时序保留 90 天；识别与环境补传窗口 90 天
 - 约 110 路摄像头、30 个棚区；角色为超管 / 生产管理员 / 棚区负责人 / 查看
 - 未知棚区或摄像头首次上报时自动建档
 
