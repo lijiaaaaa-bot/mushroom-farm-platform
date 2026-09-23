@@ -40,3 +40,4 @@
 | 2026-09-23 | #41 接入观测：GET /ingest/observability 汇总近窗接收、拒收、p50 与最近延迟、最近错误。识别与环境按入库行计，心跳含重复上报。/ingest-observability 展示数字与错误；失败不渲染表。棚负责人不见他棚和无棚号拒收 | `make test` 退出码 0（API jest 59，web vitest 59）；`make gates` 退出码 0 | 未打开登录后的 /ingest-observability。PR #42 未合，不关 Issue #41 |
 | 2026-09-23 | #43 认领与误报关闭：POST /alerts/:id/claim 写入 claimedBy；POST /alerts/:id/false-positive 以 closeReason=false_positive 关闭，普通关闭为 resolved。备注进审计。查看员与棚外 403。`/alerts` 沿用浅色 panel / btn-ghost | `make test` 退出码 0（API jest 63，web vitest 63）；`make gates` 退出码 0 | 本机无 Docker，未打开登录后的 /alerts。PR #44 未合，不关 Issue #43 |
 | 2026-09-23 | #45 STATUS：#41 已在已完成并引用 PR #42（squash 4d04654，Issue closed）；#43 从进行中移入已完成（PR #44 squash 6690bcb，Issue closed）；进行中改为无 | `gh pr view 42` MERGED；`gh pr view 44` MERGED；`gh issue view 41` CLOSED；`gh issue view 43` CLOSED；`make gates` | 不改业务代码，不自动合并 |
+| 2026-09-23 | #48 草稿：STATUS 进行中。目标是总览有数据时画曲线并列出告警/识别，识别与病害改为图卡；侧栏与色板按 Family B 浅色农事 | 草稿 PR 先开，页面改动随后推 | 不关 Issue |

@@ -27,7 +27,7 @@
 - #43 F-R3-04 告警认领与误报关闭：`POST /api/v1/alerts/:id/claim` 写入认领人；`POST /api/v1/alerts/:id/false-positive` 以 closeReason `false_positive` 关闭，与普通关闭的 `resolved` 区分；认领、误报、关闭写入审计。`/alerts` 有认领与误报入口，查看员只读。PR #44 squash 合入 main（6690bcb）；Issue closed. https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/44
 
 ## 进行中
-- 无
+- #48 管理端总览仍是四格 KPI 加空白「近 7 日」区；本分支按浅底白卡片、绿侧栏 `#1B7A4E`、有数据时画 ECharts、识别/病害改抓拍图卡来改。草稿 PR，页面尚未改完。
 
 ## 规范
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18
