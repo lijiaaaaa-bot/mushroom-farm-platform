@@ -22,7 +22,7 @@ make gates   # 交付物门禁（与 test 分开；CI 的 deliverable-gates 跑�
 
 ## 上游 Day-0
 
-本仓消费 [project-harness-day0](https://origin.cursor.com/lijiaaaaa/tmp-3e65e753ea9c25fb) v0.1.0。门禁、协议、agent 规范、检出结构先改 harness，再同步到本仓；本仓是消费方，禁止只在这里改文稿。其他项目的 Day-0 按 harness 的 `INSTALL.md` 拷贝。现行门禁仍是本仓 `make gates`。详见 [`docs/HARNESS.md`](docs/HARNESS.md)。
+本仓消费 [project-harness-day0](https://github.com/lijiaaaaa-bot/project-harness-day0) v0.1.0。门禁、协议、agent 规范、检出结构先改 harness，再同步到本仓；本仓是消费方，禁止只在这里改文稿。其他项目的 Day-0 按 harness 的 `INSTALL.md` 拷贝。现行门禁仍是本仓 `make gates`。详见 [`docs/HARNESS.md`](docs/HARNESS.md)。
 
 开发种子账号：`admin` / `Admin@123456`。接入令牌请求头：`X-Ingest-Token: dev-ingest-token`。
 

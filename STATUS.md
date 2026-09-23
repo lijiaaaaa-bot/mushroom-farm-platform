@@ -6,7 +6,7 @@
 进度只认：已合并 PR + 已关闭 Issue + 本文件一行。聊天文字不算交付。
 
 ## 已完成
-- harness 已抽出为 project-harness-day0（Origin：https://origin.cursor.com/lijiaaaaa/tmp-3e65e753ea9c25fb）
+- harness 已抽出为 project-harness-day0（https://github.com/lijiaaaaa-bot/project-harness-day0）
 - Day-1 硬墙 + HTTP 接入 + 告警确认（smoke）
 - 公开 GitHub main；`bid-sample/`、`docs/` 在仓内
 - #7 squash 合入 main、#6 已关闭：接入墙与 CI 门禁在 main
