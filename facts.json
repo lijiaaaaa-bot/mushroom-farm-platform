@@ -1,0 +1,46 @@
+{
+  "project_name": "食用菌种植管理平台",
+  "facts": [
+    {
+      "id": "camera_count",
+      "text": "110路摄像头",
+      "must_appear_as_fact_keywords": [
+        "110路",
+        "110 路"
+      ]
+    },
+    {
+      "id": "dual_ingest",
+      "text": "MQTT与HTTP双通道接入",
+      "must_appear_as_fact_keywords": [
+        "MQTT",
+        "HTTP"
+      ]
+    },
+    {
+      "id": "roles_four",
+      "text": "四角色权限",
+      "must_appear_as_fact_keywords": [
+        "超级管理员",
+        "生产管理员",
+        "棚区负责人",
+        "查看人员"
+      ]
+    }
+  ],
+  "forbidden_name_substrings": [
+    "独立",
+    "independent",
+    "好看",
+    "漂亮",
+    "完美",
+    "最终版",
+    "防幻觉",
+    "高质量方案"
+  ],
+  "json_samples": [],
+  "doc_globs": [
+    "docs/**/*.md",
+    "*.md"
+  ]
+}
