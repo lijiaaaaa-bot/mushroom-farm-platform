@@ -21,6 +21,8 @@
 | `make test` | 契约、边界、接入、API 单测、前端类型检查与页面测试 |
 | `make smoke` | 边缘模拟向 HTTP / MQTT 发黄金报文，证据写入 `evidence/ingest-last-run/` |
 | `make gates` | 文档门禁。退出码 0 才算文稿过关 |
+| `make backup` | `pg_dump` 写出 `backups/mushroom-<时间>.sql`。Redis 与 MinIO 不在该文件中 |
+| `make object-tier` | 热冷复制。未设置 `MINIO_APPLY_TIER=1` 时只打印计划 |
 
 开发种子账号：`admin` / `Admin@123456`（角色 `super_admin`）。接入请求头：`X-Ingest-Token`，默认值 `dev-ingest-token`（环境变量 `INGEST_TOKEN`）。未带令牌的接入请求会被拒绝。
 
@@ -119,7 +121,7 @@
 
 回放读该棚棚级日桶（`metric_buckets_day` 且 `cameraCode` 为空）：蘑菇数、成熟数、菌盖直径均值。计数取当天桶值，不把多日相加。窗口从批次开始日到结束日（未结束则到当天）。写操作仅超管、生产管理员、棚区负责人；查看人员不能新建。他棚 403。
 
-已知限制：阶段由人记录，不从识别结果自动推进。回放不读摄像头级桶。
+已知限制：阶段由人调用 `POST /api/v1/batches/:id/phases` 记录，不从识别结果自动推进。原始需求要自动记阶段，但没有切换条件；未确认前不发明阈值。可选口径写在 [`docs/OPS_STORAGE_BACKUP.md`](OPS_STORAGE_BACKUP.md)。回放不读摄像头级桶。
 
 ## 报表
 
@@ -170,7 +172,7 @@
 
 棚隔离在认证之后（`ShedScope`）。超管与生产管理员不限制棚；棚区负责人与查看只保留账号上的棚号；棚号列表为空则看不到任何棚。越权返回 403。
 
-用户接口 `GET/POST /api/v1/users` 仅超管。管理端没有用户页。审计页 `/audit`，`GET /api/v1/audit-logs`，仅超管与生产管理员。
+用户接口 `GET/POST /api/v1/users` 仅超管。管理端没有用户页。审计页 `/audit`：上方是登录日志，下方是操作审计。`GET /api/v1/audit-logs` 与 `GET /api/v1/login-logs` 都仅超管与生产管理员。登录日志可按 `username`、`from`、`to` 筛选。
 
 ## 存储
 
@@ -179,15 +181,22 @@
 | PostgreSQL | `make up` 使用 `postgres:16-alpine`，库 `mushroom`。业务表含识别、环境、告警、设备、棚、桶、批次、采摘任务 |
 | Timescale | 可选。`docker compose -f docker-compose.yml -f docker-compose.timescale.yml` 只换 Postgres 镜像。`009_timescale_optional.sql` 在 `make migrate` 时执行：没有扩展只写 NOTICE，有扩展也不在这条迁移里建 hypertable。`infra/timescale/enable.sql` 不进 `make migrate` |
 | Redis | Compose `redis:7-alpine`，端口 6379。接入幂等 `SETNX`。Redis 不可用时仍靠唯一约束去重 |
-| MinIO | Compose 端口 9000 / 控制台 9001，桶默认 `mushroom-snapshots`。抓拍字节在这里，PostgreSQL 存对象键。Mosquitto 端口 1883，匿名 |
+| MinIO | Compose 端口 9000 / 控制台 9001，桶默认 `mushroom-snapshots`。数据在命名卷 `minio-hot`（`MINIO_HOT_DATA` 可改为 SSD 路径）。抓拍字节在这里，PostgreSQL 存对象键。Mosquitto 端口 1883，匿名 |
+| 冷 MinIO | 可选。`docker-compose.minio-cold.yml`，端口 9002 / 控制台 9003，卷 `minio-cold`（`MINIO_COLD_DATA` 可改为 HDD 路径）。`make up` 不起冷端 |
+| 登录日志 | 表 `login_logs`（迁移 `012_login_logs.sql`）。成功与失败都写：用户、结果、时间、IP、User-Agent。`GET /api/v1/login-logs` |
+| Postgres 备份 | `make backup` → `backups/mushroom-<时间>.sql`。Redis 不备份。MinIO 字节不在该文件中 |
 
-对象生命周期脚本 `node scripts/object-lifecycle.mjs`，计划在 `infra/object-lifecycle.json`：前缀 `snapshots/`，热 90 天（可用 `OBJECT_HOT_DAYS` 覆盖）后转到 `GLACIER`。
+热冷复制脚本 `node scripts/object-tier.mjs`（`make object-tier`）。未设置 `MINIO_APPLY_TIER=1` 时只打印计划，退出码 0，不连接存储。设置之后必须同时有热端和冷端端点与密钥：把超过热天数的 `snapshots/` 复制到冷桶，读回字节一致才从热端删除。读回不一致或不可达时退出码非 0，当前对象留在热端。此脚本不调用 `setBucketLifecycle`。
+
+云归档脚本仍是 `node scripts/object-lifecycle.mjs`，计划在 `infra/object-lifecycle.json`：前缀 `snapshots/`，热 90 天（可用 `OBJECT_HOT_DAYS` 覆盖）后转到 `GLACIER`。
 
 默认**未下发**：未设置 `MINIO_APPLY_LIFECYCLE=1` 时只打印计划，退出码 0，不调用 MinIO。
 
 算已下发必须同时满足：`MINIO_APPLY_LIFECYCLE=1`，以及 `MINIO_ENDPOINT`、`MINIO_ACCESS_KEY`、`MINIO_SECRET_KEY`，脚本 `setBucketLifecycle` 之后 `getBucketLifecycle` 读回同一前缀的启用规则。缺密钥、端点不可达、存储类被拒绝或读回不匹配时退出码非 0，不把失败当成已生效。
 
-本地 compose 的 MinIO 没有远端存储类。在这份 MinIO 上按上面的条件去下发会失败，进程非零退出（fail-closed）。
+本地 compose 的 MinIO 没有远端存储类。在这份热 MinIO 上按上面的条件去下发会失败，进程非零退出（fail-closed）。没有冷端时，热冷复制同样拒绝执行，不会把单机 MinIO 说成已经转冷。
+
+打开抓拍的 API 只读热端。对象离开热端后，页面打不开该图，本仓不自动回源。步骤与 cron、恢复命令见 [`docs/OPS_STORAGE_BACKUP.md`](OPS_STORAGE_BACKUP.md)。
 
 ## 严重告警推送
 
@@ -213,18 +222,18 @@
 | 报表浏览器走查 | `/reports` 有组件测试。没有登录后用浏览器走完筛选、导出、打印的端到端测试 |
 | 演示规模 | 种子是 S01、S02、S03 三棚。`facts.json` 记载约 30 个棚区、110 路摄像头。当前库内数据和大屏样张不是该规模 |
 | Timescale 生产形态 | 默认仍是普通 Postgres。可选镜像与 `009` 的 NOTICE 没有把明细表改成 hypertable |
-| 对象生命周期 | 默认未下发。本地 MinIO 无远端存储类时，配置下发会失败 |
+| 对象生命周期 | 云归档默认未下发。本地热 MinIO 无远端存储类时，配置下发会失败。自建冷盘复制默认不执行 |
 | 日聚合旧表 | `daily_aggregates` 已删除。趋势、总览、大屏、批次回放、报表预览读桶 |
 | 两套估计的空窗 | 不满 30 个上海自然日时，线性估计不给未来数字。日桶不足两天时，增速估计不给未来数字 |
 | 产量单位 | 两套估计和采摘清单上的数字是成熟个数，不是公斤 |
 | 快捷环境表 | `env.xlsx` 取识别记录上的环境字段。环境监控预览才读环境日桶 |
 | 用户页 | 只有超管 API，侧栏没有用户管理 |
-| 批次阶段 | 人工记录，不随识别自动切换 |
+| 批次阶段 | 人工记录。自动切阶段没有业主确认的条件，不实现 |
 
 ## 证据指针
 
 - 接入跑样：`evidence/ingest-sample/summary.json`；`make smoke` 当次目录 `evidence/ingest-last-run/`
 - 过夜决策：`evidence/overnight-metric-buckets-67-69/decisions.tsv`、`evidence/overnight-orig-gaps/decisions.tsv`
 - 大屏样张：`docs/evidence/monitor-batch`
-- 谓词：`docs/OVERNIGHT_PRED_GAPS.md`；时序与生命周期说明：`docs/timescale-and-object-lifecycle.md`
+- 谓词：`docs/OVERNIGHT_PRED_GAPS.md`；时序与生命周期说明：`docs/timescale-and-object-lifecycle.md`；备份、登录日志与热冷盘：`docs/OPS_STORAGE_BACKUP.md`
 - 相关 PR：#70 识别入桶，#71 读桶与环境入桶，#74 去掉无用占位，#75 删除 `daily_aggregates`，#81 批次、采摘任务、报表预览与对象生命周期真下发（`04f7665`）。Issue #66–#69、#73、#77–#80 已关

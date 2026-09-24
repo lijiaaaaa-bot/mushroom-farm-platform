@@ -1,0 +1,20 @@
+# 可选冷 MinIO。`make up` 仍只起 docker-compose.yml 里的热 MinIO。
+# 热盘：启动前把 MINIO_HOT_DATA 指到 SSD 路径。冷盘：MINIO_COLD_DATA 指到 HDD 路径。
+#   docker compose -f docker-compose.yml -f docker-compose.minio-cold.yml up -d minio minio-cold
+# 复制超龄抓拍：MINIO_APPLY_TIER=1 node scripts/object-tier.mjs
+# 未设置该变量时脚本只打印计划。说明见 docs/OPS_STORAGE_BACKUP.md。
+services:
+  minio-cold:
+    image: quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_COLD_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_COLD_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "9002:9000"
+      - "9003:9001"
+    volumes:
+      - ${MINIO_COLD_DATA:-minio-cold}:/data
+
+volumes:
+  minio-cold:

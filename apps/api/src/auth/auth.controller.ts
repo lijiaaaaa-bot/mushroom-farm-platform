@@ -22,7 +22,12 @@ export class AuthController {
   @Public()
   @Post('login')
   login(@Body() body: LoginDto, @Req() request: Request) {
-    return this.auth.login(body.username, body.password, request.ip);
+    const header = request.headers['user-agent'];
+    const userAgent = Array.isArray(header) ? header[0] : header;
+    return this.auth.login(body.username, body.password, {
+      ip: request.ip ?? null,
+      userAgent: userAgent ?? null,
+    });
   }
 
   @Get('me')

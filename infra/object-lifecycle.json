@@ -3,5 +3,5 @@
   "prefix": "snapshots/",
   "hotDays": 90,
   "coldStorageClass": "GLACIER",
-  "note": "Applied only when MINIO_APPLY_LIFECYCLE=1 and the endpoint accepts the rule. Unset apply exits 0 and prints that nothing was sent. PostgreSQL stores object keys, not image bytes. hotDays aligns with the 90-day backfill window. Local compose MinIO has no remote tier, so a real apply there fails closed."
+  "note": "Cloud storage-class plan. Applied only when MINIO_APPLY_LIFECYCLE=1 and the endpoint accepts the rule. Unset apply exits 0 and prints that nothing was sent. Local compose MinIO has no remote tier, so a real apply there fails closed. Self-hosted hot SSD to cold HDD copy is scripts/object-tier.mjs (MINIO_APPLY_TIER=1) and does not mark this GLACIER rule as applied."
 }

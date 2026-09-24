@@ -1,4 +1,4 @@
-.PHONY: up api web test smoke smoke-evidence migrate contracts lint gates gates-selftest
+.PHONY: up api web test smoke smoke-evidence migrate contracts lint gates gates-selftest backup object-tier
 
 contracts:
 	npm --prefix packages/contracts install
@@ -27,7 +27,7 @@ lint:
 
 test: contracts lint
 	npm --prefix packages/contracts test
-	node --test scripts/boundaries.spec.mjs scripts/evidence.spec.mjs scripts/edge-simulator.spec.mjs scripts/object-lifecycle.spec.mjs
+	node --test scripts/boundaries.spec.mjs scripts/evidence.spec.mjs scripts/edge-simulator.spec.mjs scripts/object-lifecycle.spec.mjs scripts/object-tier.spec.mjs scripts/backup-postgres.spec.mjs
 	npm --prefix apps/api test
 	npm --prefix apps/web run typecheck
 	npm --prefix apps/web test
@@ -48,3 +48,9 @@ smoke: contracts
 	node scripts/smoke.mjs
 
 smoke-evidence: smoke
+
+backup:
+	node scripts/backup-postgres.mjs
+
+object-tier:
+	node scripts/object-tier.mjs

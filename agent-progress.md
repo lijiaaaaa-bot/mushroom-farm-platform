@@ -3,11 +3,13 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 2026-09-24：PR #81 已 squash 合入 main（`04f7665`）。Issue #77 #78 #79 #80 已关，#76 误开单也已关。批次、采摘任务、报表预览、对象生命周期（仅配置且读回成功才算下发）已在 main。能力说明见 `docs/CURRENT_CAPABILITIES.md`。
+- 2026-09-24：登录日志、`make backup`、可选冷 MinIO 与 `make object-tier` 在分支 `cursor/ops-storage-login-backup-fdce`。批次自动切阶段只写在 `docs/OPS_STORAGE_BACKUP.md`，不发明阈值。README 只留运维文档指针。
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
+| 2026-09-24 | 同上。`make test` 退出码 0（contracts 9，脚本 node:test 36，API jest 118，web vitest 103）；`make gates` 退出码 0。PR #85 | 本地命令已通过 | 批次自动切阶段等业主定规则。打开冷端抓拍不自动回源。未做登录后浏览器走查。PR 未合 |
+| 2026-09-24 | 登录成功/失败写入 `login_logs` 并提供 `GET /api/v1/login-logs`（超管、生产管理员）；`/audit` 增加登录日志表。`make backup` 用 pg_dump 写日期文件，空文件或找不到工具则非 0。热 MinIO 挂 `minio-hot`；`docker-compose.minio-cold.yml` 为可选冷端；`object-tier.mjs` 默认只打印，`MINIO_APPLY_TIER=1` 时读回一致才删热端对象。云 GLACIER 脚本保持 fail-closed。运维说明 `docs/OPS_STORAGE_BACKUP.md` | `make test` 与 `make gates` 待本轮命令验收 | 批次自动切阶段等业主定规则。打开冷端抓拍不自动回源。未做登录后浏览器走查 |
 | 2026-09-23 | 接入 gates + 上下文文档 | PR #11/#12、make gates | 大屏 Issue #2、文档口径 PR #9 |
 | 2026-09-23 | 行为探针：会话协议开场检查 | 本 PR + make gates | 无 |
 | 2026-09-23 | 边缘模拟实体发送契约黄金报文；make smoke 写 evidence/ingest-last-run；CI job ingest-smoke 上传 artifact | 本地 make smoke 已通过；样本 evidence/ingest-sample/summary.json（2026-09-23T07:07:14.170Z） | CI artifact 需看 Actions |

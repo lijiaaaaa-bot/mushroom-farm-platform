@@ -12,3 +12,6 @@ packages/contracts/dist/
 
 # make smoke 每次覆盖。CI artifact 名 ingest-smoke-evidence。样本在 evidence/ingest-sample/
 evidence/ingest-last-run/
+
+# make backup 写出的 Postgres 逻辑备份
+backups/
