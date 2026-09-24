@@ -1,6 +1,6 @@
 # STATUS｜mushroom-farm-platform
 
-更新：2026-09-24 13:05（Asia/Shanghai）
+更新：2026-09-24 13:22（Asia/Shanghai）
 仓：https://github.com/lijiaaaaa-bot/mushroom-farm-platform
 
 进度只认：已合并 PR + 已关闭 Issue + 本文件一行。聊天文字不算交付。
@@ -36,9 +36,12 @@
 - #55 F-R2-04 基地大屏：管理端侧栏与顶栏进入 `/big-screen`。默认一屏为指标、棚区平面、抓拍墙、告警与环境；可切抓拍墙或带时间轴的多区。时间轴跳到 `/growth-trends` 或识别记录的上海日筛选。夜色投屏皮肤 `data-skin=tb-night` 只在这一页。PR #59 squash 合入 main（663fbf5）；Issue #55 已关闭。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/59
 - #63 总览与大屏去掉大色块、收字阶：白导航、短标题、平面改为状态色钉、抓拍墙无图为细框「无图」，有图出 JPEG。阈值线与在线/离线/一般/严重可扫。PR #64 squash 合入 main（0b21e2b）；Issue #63 已关闭。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/64
 - #66 指标预聚合切片 B：`metric_buckets_hour` / `metric_buckets_day`，识别 ingest 按 `recognizedAt`（Asia/Shanghai）增量 upsert 小时桶与日桶，同一幂等键不双计。PR #70 squash 合入 main（da73760）；Issue #66 已关闭。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/70
+- #67 指标预聚合读路径（趋势、总览与大屏）已完成；PR [#71](https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/71) 已 squash 合入 main（d5f0838f）；Issue #67 已关闭。
+- #68 环境入桶与病害高发读桶已完成；PR [#71](https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/71) 已 squash 合入 main（d5f0838f）；Issue #68 已关闭。
+- #69 Timescale 可选路径与对象生命周期已完成；PR [#71](https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/71) 已 squash 合入 main（d5f0838f）；Issue #69 已关闭。
 
 ## 进行中
-- #67 #68 #69 指标预聚合读路径、环境入桶、病害高发、Timescale 可选路径与对象生命周期。PR #71 https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/71 分支 `overnight/metric-buckets-67-69`。不自动合并。怎么验：`make test`（API jest 106，web vitest 97）与 `make gates` 退出码 0。`GET /api/v1/growth-trends` 读日桶，`GET /api/v1/growth-trends/hours` 只返回已有小时桶；总览今日成熟/总数、7 日趋势、环境均值读桶，不扫 `recognition_records`。环境 ingest 成功且非重复后按 `observedAt` 写温湿度 CO₂ 含水率桶。`GET /api/v1/diseases/peaks` 读病害桶，`GET /api/v1/diseases` 仍是识别档案。`node scripts/object-lifecycle.mjs` 退出码 0 并打印「未下发」。`009_timescale_optional.sql` 不建 hypertable。说明：[`docs/timescale-and-object-lifecycle.md`](docs/timescale-and-object-lifecycle.md)。决策日志：`evidence/overnight-metric-buckets-67-69/decisions.tsv`。
+- 无（诚实说明：`node scripts/object-lifecycle.mjs` 仍打印「未下发」；Timescale 可选路径默认未启用。）
 
 ## 待开
 - 无
