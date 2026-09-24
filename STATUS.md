@@ -37,7 +37,7 @@
 - #63 总览与大屏去掉大色块、收字阶：白导航、短标题、平面改为状态色钉、抓拍墙无图为细框「无图」，有图出 JPEG。阈值线与在线/离线/一般/严重可扫。PR #64 squash 合入 main（0b21e2b）；Issue #63 已关闭。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/64
 
 ## 进行中
-- #66 指标预聚合切片 B：小时桶与识别 ingest 增量 upsert（按 `recognizedAt` 上海时/日，幂等不双计）。需求：[`docs/metrics-preaggregation-requirements.md`](docs/metrics-preaggregation-requirements.md)
+- #66 指标预聚合切片 B：小时桶与识别 ingest 增量 upsert（按 `recognizedAt` 上海时/日，幂等不双计）。需求：[`docs/metrics-preaggregation-requirements.md`](docs/metrics-preaggregation-requirements.md)。PR #70 https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/70
 
 ## 待开
 - #67 切片 C：趋势/大屏 24h 与按小时 API 读小时桶
