@@ -1,6 +1,6 @@
 # STATUS｜mushroom-farm-platform
 
-更新：2026-09-24 14:45（Asia/Shanghai）
+更新：2026-09-24 15:30（Asia/Shanghai）
 仓：https://github.com/lijiaaaaa-bot/mushroom-farm-platform
 
 进度只认：已合并 PR + 已关闭 Issue + 本文件一行。聊天文字不算交付。
@@ -38,17 +38,21 @@
 - #66 指标预聚合切片 B：`metric_buckets_hour` / `metric_buckets_day`，识别 ingest 按 `recognizedAt`（Asia/Shanghai）增量 upsert 小时桶与日桶，同一幂等键不双计。PR #70 squash 合入 main（da73760）；Issue #66 已关闭。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/70
 - #67 指标预聚合读路径（趋势、总览与大屏）已完成；PR [#71](https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/71) 已 squash 合入 main（d5f0838f）；Issue #67 已关闭。
 - #68 环境入桶与病害高发读桶已完成；PR [#71](https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/71) 已 squash 合入 main（d5f0838f）；Issue #68 已关闭。
-- #69 Timescale 可选路径与对象生命周期已完成；PR [#71](https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/71) 已 squash 合入 main（d5f0838f）；Issue #69 已关闭。
-
+- #69 Timescale 可选路径：`docker-compose.timescale.yml` 只换 Postgres 镜像；`009_timescale_optional.sql` 只 NOTICE，不建 hypertable，`enable.sql` 不进 `make migrate`。PR [#71](https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/71) squash 合入 main（d5f0838f）；Issue #69 已关闭。对象生命周期的真下发不在 #71，见 #80。
 - #75 停写并删除 `daily_aggregates`。识别 ingest 不再双写日聚合表；`refreshDay` 只回写小时桶与日桶。迁移 `010_drop_daily_aggregates.sql`。PR #75 squash 合入 main（59a9083）。Issue #73 已关闭。
+- #77 出菇批次：`/batches` 新建、阶段（出菇 / 快速生长 / 成熟）、关闭；`GET /api/v1/batches/:id/replay` 读该棚棚级日桶。PR [#81](https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/81) squash 合入 main（04f7665）；Issue #77 已关闭。
+- #78 采摘任务与日桶增速：`POST /api/v1/harvest/tasks/generate`、`PATCH /api/v1/harvest/tasks/:id`；`GET /api/v1/harvest/bucket-forecast` 用近 7 日棚级成熟日桶首尾增速外推未来 3 日成熟数（不是公斤）。PR #81（04f7665）；Issue #78 已关闭。
+- #79 报表筛选预览与 xlsx：六类 `growth` / `yield` / `disease` / `environment` / `devices` / `alerts`；`/reports` 预览、`export.xlsx`、浏览器 `window.print()`。PR #81（04f7665）；Issue #79 已关闭。报表页没有登录后的浏览器端到端测试。
+- #80 对象生命周期：`scripts/object-lifecycle.mjs` 默认打印未下发并退出码 0。仅当 `MINIO_APPLY_LIFECYCLE=1` 且端点与密钥齐全、读回同一前缀的启用规则，才算已下发；失败退出码非 0。本地 compose MinIO 无远端存储类时下发失败（fail-closed）。PR #81（04f7665）；Issue #80 已关闭。能力对照见 [`docs/CURRENT_CAPABILITIES.md`](docs/CURRENT_CAPABILITIES.md)。
 
 ## 进行中
-- 原始需求缺口：批次潮次（#77）、每日采摘任务与日桶增速估计（#78）、报表筛选预览导出（#79）、对象生命周期配置后真下发（#80）。PR https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/81 草稿，分支 `overnight/orig-gaps-batch-harvest-reports-lifecycle`。谓词 `docs/OVERNIGHT_PRED_GAPS.md`。本地 `make test`（API jest 113，web vitest 102）与 `make gates` 退出码 0。不自动合并。#76 是误开探测单，本环境不能关闭，需人工关。
+- 无
 
 ## 待开
 - 无
 
 ## 规范
+- 当前能力（路由、接口、限制）：[`docs/CURRENT_CAPABILITIES.md`](docs/CURRENT_CAPABILITIES.md)
 - 指标预聚合与时序存储：[`docs/metrics-preaggregation-requirements.md`](docs/metrics-preaggregation-requirements.md)（切片 B–E：#66 #67 #68 #69）
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18
 - 识别与环境补传窗口为 90 天（`LIMITS.recognizedAtPastDays`），与时序明细在线保留一致。
