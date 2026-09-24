@@ -243,7 +243,8 @@ onMounted(() => {
 <template>
   <section class="ops-page space-y-4">
     <section class="panel space-y-3" data-testid="yield-estimate">
-      <h2 class="text-lg">近 2–3 日产量</h2>
+      <h2 class="text-lg">近 2–3 日成熟估计（30 日线性）</h2>
+      <p class="text-sm text-mist" data-testid="forecast-compare-note">两种算法对照同一数量（未来日成熟数），不是两套产量，也不是公斤。</p>
       <p v-if="yieldLoading" class="text-mist">加载中…</p>
       <p v-else-if="yieldError" class="text-danger">{{ yieldError }}</p>
       <template v-else-if="estimate">
@@ -256,14 +257,14 @@ onMounted(() => {
           <ul class="grid gap-3 sm:grid-cols-3">
             <li v-for="day in estimate.days" :key="day.date" class="rounded-lg border border-line px-3 py-2" data-testid="yield-day">
               <p class="text-sm text-mist">{{ day.date }}</p>
-              <p class="font-mono text-2xl">{{ estimate.label }} {{ day.matureCount }}</p>
+              <p class="font-mono text-2xl">{{ estimate.label }} {{ day.matureCount }} 成熟</p>
             </li>
           </ul>
         </template>
       </template>
     </section>
     <section class="panel space-y-3" data-testid="bucket-forecast">
-      <h2 class="text-lg">近 2–3 日产量（日桶增速）</h2>
+      <h2 class="text-lg">近 2–3 日成熟估计（日桶增速）</h2>
       <p v-if="forecastError" class="text-danger">{{ forecastError }}</p>
       <template v-else-if="forecast">
         <p class="text-sm">
@@ -275,7 +276,7 @@ onMounted(() => {
           <ul class="grid gap-3 sm:grid-cols-3">
             <li v-for="day in forecast.days" :key="day.date" class="rounded-lg border border-line px-3 py-2" data-testid="bucket-forecast-day">
               <p class="text-sm text-mist">{{ day.date }}</p>
-              <p class="font-mono text-2xl">{{ forecast.label }} {{ day.matureCount }}</p>
+              <p class="font-mono text-2xl">{{ forecast.label }} {{ day.matureCount }} 成熟</p>
             </li>
           </ul>
         </template>
