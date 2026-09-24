@@ -27,3 +27,7 @@ make web      # http://127.0.0.1:43123
 | 心跳 | `mushroom/+/+/heartbeat` | `POST /api/v1/ingest/heartbeat` |
 
 基地大屏路由：`/big-screen`。严重告警可选推送到企业微信 / 钉钉，见 `.env.example`。
+
+## 部署与运维
+
+- 登录日志、Postgres 备份、抓拍热盘 / 冷盘与云归档：[`docs/OPS_STORAGE_BACKUP.md`](docs/OPS_STORAGE_BACKUP.md)
