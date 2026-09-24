@@ -3,8 +3,8 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：死代码审计。Issue #73 列出 (A)(B)(C)。只删 (A)：无引用的 Phase2View、未测试的 phase2/trends 与 phase2/yield 重定向、placeholder phase2 API、空测试。
-- 进行中文件：`apps/web/src/router.ts`、`apps/api/src/app.module.ts`、`STATUS.md`
+- 本会话目标：Issue #73 (B) 停写 `daily_aggregates`，读路径已是桶；迁移删表。不改桶读写，不删对象生命周期脚本。
+- 进行中文件：`apps/api/src/growth/growth-trend.service.ts`、`infra/migrations/010_drop_daily_aggregates.sql`、`STATUS.md`
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -60,3 +60,4 @@
 | 2026-09-24 | 指标预聚合需求入仓；Issue #66 切片 B、#67 C、#68 D、#69 E。切片 B：`metric_buckets_hour` / `metric_buckets_day`，识别 ingest 按 `recognizedAt` 增量 upsert，重复幂等键不双计，补传改历史桶。小时 cron 与采摘修正仍走 `refreshDay` 重算昨/当日并回写桶 | `make test` 退出码 0（contracts 9，API jest 100，web vitest 93）；`make gates` 退出码 0。PR #70 | 趋势/大屏仍读 `daily_aggregates`（#67）。环境与高发统计未入桶（#68）。不安装 Timescale（#69）。不关 #66，等 PR 合并 |
 | 2026-09-24 | #67–#69：趋势/大屏/总览改读小时与日桶；环境 ingest 按 observedAt 写桶；病害高发 `GET /diseases/peaks` 读桶，档案仍是识别明细。Timescale 仅可选 overlay + `009` NOTICE，不建 hypertable。对象生命周期脚本默认不下发。不合并 | `make test` 退出码 0（API jest 106，web vitest 97）；`make gates` 与 `make gates-selftest` 退出码 0。`node scripts/object-lifecycle.mjs` 打印未下发 | 早审核合并后再关 #67 #68 #69。决策日志 `evidence/overnight-metric-buckets-67-69/decisions.tsv` |
 | 2026-09-24 | 死代码审计。Issue #73：(A) 删无引用 Phase2View、phase2/trends 与 phase2/yield 重定向、placeholder phase2 API、空 app.controller.spec 与空 e2e；(B) daily_aggregates 仍双写，读已走桶；(C) object-lifecycle 仍打印未下发，phase2/wecom 与 phase2/big-screen 重定向保留 | `make test` 退出码 0（contracts 9，API jest 105，web vitest 97）；`make gates` 与 `make gates-selftest` 退出码 0。PR #74 | 不关 #73。不删桶读写，不删对象生命周期脚本 |
+| 2026-09-24 | #73 (B)：停写 daily_aggregates。applyRecognition 只 upsert 小时/日桶；refreshDay 重扫该日识别明细并回写识别桶，环境桶保留。删实体、aggregateDay、dailyDraftsFromBuckets。010 删表。§4 现行改为读桶。不关 #73 | `make test` 退出码 0（contracts 9，API jest 105，web vitest 97）；`make gates` 与 `make gates-selftest` 退出码 0 | (C) 仍留：object-lifecycle 未下发、009 NOTICE、phase2/wecom 与 phase2/big-screen 重定向。需求规格说明书仍列 DailyAggregate 域名 |

@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { DailyAggregate } from '../entities/daily-aggregate.entity';
 import {
   MetricBucketDay,
   MetricBucketHour,
@@ -12,7 +11,6 @@ import { GrowthTrendService } from './growth-trend.service';
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      DailyAggregate,
       RecognitionRecord,
       MetricBucketHour,
       MetricBucketDay,

@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import {
   Role,
+  shanghaiDate,
   shanghaiDayRange,
   shanghaiHourStart,
   todayShanghai,
@@ -11,7 +12,6 @@ import { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
 import { AuthUser } from '../common/auth-user';
 import { configureApp } from '../configure-app';
-import { DailyAggregate } from '../entities/daily-aggregate.entity';
 import {
   MetricBucketBase,
   MetricBucketDay,
@@ -19,12 +19,9 @@ import {
 } from '../entities/metric-bucket.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { HarvestService } from '../harvest';
+import { AggregateSource, shiftShanghaiDay } from './growth-trend.aggregate';
 import {
-  AggregateSource,
-  aggregateDay,
-  shiftShanghaiDay,
-} from './growth-trend.aggregate';
-import {
+  foldBuckets,
   METRIC_CAP_DIAMETER_MEAN,
   METRIC_DISEASE_COUNT,
   METRIC_ENV_TEMPERATURE,
@@ -36,77 +33,6 @@ import { DiseasesController } from '../diseases/diseases.controller';
 import { IngestService } from '../ingest';
 import { GrowthTrendsController } from './growth-trend.controller';
 import { GrowthTrendService } from './growth-trend.service';
-
-function memoryAggregates(initial: DailyAggregate[] = []) {
-  const rows = initial.map((row) => ({ ...row }));
-  let seq = rows.length;
-  return {
-    rows,
-    create: (input: Partial<DailyAggregate>) =>
-      ({ ...input }) as DailyAggregate,
-    find: async (options?: { where?: { day?: string } }) => {
-      const day = options?.where?.day;
-      const found = day ? rows.filter((row) => row.day === day) : rows;
-      return found.map((row) => ({ ...row }));
-    },
-    save: async (input: DailyAggregate) => {
-      const saved = {
-        ...input,
-        id: input.id ?? `agg-${++seq}`,
-        updatedAt: input.updatedAt ?? new Date(),
-      };
-      const index = rows.findIndex((row) => row.id === saved.id);
-      if (index >= 0) rows[index] = saved;
-      else rows.push(saved);
-      return { ...saved };
-    },
-    delete: async (criteria: { id: string }) => {
-      const index = rows.findIndex((row) => row.id === criteria.id);
-      if (index >= 0) rows.splice(index, 1);
-      return { affected: index >= 0 ? 1 : 0 };
-    },
-    createQueryBuilder() {
-      const filters: Array<(row: DailyAggregate) => boolean> = [];
-      const qb = {
-        where(_sql: string, params: { from: string; to: string }) {
-          filters.push((row) => row.day >= params.from && row.day <= params.to);
-          return qb;
-        },
-        andWhere(
-          sql: string,
-          params?: { codes?: string[]; shedCode?: string },
-        ) {
-          if (sql.includes('1 = 0')) filters.push(() => false);
-          if (params?.codes) {
-            const codes = params.codes;
-            filters.push((row) => codes.includes(row.shedCode));
-          }
-          if (params?.shedCode) {
-            filters.push((row) => row.shedCode === params.shedCode);
-          }
-          return qb;
-        },
-        orderBy() {
-          return qb;
-        },
-        addOrderBy() {
-          return qb;
-        },
-        async getMany() {
-          return rows
-            .filter((row) => filters.every((fn) => fn(row)))
-            .sort(
-              (a, b) =>
-                a.day.localeCompare(b.day) ||
-                a.shedCode.localeCompare(b.shedCode),
-            )
-            .map((row) => ({ ...row }));
-        },
-      };
-      return qb;
-    },
-  };
-}
 
 function memoryRecords(initial: AggregateSource[]) {
   const rows = initial.map((row) => ({
@@ -226,7 +152,7 @@ function memoryMetricBuckets() {
 }
 
 function bucketValue(
-  rows: MetricBucketBase[],
+  rows: Array<{ metric: string; cameraCode: string; value: number | null }>,
   metric: string,
   cameraCode: string,
 ) {
@@ -258,10 +184,10 @@ function assignUser(
   next();
 }
 
-describe('daily growth aggregates', () => {
+describe('day bucket rollup', () => {
   it('keeps the latest mushroom count and the mean cap diameter', () => {
     const day = '2026-09-23';
-    const points = aggregateDay(day, [
+    const sources: AggregateSource[] = [
       {
         id: 'a',
         shedCode: 'S01',
@@ -302,31 +228,32 @@ describe('daily growth aggregates', () => {
         mushroomCount: 3,
         avgCapDiameter: null,
       },
-    ]);
+    ];
+    const rows = foldBuckets(
+      sources.filter(
+        (record) => shanghaiDate(new Date(record.recognizedAt)) === day,
+      ),
+      shanghaiDayRange(day).start,
+    );
 
-    const shed = points.find((row) => row.grain === 'shed');
-    const cam1 = points.find((row) => row.cameraCode === 'CAM-1');
-    const cam3 = points.find((row) => row.cameraCode === 'CAM-3');
-    expect(shed).toMatchObject({
-      mushroomCount: 23,
-      capDiameterMean: 4.67,
-      sampleCount: 4,
-    });
-    expect(cam1).toMatchObject({
-      mushroomCount: 12,
-      capDiameterMean: 5,
-      sampleCount: 2,
-    });
-    expect(cam3).toMatchObject({ mushroomCount: 3, capDiameterMean: null });
-    expect(points.some((row) => row.mushroomCount === 99)).toBe(false);
+    expect(bucketValue(rows, METRIC_MUSHROOM_COUNT, '')?.value).toBe(23);
+    expect(bucketValue(rows, METRIC_CAP_DIAMETER_MEAN, '')?.value).toBe(4.67);
+    expect(bucketValue(rows, METRIC_SAMPLE_COUNT, '')?.value).toBe(4);
+    expect(bucketValue(rows, METRIC_MUSHROOM_COUNT, 'CAM-1')?.value).toBe(12);
+    expect(bucketValue(rows, METRIC_CAP_DIAMETER_MEAN, 'CAM-1')?.value).toBe(5);
+    expect(bucketValue(rows, METRIC_SAMPLE_COUNT, 'CAM-1')?.value).toBe(2);
+    expect(bucketValue(rows, METRIC_MUSHROOM_COUNT, 'CAM-3')?.value).toBe(3);
+    expect(
+      bucketValue(rows, METRIC_CAP_DIAMETER_MEAN, 'CAM-3'),
+    ).toBeUndefined();
+    expect(rows.some((row) => row.value === 99)).toBe(false);
   });
 
   it('returns no rows when the day has no recognitions', () => {
-    expect(aggregateDay('2026-09-23', [])).toEqual([]);
+    expect(foldBuckets([], shanghaiDayRange('2026-09-23').start)).toEqual([]);
   });
 
   it('rewrites the day and drops cameras that no longer reported', async () => {
-    const aggregates = memoryAggregates();
     const records = memoryRecords([
       {
         id: 'a',
@@ -348,13 +275,15 @@ describe('daily growth aggregates', () => {
     const hours = memoryMetricBuckets();
     const days = memoryMetricBuckets();
     const service = new GrowthTrendService(
-      aggregates as never,
       records as never,
       hours as never,
       days as never,
     );
     await service.refreshDay('2026-09-23');
-    expect(aggregates.rows).toHaveLength(3);
+    expect(bucketValue(days.rows, METRIC_MUSHROOM_COUNT, '')?.value).toBe(18);
+    expect(bucketValue(days.rows, METRIC_MUSHROOM_COUNT, 'CAM-2')?.value).toBe(
+      8,
+    );
     expect(bucketValue(hours.rows, METRIC_MUSHROOM_COUNT, 'CAM-2')?.value).toBe(
       8,
     );
@@ -362,13 +291,10 @@ describe('daily growth aggregates', () => {
     records.rows.splice(1, 1);
     records.rows[0].mushroomCount = 15;
     await service.refreshDay('2026-09-23');
-    expect(aggregates.rows.map((row) => row.cameraCode).sort()).toEqual([
-      '',
-      'CAM-1',
-    ]);
     expect(
-      aggregates.rows.find((row) => row.grain === 'shed')?.mushroomCount,
-    ).toBe(15);
+      bucketValue(days.rows, METRIC_MUSHROOM_COUNT, 'CAM-2'),
+    ).toBeUndefined();
+    expect(bucketValue(days.rows, METRIC_MUSHROOM_COUNT, '')?.value).toBe(15);
     expect(
       bucketValue(hours.rows, METRIC_MUSHROOM_COUNT, 'CAM-2'),
     ).toBeUndefined();
@@ -378,12 +304,10 @@ describe('daily growth aggregates', () => {
   });
 
   it('upserts hour and day buckets for recognizedAt and ignores the arrival day', async () => {
-    const aggregates = memoryAggregates();
     const records = memoryRecords([]);
     const hours = memoryMetricBuckets();
     const days = memoryMetricBuckets();
     const service = new GrowthTrendService(
-      aggregates as never,
       records as never,
       hours as never,
       days as never,
@@ -451,15 +375,13 @@ describe('daily growth aggregates', () => {
         (row) => new Date(row.bucketStart).getTime() === dayStart,
       ),
     ).toBe(true);
-    expect(aggregates.rows.find((row) => row.grain === 'shed')).toMatchObject({
-      day: '2026-09-20',
-      mushroomCount: 13,
-      capDiameterMean: 5.75,
-      sampleCount: 4,
-    });
+    expect(bucketValue(days.rows, METRIC_MUSHROOM_COUNT, 'CAM-1')?.value).toBe(
+      9,
+    );
+    expect(bucketValue(days.rows, METRIC_SAMPLE_COUNT, 'CAM-1')?.value).toBe(3);
     expect(
-      aggregates.rows.find((row) => row.cameraCode === 'CAM-1'),
-    ).toMatchObject({ mushroomCount: 9, sampleCount: 3, capDiameterMean: 5 });
+      bucketValue(days.rows, METRIC_CAP_DIAMETER_MEAN, 'CAM-1')?.value,
+    ).toBe(5);
   });
 });
 
@@ -500,7 +422,6 @@ describe('growth trend API', () => {
   const outside = shiftShanghaiDay(today, -40);
 
   beforeEach(async () => {
-    const aggregates = memoryAggregates([]);
     const records = memoryRecords([]);
     recordScans = jest.spyOn(records, 'createQueryBuilder');
     const days = memoryMetricBuckets();
@@ -516,10 +437,6 @@ describe('growth trend API', () => {
       controllers: [GrowthTrendsController],
       providers: [
         GrowthTrendService,
-        {
-          provide: getRepositoryToken(DailyAggregate),
-          useValue: aggregates,
-        },
         {
           provide: getRepositoryToken(RecognitionRecord),
           useValue: records,
@@ -681,7 +598,6 @@ describe('hour buckets and disease peaks', () => {
     const records = memoryRecords([]);
     const scan = jest.spyOn(records, 'createQueryBuilder');
     const service = new GrowthTrendService(
-      memoryAggregates() as never,
       records as never,
       hours as never,
       days as never,
@@ -751,7 +667,6 @@ describe('hour buckets and disease peaks', () => {
     const records = memoryRecords([]);
     const scan = jest.spyOn(records, 'createQueryBuilder');
     const service = new GrowthTrendService(
-      memoryAggregates() as never,
       records as never,
       memoryMetricBuckets() as never,
       days as never,
@@ -785,7 +700,6 @@ describe('hour buckets and disease peaks', () => {
     const hours = memoryMetricBuckets();
     const days = memoryMetricBuckets();
     const service = new GrowthTrendService(
-      memoryAggregates() as never,
       memoryRecords([]) as never,
       hours as never,
       days as never,
@@ -887,7 +801,6 @@ describe('hour buckets and disease peaks', () => {
       },
     ]);
     const service = new GrowthTrendService(
-      memoryAggregates() as never,
       records as never,
       hours as never,
       days as never,
@@ -923,10 +836,6 @@ describe('hour buckets and disease peaks', () => {
       controllers: [GrowthTrendsController, DiseasesController],
       providers: [
         GrowthTrendService,
-        {
-          provide: getRepositoryToken(DailyAggregate),
-          useValue: memoryAggregates(),
-        },
         { provide: getRepositoryToken(RecognitionRecord), useValue: records },
         { provide: getRepositoryToken(MetricBucketHour), useValue: hours },
         { provide: getRepositoryToken(MetricBucketDay), useValue: days },
