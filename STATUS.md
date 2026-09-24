@@ -1,6 +1,6 @@
 # STATUS｜mushroom-farm-platform
 
-更新：2026-09-24 09:28（Asia/Shanghai）
+更新：2026-09-24 12:40（Asia/Shanghai）
 仓：https://github.com/lijiaaaaa-bot/mushroom-farm-platform
 
 进度只认：已合并 PR + 已关闭 Issue + 本文件一行。聊天文字不算交付。
@@ -37,12 +37,15 @@
 - #63 总览与大屏去掉大色块、收字阶：白导航、短标题、平面改为状态色钉、抓拍墙无图为细框「无图」，有图出 JPEG。阈值线与在线/离线/一般/严重可扫。PR #64 squash 合入 main（0b21e2b）；Issue #63 已关闭。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/64
 
 ## 进行中
-- 无
+- #66 指标预聚合切片 B：小时桶与识别 ingest 增量 upsert（按 `recognizedAt` 上海时/日，幂等不双计）。需求：[`docs/metrics-preaggregation-requirements.md`](docs/metrics-preaggregation-requirements.md)。PR #70 https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/70
 
 ## 待开
-- 无（全量需求切片已开）
+- #67 切片 C：趋势/大屏 24h 与按小时 API 读小时桶
+- #68 切片 D：环境指标入桶；病害高发统计读桶
+- #69 切片 E：Timescale 可选启用与保留；对象存储生命周期
 
 ## 规范
+- 指标预聚合与时序存储：[`docs/metrics-preaggregation-requirements.md`](docs/metrics-preaggregation-requirements.md)（切片 B–E：#66 #67 #68 #69）
 - Overnight 工单：协议在 harness `docs/OVERNIGHT.md`；本仓指针 `docs/OVERNIGHT_TICKET.md` 与 Issue 表单。PR：#18
 - 识别与环境补传窗口为 90 天（`LIMITS.recognizedAtPastDays`），与时序明细在线保留一致。
 - 本地演示可以只有少量棚与摄像头，对照需求规格约 30 棚、110 路摄像头；大屏抓拍墙样张在 `docs/evidence/monitor-batch`。

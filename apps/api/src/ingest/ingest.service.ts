@@ -17,7 +17,6 @@ import {
   buildIdempotencyKey,
   parseEnvironmentIngress,
   parseRecognitionIngress,
-  shanghaiDate,
 } from '@mushroom/contracts';
 import { EnvironmentReading } from '../entities/environment-reading.entity';
 import { HeartbeatReceipt } from '../entities/heartbeat-receipt.entity';
@@ -188,10 +187,17 @@ export class IngestService {
       await this.devices.touchCamera(saved.shedCode, saved.cameraCode);
       await this.alerts.evaluate(saved);
       try {
-        await this.growth?.refreshDay(shanghaiDate(saved.recognizedAt));
+        await this.growth?.applyRecognition({
+          id: saved.id,
+          shedCode: saved.shedCode,
+          cameraCode: saved.cameraCode,
+          recognizedAt: saved.recognizedAt,
+          mushroomCount: saved.mushroomCount,
+          avgCapDiameter: saved.avgCapDiameter,
+        });
       } catch (refreshError) {
         this.logger.warn(
-          `日聚合刷新失败，识别记录已入库：${(refreshError as Error).message}`,
+          `指标桶更新失败，识别记录已入库：${(refreshError as Error).message}`,
         );
       }
       return { accepted: true, duplicate: false, id: saved.id, snapshotStored };
