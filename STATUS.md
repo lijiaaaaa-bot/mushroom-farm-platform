@@ -38,7 +38,7 @@
 - #66 指标预聚合切片 B：`metric_buckets_hour` / `metric_buckets_day`，识别 ingest 按 `recognizedAt`（Asia/Shanghai）增量 upsert 小时桶与日桶，同一幂等键不双计。PR #70 squash 合入 main（da73760）；Issue #66 已关闭。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/70
 
 ## 进行中
-- #67 #68 #69 指标预聚合读路径、环境入桶、病害高发、Timescale 可选路径与对象生命周期。分支 `overnight/metric-buckets-67-69`。不自动合并。怎么验：`make test`（API jest 106，web vitest 97）与 `make gates` 退出码 0。`GET /api/v1/growth-trends` 读日桶，`GET /api/v1/growth-trends/hours` 只返回已有小时桶；总览今日成熟/总数、7 日趋势、环境均值读桶，不扫 `recognition_records`。环境 ingest 成功且非重复后按 `observedAt` 写温湿度 CO₂ 含水率桶。`GET /api/v1/diseases/peaks` 读病害桶，`GET /api/v1/diseases` 仍是识别档案。`node scripts/object-lifecycle.mjs` 退出码 0 并打印「未下发」。`009_timescale_optional.sql` 不建 hypertable。说明：[`docs/timescale-and-object-lifecycle.md`](docs/timescale-and-object-lifecycle.md)。决策日志：`evidence/overnight-metric-buckets-67-69/decisions.tsv`。
+- #67 #68 #69 指标预聚合读路径、环境入桶、病害高发、Timescale 可选路径与对象生命周期。PR #71 https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/71 分支 `overnight/metric-buckets-67-69`。不自动合并。怎么验：`make test`（API jest 106，web vitest 97）与 `make gates` 退出码 0。`GET /api/v1/growth-trends` 读日桶，`GET /api/v1/growth-trends/hours` 只返回已有小时桶；总览今日成熟/总数、7 日趋势、环境均值读桶，不扫 `recognition_records`。环境 ingest 成功且非重复后按 `observedAt` 写温湿度 CO₂ 含水率桶。`GET /api/v1/diseases/peaks` 读病害桶，`GET /api/v1/diseases` 仍是识别档案。`node scripts/object-lifecycle.mjs` 退出码 0 并打印「未下发」。`009_timescale_optional.sql` 不建 hypertable。说明：[`docs/timescale-and-object-lifecycle.md`](docs/timescale-and-object-lifecycle.md)。决策日志：`evidence/overnight-metric-buckets-67-69/decisions.tsv`。
 
 ## 待开
 - 无
