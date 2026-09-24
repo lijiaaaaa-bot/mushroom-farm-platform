@@ -122,6 +122,27 @@ function payloadFor(url: string, empty: boolean) {
   if (url === '/devices') return { items: empty ? [] : [device], total: empty ? 0 : 1 };
   if (url === '/ingest/recognitions') return { items: empty ? [] : [recognition], total: empty ? 0 : 1 };
   if (url === '/growth-trends') return empty ? emptyTrend : trend;
+  if (url === '/growth-trends/hours') {
+    return {
+      hours: 24,
+      from: '2026-09-24T02:00:00.000Z',
+      to: '2026-09-24T03:00:00.000Z',
+      sheds: [
+        {
+          shedCode: 'S01',
+          points: [
+            {
+              hour: '2026-09-24T03:00:00.000Z',
+              mushroomCount: 4,
+              capDiameterMean: null,
+              sampleCount: 1,
+            },
+          ],
+          cameras: [],
+        },
+      ],
+    };
+  }
   throw new Error(`unexpected ${url}`);
 }
 
@@ -216,6 +237,16 @@ describe('BigScreenView', () => {
     expect(wrapper.get('.wall').text()).toContain('抓拍墙');
     expect(chartInit).not.toHaveBeenCalled();
 
+    wrapper.unmount();
+  });
+
+  it('loads the 24h series from hour buckets', async () => {
+    stubHttp(false);
+    const wrapper = await mountScreen();
+    await wrapper.get('[data-grain="hour"]').trigger('click');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/growth-trends/hours', { params: { hours: 24 } });
+    expect(wrapper.text()).toContain('24 小时');
     wrapper.unmount();
   });
 

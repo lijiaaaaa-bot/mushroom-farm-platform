@@ -123,6 +123,7 @@ const alerts = ref<AlertRow[]>([]);
 const devices = ref<DeviceRow[]>([]);
 const recognitions = ref<RecognitionRow[]>([]);
 const trend = ref<TrendResponse | null>(null);
+const trendGrain = ref<'day' | 'hour'>('day');
 const deviceTotal = ref(0);
 const alertTotal = ref(0);
 const recognitionTotal = ref(0);
@@ -258,7 +259,7 @@ const envReadout = computed(() => {
   }
   const env = overview.value?.env;
   return {
-    caption: overview.value ? '可见棚最近记录均值' : '环境汇总未返回',
+    caption: overview.value ? '可见棚最近小时桶均值' : '环境汇总未返回',
     temp: env?.avgTemp ?? null,
     humidity: env?.avgHumidity ?? null,
     co2: env?.avgCo2 ?? null,
@@ -345,9 +346,15 @@ const trendsTo = computed(() => {
   return { path: '/growth-trends', query };
 });
 
+function calendarDay(label: string) {
+  const match = /^(\d{4}-\d{2}-\d{2})/.exec(label);
+  return match?.[1] ?? '';
+}
+
 const filterTo = computed(() => {
-  if (!linkDay.value) return null;
-  const { start, end } = shanghaiDayRange(linkDay.value);
+  const day = linkDay.value ? calendarDay(linkDay.value) : '';
+  if (!day) return null;
+  const { start, end } = shanghaiDayRange(day);
   const query: Record<string, string> = {
     from: start.toISOString(),
     to: new Date(end.getTime() - 1).toISOString(),
@@ -500,8 +507,74 @@ function leave() {
   void router.push('/login');
 }
 
+function hourLabel(iso: string) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date(iso));
+  const pick = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
+  const hour = pick('hour') === '24' ? '00' : pick('hour');
+  return `${pick('year')}-${pick('month')}-${pick('day')} ${hour}:00`;
+}
+
+function asDayTrend(payload: {
+  from: string;
+  to: string;
+  sheds: Array<{
+    shedCode: string;
+    points: Array<TrendPoint & { hour: string }>;
+    cameras: TrendShed['cameras'];
+  }>;
+}): TrendResponse {
+  return {
+    days: 7,
+    from: payload.from,
+    to: payload.to,
+    sheds: payload.sheds.map((shed) => ({
+      shedCode: shed.shedCode,
+      points: shed.points.map((point) => ({
+        ...point,
+        day: point.hour ? hourLabel(point.hour) : point.day,
+      })),
+      cameras: shed.cameras.map((camera) => ({
+        cameraCode: camera.cameraCode,
+        points: camera.points.map((point) => ({
+          ...point,
+          day: 'hour' in point && point.hour ? hourLabel(String(point.hour)) : point.day,
+        })),
+      })),
+    })),
+  };
+}
+
+function showTrendDays() {
+  trendGrain.value = 'day';
+  void load();
+}
+
+function showTrendHours() {
+  trendGrain.value = 'hour';
+  void load();
+}
+
 async function load() {
   const seq = ++loadSeq;
+  const trendRequest =
+    trendGrain.value === 'hour'
+      ? http.get<{
+          from: string;
+          to: string;
+          sheds: Array<{
+            shedCode: string;
+            points: Array<TrendPoint & { hour: string }>;
+            cameras: TrendShed['cameras'];
+          }>;
+        }>('/growth-trends/hours', { params: { hours: 24 } })
+      : http.get<TrendResponse>('/growth-trends', { params: { days: 7 } });
   const [overviewResult, shedsResult, alertsResult, devicesResult, recognitionsResult, trendsResult] =
     await Promise.allSettled([
       http.get<Overview>('/dashboard/overview'),
@@ -509,7 +582,7 @@ async function load() {
       http.get<Page<AlertRow>>('/alerts', { params: { pageSize: 50 } }),
       http.get<Page<DeviceRow>>('/devices', { params: { pageSize: 100 } }),
       http.get<Page<RecognitionRow>>('/ingest/recognitions', { params: { pageSize: 100 } }),
-      http.get<TrendResponse>('/growth-trends', { params: { days: 7 } }),
+      trendRequest,
     ]);
   if (seq !== loadSeq) return;
 
@@ -558,7 +631,18 @@ async function load() {
   }
 
   if (trendsResult.status === 'fulfilled') {
-    trend.value = trendsResult.value.data;
+    trend.value =
+      trendGrain.value === 'hour'
+        ? asDayTrend(trendsResult.value.data as {
+            from: string;
+            to: string;
+            sheds: Array<{
+              shedCode: string;
+              points: Array<TrendPoint & { hour: string }>;
+              cameras: TrendShed['cameras'];
+            }>;
+          })
+        : (trendsResult.value.data as TrendResponse);
     zoneError.trends = '';
   } else {
     trend.value = null;
@@ -789,11 +873,15 @@ onBeforeUnmount(() => {
       <div v-if="layout === 'panels'" class="timeline-chart-wrap">
         <p v-if="zoneError.trends" class="zone-error">{{ zoneError.trends }}</p>
         <p v-else-if="loading && !trend" class="muted">加载中…</p>
-        <p v-else-if="!axisDays.length" class="muted">近 7 日没有日聚合，时间轴没有点。</p>
+        <p v-else-if="!axisDays.length" class="muted">
+          {{ trendGrain === 'hour' ? '近 24 小时没有小时桶，时间轴没有点。' : '近 7 日没有日聚合，时间轴没有点。' }}
+        </p>
         <div v-else ref="timelineEl" class="timeline-chart"></div>
       </div>
       <nav class="timeline-entry" aria-label="对比时间轴">
         <p class="ticker-label">时间轴</p>
+        <button type="button" class="text-btn" data-grain="day" @click="showTrendDays">7 日</button>
+        <button type="button" class="text-btn" data-grain="hour" @click="showTrendHours">24 小时</button>
         <router-link class="text-btn timeline-trends" :to="trendsTo">生长趋势</router-link>
         <router-link v-if="filterTo" class="text-btn timeline-filter" :to="filterTo">识别时段</router-link>
         <p v-else class="muted">暂无识别时间，不能按抓拍时段筛选。</p>

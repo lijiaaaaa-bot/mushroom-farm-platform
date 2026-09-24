@@ -12,6 +12,7 @@ import { IngestTokenGuard } from '../common/guards';
 import { configureApp } from '../configure-app';
 import { DevicesService } from '../devices';
 import { DiseasesController } from '../diseases/diseases.controller';
+import { GrowthTrendService } from '../growth';
 import { EnvironmentReading } from '../entities/environment-reading.entity';
 import { HeartbeatReceipt } from '../entities/heartbeat-receipt.entity';
 import { IngestReject } from '../entities/ingest-reject.entity';
@@ -187,6 +188,10 @@ describe('disease list and snapshot access', () => {
         },
         { provide: DevicesService, useValue: {} },
         { provide: AlertEngineService, useValue: {} },
+        {
+          provide: GrowthTrendService,
+          useValue: { diseasePeaks: jest.fn() },
+        },
       ],
     }).compile();
     app = moduleRef.createNestApplication();

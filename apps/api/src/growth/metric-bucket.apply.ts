@@ -4,6 +4,27 @@ import { DailyAggregateDraft } from './growth-trend.aggregate';
 export const METRIC_MUSHROOM_COUNT = 'mushroom_count';
 export const METRIC_CAP_DIAMETER_MEAN = 'cap_diameter_mean';
 export const METRIC_SAMPLE_COUNT = 'sample_count';
+export const METRIC_MATURE_COUNT = 'mature_count';
+export const METRIC_DISEASE_COUNT = 'disease_count';
+export const METRIC_ENV_TEMPERATURE = 'env_temperature';
+export const METRIC_ENV_HUMIDITY = 'env_humidity';
+export const METRIC_ENV_CO2 = 'env_co2';
+export const METRIC_ENV_MOISTURE = 'env_substrate_moisture';
+
+export const RECOGNITION_METRICS = [
+  METRIC_MUSHROOM_COUNT,
+  METRIC_CAP_DIAMETER_MEAN,
+  METRIC_SAMPLE_COUNT,
+  METRIC_MATURE_COUNT,
+  METRIC_DISEASE_COUNT,
+] as const;
+
+export const ENVIRONMENT_METRICS = [
+  METRIC_ENV_TEMPERATURE,
+  METRIC_ENV_HUMIDITY,
+  METRIC_ENV_CO2,
+  METRIC_ENV_MOISTURE,
+] as const;
 
 export interface BucketView {
   shedCode: string;
@@ -23,6 +44,18 @@ export interface RecognitionDelta {
   recognizedAt: Date | string;
   mushroomCount: number;
   avgCapDiameter: number | null;
+  matureCount?: number;
+  diseaseCount?: number;
+}
+
+export interface EnvironmentDelta {
+  shedCode: string;
+  sensorCode: string;
+  observedAt: Date | string;
+  temperature: number | null;
+  humidity: number | null;
+  co2: number | null;
+  substrateMoisture: number | null;
 }
 
 export function bucketKey(row: {
@@ -115,24 +148,106 @@ export function applyRecognitionToBuckets(
     row.value = averageDiameter([sum / count]);
   };
 
+  const bumpLatest = (cameraCode: string, metric: string, value: number) => {
+    const row = touch(cameraCode, metric);
+    const at = new Date(record.recognizedAt);
+    if (!row.latestAt || at.getTime() >= row.latestAt.getTime()) {
+      row.value = value;
+      row.latestAt = at;
+    }
+  };
+  const rollLatestSum = (metric: string) => {
+    let total = 0;
+    for (const row of rows) {
+      if (row.cameraCode && row.metric === metric && row.value !== null) {
+        total += row.value;
+      }
+    }
+    const shed = touch('', metric);
+    shed.value = total;
+  };
+
   bumpSample(record.cameraCode);
   bumpMushroom(record.cameraCode);
   bumpMean(record.cameraCode);
   bumpSample('');
   bumpMean('');
-
-  let shedMushroom = 0;
-  for (const row of rows) {
-    if (
-      row.cameraCode &&
-      row.metric === METRIC_MUSHROOM_COUNT &&
-      row.value !== null
-    ) {
-      shedMushroom += row.value;
-    }
+  rollLatestSum(METRIC_MUSHROOM_COUNT);
+  if (isFiniteCount(record.matureCount)) {
+    bumpLatest(record.cameraCode, METRIC_MATURE_COUNT, record.matureCount);
+    rollLatestSum(METRIC_MATURE_COUNT);
   }
-  const shed = touch('', METRIC_MUSHROOM_COUNT);
-  shed.value = shedMushroom;
+  if (isFiniteCount(record.diseaseCount)) {
+    bumpLatest(record.cameraCode, METRIC_DISEASE_COUNT, record.diseaseCount);
+    rollLatestSum(METRIC_DISEASE_COUNT);
+  }
+  return { rows, dirty };
+}
+
+function isFiniteCount(value: number | undefined): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
+}
+
+/**
+ * 环境读数按传感器写入均值，并按样本数加权滚入棚行（cameraCode 为空）。
+ * 同一幂等键不得调用两次。
+ */
+export function applyEnvironmentToBuckets(
+  existing: BucketView[],
+  reading: EnvironmentDelta,
+  bucketStart: Date,
+): { rows: BucketView[]; dirty: BucketView[] } {
+  const rows = existing
+    .filter((row) => row.shedCode === reading.shedCode)
+    .map((row) => ({
+      ...row,
+      bucketStart: new Date(row.bucketStart),
+      latestAt: row.latestAt ? new Date(row.latestAt) : null,
+    }));
+  const dirty: BucketView[] = [];
+  const map = new Map(
+    rows.map((row) => [`${row.cameraCode}\0${row.metric}`, row]),
+  );
+  const touch = (subject: string, metric: string): BucketView => {
+    const id = `${subject}\0${metric}`;
+    let row = map.get(id);
+    if (!row) {
+      row = {
+        shedCode: reading.shedCode,
+        cameraCode: subject,
+        bucketStart,
+        metric,
+        value: null,
+        sampleCount: 0,
+        valueSum: null,
+        latestAt: null,
+      };
+      map.set(id, row);
+      rows.push(row);
+    }
+    if (!dirty.includes(row)) dirty.push(row);
+    return row;
+  };
+  const bumpMean = (subject: string, metric: string, sample: number | null) => {
+    if (sample === null || !Number.isFinite(sample)) return;
+    const row = touch(subject, metric);
+    const sum = (row.valueSum ?? 0) + sample;
+    const count = row.sampleCount + 1;
+    row.valueSum = sum;
+    row.sampleCount = count;
+    row.value = Math.round((sum / count) * 100) / 100;
+    row.latestAt = new Date(reading.observedAt);
+  };
+  const samples: Array<[string, number | null]> = [
+    [METRIC_ENV_TEMPERATURE, reading.temperature],
+    [METRIC_ENV_HUMIDITY, reading.humidity],
+    [METRIC_ENV_CO2, reading.co2],
+    [METRIC_ENV_MOISTURE, reading.substrateMoisture],
+  ];
+  for (const [metric, value] of samples) {
+    bumpMean(reading.sensorCode, metric, value);
+    bumpMean('', metric, value);
+  }
   return { rows, dirty };
 }
 

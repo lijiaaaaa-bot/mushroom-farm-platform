@@ -1,0 +1,6 @@
+time	phase	decision	reason	evidence	result
+2026-09-24T04:54:01Z	read-path	growth-trends、hours、总览今日数与 7 日趋势改读 metric_buckets_day/hour	打开页面不能对 recognition_records 做全量 GROUP BY；日曲线由日桶给出，缺小时不补点	apps/api/src/growth/growth-trend.spec.ts hourly 与 7 日用例；recordScans 未被调用	keep
+2026-09-24T04:56:00Z	env-disease	环境 ingest 成功且非重复后按 observedAt 写温湿度 CO2 含水率小时/日桶；病害高发读 disease_count 桶；GET /diseases 仍走识别档案	Issue #68；刷新识别日桶时跳过环境指标，避免 cron 删掉环境行	environment-ingest.spec.ts applyEnvironment 一次；disease peaks HTTP；refreshDay 后 env 19.5 仍在	keep
+2026-09-24T04:58:00Z	timescale-lifecycle	009 只 NOTICE，不 CREATE EXTENSION、不 create_hypertable；compose overlay 不改默认 postgres:16-alpine；生命周期脚本默认退出 0 并声明未下发	默认本地演示不能被 Timescale 或冷存储打断；不能写成已生产启用	scripts/object-lifecycle.spec.mjs；node scripts/object-lifecycle.mjs 输出含未下发	keep
+2026-09-24T05:02:13Z	verify	保留上述改动	make test 与 make gates 退出码 0	API jest 106，web vitest 97，gates 与 gates-selftest 通过	keep
+2026-09-24T05:03:00Z	stop	开 PR，不合并，不关 #67 #68 #69	Overnight 逃生口：谓词在分支上成立后由早审核合并	evidence/overnight-metric-buckets-67-69/decisions.tsv	open-pr

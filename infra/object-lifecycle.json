@@ -1,0 +1,7 @@
+{
+  "bucket": "mushroom-snapshots",
+  "prefix": "snapshots/",
+  "hotDays": 90,
+  "coldStorageClass": "GLACIER",
+  "note": "Plan only. Local MinIO in docker-compose.yml has no remote tier. PostgreSQL stores object keys, not image bytes. hotDays aligns with the 90-day backfill window."
+}

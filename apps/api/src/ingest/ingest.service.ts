@@ -194,6 +194,8 @@ export class IngestService {
           recognizedAt: saved.recognizedAt,
           mushroomCount: saved.mushroomCount,
           avgCapDiameter: saved.avgCapDiameter,
+          matureCount: saved.matureCount,
+          diseaseCount: saved.diseaseCount,
         });
       } catch (refreshError) {
         this.logger.warn(
@@ -271,6 +273,21 @@ export class IngestService {
       } catch (error) {
         this.logger.warn(
           `环境读数已入库，传感器心跳未更新：${(error as Error).message}`,
+        );
+      }
+      try {
+        await this.growth?.applyEnvironment({
+          shedCode: saved.shedCode,
+          sensorCode: saved.sensorCode,
+          observedAt: saved.observedAt,
+          temperature: saved.temperature,
+          humidity: saved.humidity,
+          co2: saved.co2,
+          substrateMoisture: saved.substrateMoisture,
+        });
+      } catch (bucketError) {
+        this.logger.warn(
+          `环境指标桶更新失败，读数已入库：${(bucketError as Error).message}`,
         );
       }
       return { accepted: true, duplicate: false, id: saved.id };

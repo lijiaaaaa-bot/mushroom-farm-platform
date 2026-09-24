@@ -25,10 +25,23 @@ import {
 } from './growth-trend.aggregate';
 import {
   BucketView,
+  EnvironmentDelta,
   RecognitionDelta,
+  RECOGNITION_METRICS,
+  ENVIRONMENT_METRICS,
+  METRIC_CAP_DIAMETER_MEAN,
+  METRIC_DISEASE_COUNT,
+  METRIC_ENV_CO2,
+  METRIC_ENV_HUMIDITY,
+  METRIC_ENV_MOISTURE,
+  METRIC_ENV_TEMPERATURE,
+  METRIC_MATURE_COUNT,
+  METRIC_MUSHROOM_COUNT,
+  METRIC_SAMPLE_COUNT,
   bucketKey,
   dailyDraftsFromBuckets,
   foldBuckets,
+  applyEnvironmentToBuckets,
   applyRecognitionToBuckets,
 } from './metric-bucket.apply';
 
@@ -37,6 +50,41 @@ export interface GrowthPoint {
   mushroomCount: number;
   capDiameterMean: number | null;
   sampleCount: number;
+}
+
+export interface HourPoint {
+  hour: string;
+  mushroomCount: number;
+  capDiameterMean: number | null;
+  sampleCount: number;
+}
+
+export interface EnvironmentHourPoint {
+  hour: string;
+  temperature: number | null;
+  humidity: number | null;
+  co2: number | null;
+  substrateMoisture: number | null;
+}
+
+export interface TodaySnapshot {
+  mushroomCount: number;
+  matureCount: number;
+  harvestableCameras: number;
+}
+
+export interface TrendDayRollup {
+  day: string;
+  mushroom: number;
+  mature: number;
+  disease: number;
+}
+
+export interface EnvironmentMeans {
+  avgTemp: number | null;
+  avgHumidity: number | null;
+  avgCo2: number | null;
+  avgSubstrateMoisture: number | null;
 }
 
 export interface GrowthTrendSeries {
@@ -114,6 +162,19 @@ export class GrowthTrendService {
     await this.mergeDaily(day, dayRows);
   }
 
+  /**
+   * 环境入库后的写路径：按 observedAt 的上海小时和上海日增量 upsert。
+   * 不扫描环境明细。同一幂等键只能调用一次。
+   */
+  async applyEnvironment(input: EnvironmentDelta): Promise<void> {
+    const observedAt = new Date(input.observedAt);
+    const reading: EnvironmentDelta = { ...input, observedAt };
+    const dayStart = shanghaiDayRange(shanghaiDate(observedAt)).start;
+    const hourStart = shanghaiHourStart(observedAt);
+    await this.upsertEnvironment(this.hourBuckets, reading, hourStart);
+    await this.upsertEnvironment(this.dayBuckets, reading, dayStart);
+  }
+
   async applyRecords(day: string, records: AggregateSource[]) {
     const points = aggregateDay(day, records);
     await this.persist(day, points);
@@ -141,31 +202,296 @@ export class GrowthTrendService {
     };
     if (scope.codes && scope.codes.length === 0) return empty;
 
-    const qb = this.aggregates
-      .createQueryBuilder('a')
-      .where('a.day >= :from AND a.day <= :to', { from, to })
-      .orderBy('a.day', 'ASC')
-      .addOrderBy('a.shedCode', 'ASC');
-    if (scope.codes) {
-      qb.andWhere('a.shedCode IN (:...codes)', { codes: scope.codes });
-    }
-    if (shedCode) qb.andWhere('a.shedCode = :shedCode', { shedCode });
-    let rows = await qb.getMany();
-    if (cameraCode) {
-      const shedsWithCamera = new Set(
-        rows
-          .filter(
-            (row) => row.grain === 'camera' && row.cameraCode === cameraCode,
-          )
-          .map((row) => row.shedCode),
+    const rows = await this.loadWindow(
+      this.dayBuckets,
+      shanghaiDayRange(from).start,
+      shanghaiDayRange(to).end,
+      [METRIC_MUSHROOM_COUNT, METRIC_CAP_DIAMETER_MEAN, METRIC_SAMPLE_COUNT],
+      scope,
+      shedCode,
+    );
+    return {
+      ...empty,
+      sheds: groupGrowth(filterCamera(rows, cameraCode), (start) =>
+        shanghaiDate(start),
+      ),
+    };
+  }
+
+  async hourlySeries(
+    user: AuthUser,
+    query: { hours?: string; shedCode?: string; cameraCode?: string },
+    now = new Date(),
+  ) {
+    const hours = parseHours(query.hours);
+    const scope = ShedScope.fromUser(user);
+    const shedCode = blank(query.shedCode);
+    const cameraCode = blank(query.cameraCode);
+    if (shedCode) scope.assert(shedCode);
+    const endHour = shanghaiHourStart(now);
+    const start = new Date(endHour.getTime() - (hours - 1) * 3_600_000);
+    const end = new Date(endHour.getTime() + 3_600_000);
+    const empty = {
+      hours,
+      from: start.toISOString(),
+      to: endHour.toISOString(),
+      mushroomCount: 'latest_per_camera' as const,
+      capDiameter: 'mean' as const,
+      sheds: [] as Array<{
+        shedCode: string;
+        points: HourPoint[];
+        cameras: Array<{ cameraCode: string; points: HourPoint[] }>;
+      }>,
+    };
+    if (scope.codes && scope.codes.length === 0) return empty;
+    const rows = await this.loadWindow(
+      this.hourBuckets,
+      start,
+      end,
+      [METRIC_MUSHROOM_COUNT, METRIC_CAP_DIAMETER_MEAN, METRIC_SAMPLE_COUNT],
+      scope,
+      shedCode,
+    );
+    const sheds = groupGrowth(filterCamera(rows, cameraCode), (bucket) =>
+      bucket.toISOString(),
+    ).map((shed) => ({
+      shedCode: shed.shedCode,
+      points: shed.points.map((point) => ({
+        hour: point.day,
+        mushroomCount: point.mushroomCount,
+        capDiameterMean: point.capDiameterMean,
+        sampleCount: point.sampleCount,
+      })),
+      cameras: shed.cameras.map((camera) => ({
+        cameraCode: camera.cameraCode,
+        points: camera.points.map((point) => ({
+          hour: point.day,
+          mushroomCount: point.mushroomCount,
+          capDiameterMean: point.capDiameterMean,
+          sampleCount: point.sampleCount,
+        })),
+      })),
+    }));
+    return { ...empty, sheds };
+  }
+
+  async environmentSeries(
+    user: AuthUser,
+    query: { hours?: string; shedCode?: string },
+    now = new Date(),
+  ) {
+    const hours = parseHours(query.hours);
+    const scope = ShedScope.fromUser(user);
+    const shedCode = blank(query.shedCode);
+    if (shedCode) scope.assert(shedCode);
+    const endHour = shanghaiHourStart(now);
+    const start = new Date(endHour.getTime() - (hours - 1) * 3_600_000);
+    const end = new Date(endHour.getTime() + 3_600_000);
+    const empty = {
+      hours,
+      from: start.toISOString(),
+      to: endHour.toISOString(),
+      points: [] as EnvironmentHourPoint[],
+      sheds: [] as Array<{ shedCode: string; points: EnvironmentHourPoint[] }>,
+    };
+    if (scope.codes && scope.codes.length === 0) return empty;
+    const rows = await this.loadWindow(
+      this.hourBuckets,
+      start,
+      end,
+      [...ENVIRONMENT_METRICS],
+      scope,
+      shedCode,
+    );
+    const shedRows = rows.filter((row) => row.cameraCode === '');
+    const sheds = groupEnvironment(shedRows);
+    return {
+      ...empty,
+      sheds,
+      points: meanEnvironmentHours(sheds),
+    };
+  }
+
+  async diseasePeaks(
+    user: AuthUser,
+    query: { grain?: string; shedCode?: string },
+    now = new Date(),
+  ) {
+    const grain = parseGrain(query.grain);
+    const scope = ShedScope.fromUser(user);
+    const shedCode = blank(query.shedCode);
+    if (shedCode) scope.assert(shedCode);
+    const window = diseaseWindow(grain, now);
+    const empty = {
+      grain,
+      from: window.start.toISOString(),
+      to: window.labelEnd,
+      byTime: [] as Array<{ bucketStart: string; diseaseCount: number }>,
+      byShed: [] as Array<{ shedCode: string; diseaseCount: number }>,
+      peak: null as { bucketStart: string; diseaseCount: number } | null,
+    };
+    if (scope.codes && scope.codes.length === 0) return empty;
+    const repo = grain === 'hour' ? this.hourBuckets : this.dayBuckets;
+    const rows = (
+      await this.loadWindow(
+        repo,
+        window.start,
+        window.end,
+        [METRIC_DISEASE_COUNT],
+        scope,
+        shedCode,
+      )
+    ).filter((row) => row.cameraCode === '');
+    const byTimeMap = new Map<string, number>();
+    const byShedMap = new Map<string, number>();
+    for (const row of rows) {
+      const stamp = new Date(row.bucketStart).toISOString();
+      byTimeMap.set(stamp, (byTimeMap.get(stamp) ?? 0) + (row.value ?? 0));
+      byShedMap.set(
+        row.shedCode,
+        (byShedMap.get(row.shedCode) ?? 0) + (row.value ?? 0),
       );
-      rows = rows.filter(
-        (row) =>
-          (row.grain === 'camera' && row.cameraCode === cameraCode) ||
-          (row.grain === 'shed' && shedsWithCamera.has(row.shedCode)),
-      );
     }
-    return { ...empty, sheds: groupSheds(rows) };
+    const byTime = [...byTimeMap.entries()]
+      .map(([bucketStart, diseaseCount]) => ({ bucketStart, diseaseCount }))
+      .sort((a, b) => a.bucketStart.localeCompare(b.bucketStart));
+    const byShed = [...byShedMap.entries()]
+      .map(([code, diseaseCount]) => ({
+        shedCode: code,
+        diseaseCount,
+      }))
+      .sort(
+        (a, b) =>
+          b.diseaseCount - a.diseaseCount ||
+          a.shedCode.localeCompare(b.shedCode),
+      );
+    const peak = byTime.reduce<{
+      bucketStart: string;
+      diseaseCount: number;
+    } | null>(
+      (best, row) =>
+        !best || row.diseaseCount > best.diseaseCount ? row : best,
+      null,
+    );
+    return { ...empty, byTime, byShed, peak };
+  }
+
+  async todaySnapshot(
+    scope: ShedScope,
+    now = new Date(),
+  ): Promise<TodaySnapshot> {
+    if (scope.codes && scope.codes.length === 0) {
+      return { mushroomCount: 0, matureCount: 0, harvestableCameras: 0 };
+    }
+    const day = todayShanghai(now);
+    const { start, end } = shanghaiDayRange(day);
+    const rows = await this.loadWindow(
+      this.dayBuckets,
+      start,
+      end,
+      [METRIC_MUSHROOM_COUNT, METRIC_MATURE_COUNT],
+      scope,
+    );
+    const shed = (metric: string) =>
+      rows
+        .filter((row) => row.cameraCode === '' && row.metric === metric)
+        .reduce((sum, row) => sum + (row.value ?? 0), 0);
+    const harvestableCameras = rows.filter(
+      (row) =>
+        row.cameraCode !== '' &&
+        row.metric === METRIC_MATURE_COUNT &&
+        (row.value ?? 0) > 0,
+    ).length;
+    return {
+      mushroomCount: Math.round(shed(METRIC_MUSHROOM_COUNT)),
+      matureCount: Math.round(shed(METRIC_MATURE_COUNT)),
+      harvestableCameras,
+    };
+  }
+
+  async trendFromDayBuckets(
+    scope: ShedScope,
+    now = new Date(),
+  ): Promise<TrendDayRollup[]> {
+    if (scope.codes && scope.codes.length === 0) return [];
+    const to = todayShanghai(now);
+    const from = shiftShanghaiDay(to, -6);
+    const rows = await this.loadWindow(
+      this.dayBuckets,
+      shanghaiDayRange(from).start,
+      shanghaiDayRange(to).end,
+      [METRIC_MUSHROOM_COUNT, METRIC_MATURE_COUNT, METRIC_DISEASE_COUNT],
+      scope,
+    );
+    const byDay = new Map<string, TrendDayRollup>();
+    for (const row of rows) {
+      if (row.cameraCode !== '') continue;
+      const day = shanghaiDate(new Date(row.bucketStart));
+      const slot = byDay.get(day) ?? {
+        day,
+        mushroom: 0,
+        mature: 0,
+        disease: 0,
+      };
+      const value = Math.round(row.value ?? 0);
+      if (row.metric === METRIC_MUSHROOM_COUNT) slot.mushroom += value;
+      if (row.metric === METRIC_MATURE_COUNT) slot.mature += value;
+      if (row.metric === METRIC_DISEASE_COUNT) slot.disease += value;
+      byDay.set(day, slot);
+    }
+    return [...byDay.values()].sort((a, b) => a.day.localeCompare(b.day));
+  }
+
+  async latestEnvironment(
+    scope: ShedScope,
+    now = new Date(),
+  ): Promise<EnvironmentMeans> {
+    const blankMeans: EnvironmentMeans = {
+      avgTemp: null,
+      avgHumidity: null,
+      avgCo2: null,
+      avgSubstrateMoisture: null,
+    };
+    if (scope.codes && scope.codes.length === 0) return blankMeans;
+    const endHour = shanghaiHourStart(now);
+    const end = new Date(endHour.getTime() + 3_600_000);
+    const start = new Date(end.getTime() - 24 * 3_600_000);
+    const rows = (
+      await this.loadWindow(
+        this.hourBuckets,
+        start,
+        end,
+        [...ENVIRONMENT_METRICS],
+        scope,
+      )
+    ).filter((row) => row.cameraCode === '');
+    const mean = (metric: string) => {
+      const latest = new Map<string, BucketView>();
+      for (const row of rows) {
+        if (row.metric !== metric || row.value === null) continue;
+        const prev = latest.get(row.shedCode);
+        if (
+          !prev ||
+          new Date(row.bucketStart).getTime() >=
+            new Date(prev.bucketStart).getTime()
+        ) {
+          latest.set(row.shedCode, row);
+        }
+      }
+      const values = [...latest.values()].map((row) => row.value as number);
+      if (!values.length) return null;
+      return (
+        Math.round(
+          (values.reduce((sum, value) => sum + value, 0) / values.length) * 10,
+        ) / 10
+      );
+    };
+    return {
+      avgTemp: mean(METRIC_ENV_TEMPERATURE),
+      avgHumidity: mean(METRIC_ENV_HUMIDITY),
+      avgCo2: mean(METRIC_ENV_CO2),
+      avgSubstrateMoisture: mean(METRIC_ENV_MOISTURE),
+    };
   }
 
   private async upsertBucket(
@@ -195,6 +521,55 @@ export class GrowthTrendService {
       }
     }
     return rows;
+  }
+
+  private async upsertEnvironment(
+    repo: Repository<MetricBucketHour> | Repository<MetricBucketDay>,
+    reading: EnvironmentDelta,
+    bucketStart: Date,
+  ): Promise<void> {
+    const existing = await repo.find({
+      where: { shedCode: reading.shedCode, bucketStart },
+    });
+    const { dirty } = applyEnvironmentToBuckets(
+      existing.map(toBucketView),
+      reading,
+      bucketStart,
+    );
+    const byKey = new Map(existing.map((row) => [bucketKey(row), row]));
+    for (const view of dirty) {
+      const prev = byKey.get(bucketKey(view));
+      if (prev) {
+        prev.value = view.value;
+        prev.sampleCount = view.sampleCount;
+        prev.valueSum = view.valueSum;
+        prev.latestAt = view.latestAt;
+        await repo.save(prev);
+      } else {
+        await repo.save(repo.create(view));
+      }
+    }
+  }
+
+  private async loadWindow(
+    repo: Repository<MetricBucketHour> | Repository<MetricBucketDay>,
+    start: Date,
+    end: Date,
+    metrics: string[],
+    scope: ShedScope,
+    shedCode?: string,
+  ): Promise<BucketView[]> {
+    if (scope.codes && scope.codes.length === 0) return [];
+    const qb = repo
+      .createQueryBuilder('b')
+      .where('b.bucketStart >= :start AND b.bucketStart < :end', { start, end })
+      .andWhere('b.metric IN (:...metrics)', { metrics });
+    if (scope.codes) {
+      qb.andWhere('b.shedCode IN (:...codes)', { codes: scope.codes });
+    }
+    if (shedCode) qb.andWhere('b.shedCode = :shedCode', { shedCode });
+    const rows = await qb.getMany();
+    return rows.map(toBucketView);
   }
 
   private async mergeDaily(day: string, rows: BucketView[]) {
@@ -243,8 +618,10 @@ export class GrowthTrendService {
     existing: MetricBucketBase[],
     next: BucketView[],
   ) {
+    const recognition = new Set<string>(RECOGNITION_METRICS);
     const wanted = new Set(next.map((row) => bucketKey(row)));
     for (const row of existing) {
+      if (!recognition.has(row.metric)) continue;
       if (!wanted.has(bucketKey(row))) await repo.delete({ id: row.id });
     }
     const byKey = new Map(existing.map((row) => [bucketKey(row), row]));
@@ -312,6 +689,157 @@ function toBucketView(row: MetricBucketBase): BucketView {
   };
 }
 
+function parseHours(hours?: string): 24 {
+  if (hours === undefined || hours === '' || hours === '24') return 24;
+  throw new BadRequestException('小时窗口只支持 24');
+}
+
+function parseGrain(grain?: string): 'hour' | 'day' {
+  if (grain === undefined || grain === '' || grain === 'hour') return 'hour';
+  if (grain === 'day') return 'day';
+  throw new BadRequestException('粒度只支持 hour 或 day');
+}
+
+function diseaseWindow(grain: 'hour' | 'day', now: Date) {
+  if (grain === 'hour') {
+    const endHour = shanghaiHourStart(now);
+    const start = new Date(endHour.getTime() - 23 * 3_600_000);
+    return {
+      start,
+      end: new Date(endHour.getTime() + 3_600_000),
+      labelEnd: endHour.toISOString(),
+    };
+  }
+  const to = todayShanghai(now);
+  const from = shiftShanghaiDay(to, -6);
+  return {
+    start: shanghaiDayRange(from).start,
+    end: shanghaiDayRange(to).end,
+    labelEnd: shanghaiDayRange(to).start.toISOString(),
+  };
+}
+
+function filterCamera(rows: BucketView[], cameraCode?: string): BucketView[] {
+  if (!cameraCode) return rows;
+  const shedsWithCamera = new Set(
+    rows
+      .filter((row) => row.cameraCode === cameraCode)
+      .map((row) => row.shedCode),
+  );
+  return rows.filter(
+    (row) =>
+      row.cameraCode === cameraCode ||
+      (row.cameraCode === '' && shedsWithCamera.has(row.shedCode)),
+  );
+}
+
+function groupGrowth(
+  rows: BucketView[],
+  labelOf: (start: Date) => string,
+): GrowthTrendSeries['sheds'] {
+  const sheds = new Map<string, ShedBucket>();
+  const slots = new Map<string, GrowthPoint>();
+  for (const row of rows) {
+    const label = labelOf(new Date(row.bucketStart));
+    const key = `${row.shedCode}\0${row.cameraCode}\0${label}`;
+    const point = slots.get(key) ?? {
+      day: label,
+      mushroomCount: 0,
+      capDiameterMean: null,
+      sampleCount: 0,
+    };
+    if (row.metric === METRIC_MUSHROOM_COUNT) {
+      point.mushroomCount = Math.round(row.value ?? 0);
+    } else if (row.metric === METRIC_CAP_DIAMETER_MEAN) {
+      point.capDiameterMean = row.value;
+    } else if (row.metric === METRIC_SAMPLE_COUNT) {
+      point.sampleCount = Math.round(row.value ?? 0);
+    }
+    slots.set(key, point);
+  }
+  for (const [key, point] of slots) {
+    const [shedCode, cameraCode] = key.split('\0');
+    const bucket = sheds.get(shedCode) ?? emptyBucket();
+    if (!cameraCode) bucket.points.push(point);
+    else {
+      const list = bucket.cameras.get(cameraCode) ?? [];
+      list.push(point);
+      bucket.cameras.set(cameraCode, list);
+    }
+    sheds.set(shedCode, bucket);
+  }
+  return [...sheds.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([shedCode, bucket]) => ({
+      shedCode,
+      points: bucket.points.sort((a, b) => a.day.localeCompare(b.day)),
+      cameras: [...bucket.cameras.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([cameraCode, points]) => ({
+          cameraCode,
+          points: points.sort((a, b) => a.day.localeCompare(b.day)),
+        })),
+    }));
+}
+
+function groupEnvironment(rows: BucketView[]) {
+  const sheds = new Map<string, Map<string, EnvironmentHourPoint>>();
+  for (const row of rows) {
+    const hour = new Date(row.bucketStart).toISOString();
+    const hours = sheds.get(row.shedCode) ?? new Map();
+    const point = hours.get(hour) ?? {
+      hour,
+      temperature: null,
+      humidity: null,
+      co2: null,
+      substrateMoisture: null,
+    };
+    if (row.metric === METRIC_ENV_TEMPERATURE) point.temperature = row.value;
+    if (row.metric === METRIC_ENV_HUMIDITY) point.humidity = row.value;
+    if (row.metric === METRIC_ENV_CO2) point.co2 = row.value;
+    if (row.metric === METRIC_ENV_MOISTURE) point.substrateMoisture = row.value;
+    hours.set(hour, point);
+    sheds.set(row.shedCode, hours);
+  }
+  return [...sheds.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([shedCode, hours]) => ({
+      shedCode,
+      points: [...hours.values()].sort((a, b) => a.hour.localeCompare(b.hour)),
+    }));
+}
+
+function meanEnvironmentHours(
+  sheds: Array<{ points: EnvironmentHourPoint[] }>,
+): EnvironmentHourPoint[] {
+  const hours = new Map<string, EnvironmentHourPoint[]>();
+  for (const shed of sheds) {
+    for (const point of shed.points) {
+      const list = hours.get(point.hour) ?? [];
+      list.push(point);
+      hours.set(point.hour, list);
+    }
+  }
+  const mean = (values: Array<number | null>) => {
+    const present = values.filter((value): value is number => value !== null);
+    if (!present.length) return null;
+    return (
+      Math.round(
+        (present.reduce((sum, value) => sum + value, 0) / present.length) * 10,
+      ) / 10
+    );
+  };
+  return [...hours.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([hour, points]) => ({
+      hour,
+      temperature: mean(points.map((point) => point.temperature)),
+      humidity: mean(points.map((point) => point.humidity)),
+      co2: mean(points.map((point) => point.co2)),
+      substrateMoisture: mean(points.map((point) => point.substrateMoisture)),
+    }));
+}
+
 function parseWindow(days?: string): 7 | 30 {
   if (days === undefined || days === '') return 7;
   if (days === '7') return 7;
@@ -331,33 +859,4 @@ interface ShedBucket {
 
 function emptyBucket(): ShedBucket {
   return { points: [], cameras: new Map<string, GrowthPoint[]>() };
-}
-
-function groupSheds(rows: DailyAggregate[]): GrowthTrendSeries['sheds'] {
-  const sheds = new Map<string, ShedBucket>();
-  for (const row of rows) {
-    const bucket = sheds.get(row.shedCode) ?? emptyBucket();
-    const point: GrowthPoint = {
-      day: row.day,
-      mushroomCount: row.mushroomCount,
-      capDiameterMean: row.capDiameterMean,
-      sampleCount: row.sampleCount,
-    };
-    if (row.grain === 'shed') bucket.points.push(point);
-    else if (row.cameraCode) {
-      const list = bucket.cameras.get(row.cameraCode) ?? [];
-      list.push(point);
-      bucket.cameras.set(row.cameraCode, list);
-    }
-    sheds.set(row.shedCode, bucket);
-  }
-  return [...sheds.entries()]
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([shedCode, bucket]) => ({
-      shedCode,
-      points: bucket.points,
-      cameras: [...bucket.cameras.entries()]
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([cameraCode, points]) => ({ cameraCode, points })),
-    }));
 }

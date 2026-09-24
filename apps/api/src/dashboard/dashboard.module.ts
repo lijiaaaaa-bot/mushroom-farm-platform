@@ -4,14 +4,14 @@ import { DevicesModule } from '../devices';
 import { Alert } from '../entities/alert.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { Shed } from '../entities/shed.entity';
-import { HarvestModule } from '../harvest';
+import { GrowthTrendModule } from '../growth';
 import { DashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Alert, Shed, RecognitionRecord]),
-    HarvestModule,
+    GrowthTrendModule,
     DevicesModule,
   ],
   controllers: [DashboardController],

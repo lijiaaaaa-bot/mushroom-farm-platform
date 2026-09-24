@@ -3,27 +3,26 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuthUser } from '../common/auth-user';
 import { ShedScope } from '../common/shed-scope';
-import { todayShanghai } from '@mushroom/contracts';
 import { Alert } from '../entities/alert.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { Shed } from '../entities/shed.entity';
 import { DevicesService } from '../devices';
-import { HarvestService } from '../harvest';
+import { GrowthTrendService } from '../growth';
 
 @Injectable()
 export class DashboardService {
   constructor(
-    private readonly harvest: HarvestService,
     private readonly devices: DevicesService,
     @InjectRepository(Alert) private readonly alerts: Repository<Alert>,
     @InjectRepository(Shed) private readonly sheds: Repository<Shed>,
     @InjectRepository(RecognitionRecord)
     private readonly records: Repository<RecognitionRecord>,
+    private readonly growth: GrowthTrendService,
   ) {}
 
   async overview(user: AuthUser) {
     const scope = ShedScope.fromUser(user);
-    const daily = await this.harvest.daily(user, todayShanghai());
+    const today = await this.growth.todaySnapshot(scope);
     const deviceCounts = await this.devices.counts(user);
     const shedQb = this.sheds.createQueryBuilder('s');
     if (scope.codes) {
@@ -52,15 +51,15 @@ export class DashboardService {
       .take(6)
       .getMany();
     const recentRecords = await this.recent(scope);
-    const trend = await this.trend(scope);
-    const env = this.envOf(recentRecords);
+    const trend = await this.growth.trendFromDayBuckets(scope);
+    const env = await this.growth.latestEnvironment(scope);
     return {
       shedCount,
       deviceTotal: deviceCounts.total,
       deviceOnline: deviceCounts.online,
-      todayMushroom: daily.summary.mushroomCount,
-      todayMature: daily.summary.matureCount,
-      harvestableCameras: daily.summary.harvestableCameras,
+      todayMushroom: today.mushroomCount,
+      todayMature: today.matureCount,
+      harvestableCameras: today.harvestableCameras,
       openAlerts,
       severeAlerts,
       env,
@@ -80,57 +79,5 @@ export class DashboardService {
       else qb.andWhere('r.shedCode IN (:...codes)', { codes: scope.codes });
     }
     return qb.getMany();
-  }
-
-  private async trend(scope: ShedScope) {
-    const rows = await this.records.query(
-      `
-      SELECT day::text AS day,
-             SUM(mushroom_count)::int AS mushroom,
-             SUM(mature_count)::int AS mature,
-             SUM(disease_count)::int AS disease
-      FROM (
-        SELECT DISTINCT ON (camera_code, (recognized_at AT TIME ZONE 'Asia/Shanghai')::date)
-          camera_code,
-          (recognized_at AT TIME ZONE 'Asia/Shanghai')::date AS day,
-          mushroom_count,
-          mature_count,
-          disease_count
-        FROM recognition_records
-        WHERE recognized_at > NOW() - INTERVAL '7 days'
-          AND ($1::text[] IS NULL OR shed_code = ANY($1::text[]))
-        ORDER BY camera_code, (recognized_at AT TIME ZONE 'Asia/Shanghai')::date, recognized_at DESC
-      ) latest
-      GROUP BY day
-      ORDER BY day
-      `,
-      [scope.sqlParam()],
-    );
-    return rows as {
-      day: string;
-      mushroom: number;
-      mature: number;
-      disease: number;
-    }[];
-  }
-
-  private envOf(records: RecognitionRecord[]) {
-    const avg = (pick: (row: RecognitionRecord) => number | null) => {
-      const values = records
-        .map(pick)
-        .filter((value): value is number => value !== null);
-      if (!values.length) return null;
-      return (
-        Math.round(
-          (values.reduce((sum, value) => sum + value, 0) / values.length) * 10,
-        ) / 10
-      );
-    };
-    return {
-      avgTemp: avg((row) => row.temperature),
-      avgHumidity: avg((row) => row.humidity),
-      avgCo2: avg((row) => row.co2),
-      avgSubstrateMoisture: avg((row) => row.substrateMoisture),
-    };
   }
 }

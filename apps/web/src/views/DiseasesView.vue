@@ -56,6 +56,12 @@ const sensorOptions = ref<string[]>([]);
 const env = ref<EnvironmentContext | null>(null);
 const envLoading = ref(false);
 const envError = ref('');
+const peaks = ref<{
+  grain: string;
+  byTime: Array<{ bucketStart: string; diseaseCount: number }>;
+  byShed: Array<{ shedCode: string; diseaseCount: number }>;
+  peak: { bucketStart: string; diseaseCount: number } | null;
+} | null>(null);
 const chartEl = ref<HTMLDivElement | null>(null);
 let chart: echarts.ECharts | null = null;
 
@@ -189,8 +195,14 @@ watch(env, async () => {
 
 onMounted(async () => {
   try {
-    const response = await http.get<{ items: Row[] }>('/diseases?pageSize=50');
-    rows.value = response.data.items;
+    const [archive, peakResponse] = await Promise.all([
+      http.get<{ items: Row[] }>('/diseases?pageSize=50'),
+      http.get<NonNullable<typeof peaks.value>>('/diseases/peaks').catch(() => null),
+    ]);
+    rows.value = archive.data.items;
+    if (peakResponse && Array.isArray(peakResponse.data.byTime)) {
+      peaks.value = peakResponse.data;
+    }
     if (rows.value[0]) await select(rows.value[0]);
   } catch (cause) {
     error.value = errorText(cause);
@@ -204,6 +216,22 @@ onBeforeUnmount(releaseChart);
 
 <template>
   <section class="ops-page space-y-4">
+    <section
+      v-if="peaks && (peaks.byTime.length || peaks.byShed.length)"
+      class="panel space-y-2"
+      data-testid="disease-peaks"
+    >
+      <h2 class="text-lg text-ink">高发统计</h2>
+      <p class="text-sm text-mist">读小时桶或日桶里的病害数。档案仍是下面的识别记录。</p>
+      <p v-if="peaks.peak" class="font-mono text-sm">
+        峰值 {{ new Date(peaks.peak.bucketStart).toLocaleString('zh-CN') }} · {{ peaks.peak.diseaseCount }}
+      </p>
+      <ul class="text-sm">
+        <li v-for="row in peaks.byShed" :key="row.shedCode" class="font-mono">
+          {{ row.shedCode }} · {{ row.diseaseCount }}
+        </li>
+      </ul>
+    </section>
     <div>
       <h2 class="text-lg text-ink">病害记录</h2>
       <p class="mb-3 text-sm text-mist">只列出病害数量大于 0 的识别。选中一条后，同屏对照该棚在识别时间窗内的环境读数。抓拍从已入库对象或原图地址打开。</p>
