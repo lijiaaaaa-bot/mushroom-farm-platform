@@ -68,7 +68,10 @@ export function rollupGrowth(
     {
       shedCode: string;
       period: string;
-      days: Map<string, { mushroom: number | null; mature: number | null; cap: number | null }>;
+      days: Map<
+        string,
+        { mushroom: number | null; mature: number | null; cap: number | null }
+      >;
     }
   >();
   for (const row of rows) {
@@ -80,7 +83,11 @@ export function rollupGrowth(
       period,
       days: new Map(),
     };
-    const point = slot.days.get(day) ?? { mushroom: null, mature: null, cap: null };
+    const point = slot.days.get(day) ?? {
+      mushroom: null,
+      mature: null,
+      cap: null,
+    };
     if (row.metric === METRIC_MUSHROOM_COUNT) point.mushroom = num(row.value);
     if (row.metric === METRIC_MATURE_COUNT) point.mature = num(row.value);
     if (row.metric === METRIC_CAP_DIAMETER_MEAN) point.cap = num(row.value);
@@ -89,15 +96,21 @@ export function rollupGrowth(
   }
   return [...grouped.values()]
     .map((slot) => {
-      const days = [...slot.days.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-      const last = [...days].reverse().find(([, point]) => point.mushroom !== null || point.mature !== null);
+      const days = [...slot.days.entries()].sort((a, b) =>
+        a[0].localeCompare(b[0]),
+      );
+      const last = [...days]
+        .reverse()
+        .find(([, point]) => point.mushroom !== null || point.mature !== null);
       const mushroomCount = last?.[1].mushroom ?? null;
       const matureCount = last?.[1].mature ?? null;
       const caps = days
         .map(([, point]) => point.cap)
         .filter((value): value is number => value !== null);
       const capDiameterMean = caps.length
-        ? Math.round((caps.reduce((sum, value) => sum + value, 0) / caps.length) * 10) / 10
+        ? Math.round(
+            (caps.reduce((sum, value) => sum + value, 0) / caps.length) * 10,
+          ) / 10
         : null;
       return {
         shedCode: slot.shedCode,
@@ -111,20 +124,24 @@ export function rollupGrowth(
         capDiameterMean,
       };
     })
-    .sort((a, b) =>
-      String(a.period).localeCompare(String(b.period)) ||
-      String(a.shedCode).localeCompare(String(b.shedCode)),
+    .sort(
+      (a, b) =>
+        String(a.period).localeCompare(String(b.period)) ||
+        String(a.shedCode).localeCompare(String(b.shedCode)),
     );
 }
 
-export function rollupYield(rows: BucketFact[]): Record<string, string | number | null>[] {
+export function rollupYield(
+  rows: BucketFact[],
+): Record<string, string | number | null>[] {
   const daily = rollupGrowth(rows, 'day');
   const byShed = new Map<string, { mature: number | null; caps: number[] }>();
   for (const row of daily) {
     const shedCode = String(row.shedCode);
     const slot = byShed.get(shedCode) ?? { mature: null, caps: [] };
     if (row.matureCount !== null) slot.mature = Number(row.matureCount);
-    if (row.capDiameterMean !== null) slot.caps.push(Number(row.capDiameterMean));
+    if (row.capDiameterMean !== null)
+      slot.caps.push(Number(row.capDiameterMean));
     byShed.set(shedCode, slot);
   }
   return [...byShed.entries()]
@@ -132,24 +149,38 @@ export function rollupYield(rows: BucketFact[]): Record<string, string | number 
       shedCode,
       matureCount: slot.mature,
       capDiameterMean: slot.caps.length
-        ? Math.round((slot.caps.reduce((sum, value) => sum + value, 0) / slot.caps.length) * 10) / 10
+        ? Math.round(
+            (slot.caps.reduce((sum, value) => sum + value, 0) /
+              slot.caps.length) *
+              10,
+          ) / 10
         : null,
     }))
     .sort((a, b) => a.shedCode.localeCompare(b.shedCode));
 }
 
-export function rollupDisease(rows: BucketFact[]): Record<string, string | number | null>[] {
-  const byShed = new Map<string, { lastDay: string; last: number | null; peak: number | null }>();
+export function rollupDisease(
+  rows: BucketFact[],
+): Record<string, string | number | null>[] {
+  const byShed = new Map<
+    string,
+    { lastDay: string; last: number | null; peak: number | null }
+  >();
   for (const row of rows) {
     if (row.metric !== METRIC_DISEASE_COUNT) continue;
     const day = shanghaiDate(new Date(row.bucketStart));
     const value = num(row.value);
-    const slot = byShed.get(row.shedCode) ?? { lastDay: '', last: null, peak: null };
+    const slot = byShed.get(row.shedCode) ?? {
+      lastDay: '',
+      last: null,
+      peak: null,
+    };
     if (day >= slot.lastDay) {
       slot.lastDay = day;
       slot.last = value;
     }
-    if (value !== null && (slot.peak === null || value > slot.peak)) slot.peak = value;
+    if (value !== null && (slot.peak === null || value > slot.peak))
+      slot.peak = value;
     byShed.set(row.shedCode, slot);
   }
   return [...byShed.entries()]
@@ -172,7 +203,11 @@ export function rollupEnvironment(
   ] as const;
   const byShed = new Map<string, Record<string, number[]>>();
   for (const row of rows) {
-    if (!(metrics as readonly string[]).includes(row.metric) || row.value === null) continue;
+    if (
+      !(metrics as readonly string[]).includes(row.metric) ||
+      row.value === null
+    )
+      continue;
     const slot = byShed.get(row.shedCode) ?? {};
     const list = slot[row.metric] ?? [];
     list.push(row.value);
@@ -234,5 +269,9 @@ function num(value: number | null): number | null {
 
 function mean(values: number[] | undefined): number | null {
   if (!values?.length) return null;
-  return Math.round((values.reduce((sum, value) => sum + value, 0) / values.length) * 10) / 10;
+  return (
+    Math.round(
+      (values.reduce((sum, value) => sum + value, 0) / values.length) * 10,
+    ) / 10
+  );
 }

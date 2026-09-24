@@ -114,7 +114,8 @@ export class BatchService {
   ) {
     const phase = parsePhase(input.phase);
     const batch = await this.requireBatch(user, id);
-    if (batch.closedAt) throw new BadRequestException('批次已结束，不能再记阶段');
+    if (batch.closedAt)
+      throw new BadRequestException('批次已结束，不能再记阶段');
     const occurredAt = parseWhen(input.occurredAt, '阶段时间无效');
     if (occurredAt.getTime() < new Date(batch.startedAt).getTime()) {
       throw new BadRequestException('阶段时间不能早于批次开始');
@@ -153,7 +154,9 @@ export class BatchService {
     const batch = await this.requireBatch(user, id);
     const events = await this.eventsFor(batch.id);
     const end = batch.closedAt ? new Date(batch.closedAt) : new Date();
-    const start = shanghaiDayRange(shanghaiDate(new Date(batch.startedAt))).start;
+    const start = shanghaiDayRange(
+      shanghaiDate(new Date(batch.startedAt)),
+    ).start;
     const endExclusive = shanghaiDayRange(shanghaiDate(end)).end;
     const rows = await this.dayBuckets
       .createQueryBuilder('b')

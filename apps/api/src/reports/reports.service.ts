@@ -68,7 +68,14 @@ export class ReportsService {
     const shedCode = query.shedCode?.trim() || null;
     if (shedCode) ShedScope.fromUser(user).assert(shedCode);
     const grain = kind === 'growth' ? parseGrain(query.grain) : null;
-    const rows = await this.previewRows(user, kind, grain, range, shedCode, query);
+    const rows = await this.previewRows(
+      user,
+      kind,
+      grain,
+      range,
+      shedCode,
+      query,
+    );
     return {
       kind,
       grain,
@@ -226,7 +233,8 @@ export class ReportsService {
     shedCode: string | null,
     query: { online?: string; status?: string },
   ) {
-    if (kind === 'devices') return this.deviceRows(user, shedCode, query.online);
+    if (kind === 'devices')
+      return this.deviceRows(user, shedCode, query.online);
     if (kind === 'alerts') {
       return this.alertRows(user, shedCode, range, query.status);
     }
@@ -387,7 +395,11 @@ function columnsFor(kind: ReportKind): ReportColumn[] {
 
 function metricsFor(kind: ReportKind): string[] {
   if (kind === 'growth' || kind === 'yield') {
-    return [METRIC_MUSHROOM_COUNT, METRIC_MATURE_COUNT, METRIC_CAP_DIAMETER_MEAN];
+    return [
+      METRIC_MUSHROOM_COUNT,
+      METRIC_MATURE_COUNT,
+      METRIC_CAP_DIAMETER_MEAN,
+    ];
   }
   if (kind === 'disease') return [METRIC_DISEASE_COUNT];
   return [

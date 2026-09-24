@@ -73,7 +73,10 @@ describe('report preview and export HTTP', () => {
         ReportsService,
         { provide: APP_GUARD, useClass: RolesGuard },
         { provide: getRepositoryToken(RecognitionRecord), useValue: chain([]) },
-        { provide: getRepositoryToken(MetricBucketDay), useValue: chain(buckets) },
+        {
+          provide: getRepositoryToken(MetricBucketDay),
+          useValue: chain(buckets),
+        },
         { provide: getRepositoryToken(Device), useValue: chain(devices) },
         { provide: getRepositoryToken(Alert), useValue: chain(alerts) },
       ],
@@ -140,7 +143,7 @@ describe('report preview and export HTTP', () => {
     expect(exported.status).toBe(200);
     expect(exported.headers['content-type']).toContain('spreadsheetml');
     const book = new ExcelJS.Workbook();
-    await book.xlsx.load(exported.body as Buffer);
+    await book.xlsx.load(exported.body as never);
     const sheet = book.getWorksheet('园区生长');
     expect(sheet?.getRow(1).getCell(1).value).toBe('棚区');
     expect(sheet?.getRow(2).getCell(1).value).toBe('S01');
@@ -150,7 +153,10 @@ describe('report preview and export HTTP', () => {
   it('keeps another shed out of disease, device and alert ledgers', async () => {
     buckets.push(fact('S01', '2026-09-24', METRIC_DISEASE_COUNT, 2));
     buckets.push(fact('S02', '2026-09-24', METRIC_DISEASE_COUNT, 8));
-    devices.push(device('CAM-1', 'S01', 'online'), device('CAM-2', 'S02', 'offline'));
+    devices.push(
+      device('CAM-1', 'S01', 'online'),
+      device('CAM-2', 'S02', 'offline'),
+    );
     alerts.push(
       alert('a1', 'S01', 'closed', '2026-09-24T01:00:00.000Z'),
       alert('a2', 'S02', 'closed', '2026-09-24T01:00:00.000Z'),
@@ -161,18 +167,29 @@ describe('report preview and export HTTP', () => {
       .query({ kind: 'disease', from: '2026-09-24', to: '2026-09-24' })
       .set('x-test-role', 'shed_manager');
     expect(disease.body.rows).toEqual([
-      expect.objectContaining({ shedCode: 'S01', diseaseCount: 2, diseasePeak: 2 }),
+      expect.objectContaining({
+        shedCode: 'S01',
+        diseaseCount: 2,
+        diseasePeak: 2,
+      }),
     ]);
 
     const online = await request(app.getHttpServer())
       .get('/api/v1/reports/preview')
       .query({ kind: 'devices', online: 'online' })
       .set('x-test-role', 'viewer');
-    expect(online.body.rows.map((row: { code: string }) => row.code)).toEqual(['CAM-1']);
+    expect(online.body.rows.map((row: { code: string }) => row.code)).toEqual([
+      'CAM-1',
+    ]);
 
     const closed = await request(app.getHttpServer())
       .get('/api/v1/reports/preview')
-      .query({ kind: 'alerts', status: 'closed', from: '2026-09-24', to: '2026-09-24' })
+      .query({
+        kind: 'alerts',
+        status: 'closed',
+        from: '2026-09-24',
+        to: '2026-09-24',
+      })
       .set('x-test-role', 'shed_manager');
     expect(closed.body.rows).toHaveLength(1);
     expect(closed.body.rows[0]).toMatchObject({
@@ -190,7 +207,11 @@ describe('report preview and export HTTP', () => {
       .set('x-test-role', 'shed_manager');
     expect(yieldSheet.body.title).toBe('分棚产量');
     expect(yieldSheet.body.rows).toEqual([
-      expect.objectContaining({ shedCode: 'S01', matureCount: 6, capDiameterMean: 4 }),
+      expect.objectContaining({
+        shedCode: 'S01',
+        matureCount: 6,
+        capDiameterMean: 4,
+      }),
     ]);
     const environment = await request(app.getHttpServer())
       .get('/api/v1/reports/preview')
@@ -228,7 +249,11 @@ function fact(
   };
 }
 
-function device(code: string, shedCode: string, onlineStatus: 'online' | 'offline'): Device {
+function device(
+  code: string,
+  shedCode: string,
+  onlineStatus: 'online' | 'offline',
+): Device {
   return {
     id: code,
     code,
@@ -244,7 +269,12 @@ function device(code: string, shedCode: string, onlineStatus: 'online' | 'offlin
   };
 }
 
-function alert(id: string, shedCode: string, status: 'open' | 'closed', createdAt: string): Alert {
+function alert(
+  id: string,
+  shedCode: string,
+  status: 'open' | 'closed',
+  createdAt: string,
+): Alert {
   return {
     id,
     ruleId: null,

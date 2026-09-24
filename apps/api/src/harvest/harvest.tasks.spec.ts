@@ -38,7 +38,8 @@ function memoryRecords() {
       const latest = new Map<string, RecognitionRecord>();
       for (const row of [...inRange].sort(
         (a, b) =>
-          new Date(b.recognizedAt).getTime() - new Date(a.recognizedAt).getTime(),
+          new Date(b.recognizedAt).getTime() -
+          new Date(a.recognizedAt).getTime(),
       )) {
         if (!latest.has(row.cameraCode)) latest.set(row.cameraCode, row);
       }
@@ -242,8 +243,16 @@ describe('harvest tasks and bucket forecast HTTP', () => {
     expect(generated.status).toBe(201);
     expect(generated.body.items).toHaveLength(2);
     expect(generated.body.sheds).toEqual([
-      expect.objectContaining({ shedCode: 'S01', matureCount: 6, cameraCount: 1 }),
-      expect.objectContaining({ shedCode: 'S02', matureCount: 3, cameraCount: 1 }),
+      expect.objectContaining({
+        shedCode: 'S01',
+        matureCount: 6,
+        cameraCount: 1,
+      }),
+      expect.objectContaining({
+        shedCode: 'S02',
+        matureCount: 3,
+        cameraCount: 1,
+      }),
     ]);
     const task = generated.body.items.find(
       (item: { cameraCode: string }) => item.cameraCode === 'CAM-A',
@@ -280,9 +289,9 @@ describe('harvest tasks and bucket forecast HTTP', () => {
       .get('/api/v1/harvest/tasks')
       .query({ date: day })
       .set('x-test-role', 'shed_manager');
-    expect(scoped.body.items.map((item: { shedCode: string }) => item.shedCode)).toEqual([
-      'S01',
-    ]);
+    expect(
+      scoped.body.items.map((item: { shedCode: string }) => item.shedCode),
+    ).toEqual(['S01']);
   });
 
   it('rejects a viewer generate and forecasts from mature day buckets', async () => {
@@ -306,9 +315,9 @@ describe('harvest tasks and bucket forecast HTTP', () => {
     expect(forecast.body.label).toBe('估计');
     expect(forecast.body.sufficient).toBe(true);
     expect(forecast.body.speedPerDay).toBe(2);
-    expect(forecast.body.days.map((day: { matureCount: number }) => day.matureCount)).toEqual([
-      18, 20, 22,
-    ]);
+    expect(
+      forecast.body.days.map((day: { matureCount: number }) => day.matureCount),
+    ).toEqual([18, 20, 22]);
 
     const other = await request(app.getHttpServer())
       .get('/api/v1/harvest/bucket-forecast')
@@ -318,7 +327,11 @@ describe('harvest tasks and bucket forecast HTTP', () => {
   });
 });
 
-function dayBucket(shedCode: string, day: string, value: number): MetricBucketDay {
+function dayBucket(
+  shedCode: string,
+  day: string,
+  value: number,
+): MetricBucketDay {
   return {
     id: `${shedCode}-${day}`,
     shedCode,

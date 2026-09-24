@@ -43,7 +43,7 @@
 - #75 停写并删除 `daily_aggregates`。识别 ingest 不再双写日聚合表；`refreshDay` 只回写小时桶与日桶。迁移 `010_drop_daily_aggregates.sql`。PR #75 squash 合入 main（59a9083）。Issue #73 已关闭。
 
 ## 进行中
-- 原始需求缺口：批次潮次（#77）、每日采摘任务与日桶增速估计（#78）、报表筛选预览导出（#79）、对象生命周期配置后真下发（#80）。分支 `overnight/orig-gaps-batch-harvest-reports-lifecycle`。谓词 `docs/OVERNIGHT_PRED_GAPS.md`。不自动合并。#76 是误开探测单，本环境不能关闭，需人工关。
+- 原始需求缺口：批次潮次（#77）、每日采摘任务与日桶增速估计（#78）、报表筛选预览导出（#79）、对象生命周期配置后真下发（#80）。PR https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/81 草稿，分支 `overnight/orig-gaps-batch-harvest-reports-lifecycle`。谓词 `docs/OVERNIGHT_PRED_GAPS.md`。本地 `make test`（API jest 113，web vitest 102）与 `make gates` 退出码 0。不自动合并。#76 是误开探测单，本环境不能关闭，需人工关。
 
 ## 待开
 - 无

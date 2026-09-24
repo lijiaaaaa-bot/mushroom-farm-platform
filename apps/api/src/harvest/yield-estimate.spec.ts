@@ -13,6 +13,8 @@ import request from 'supertest';
 import { AuditService } from '../audit';
 import { AuthUser } from '../common/auth-user';
 import { configureApp } from '../configure-app';
+import { HarvestTask } from '../entities/harvest-task.entity';
+import { MetricBucketDay } from '../entities/metric-bucket.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { HarvestController } from './harvest.controller';
 import { HarvestService } from './harvest.service';
@@ -215,6 +217,29 @@ describe('yield estimate HTTP', () => {
         HarvestService,
         { provide: AuditService, useValue: { write: async () => undefined } },
         { provide: getRepositoryToken(RecognitionRecord), useValue: records },
+        {
+          provide: getRepositoryToken(HarvestTask),
+          useValue: {
+            find: async () => [],
+            findOne: async () => null,
+            create: (input: Partial<HarvestTask>) => input,
+            save: async (input: HarvestTask) => input,
+            delete: async () => undefined,
+          },
+        },
+        {
+          provide: getRepositoryToken(MetricBucketDay),
+          useValue: {
+            createQueryBuilder: () => {
+              const qb = {
+                where: () => qb,
+                andWhere: () => qb,
+                getMany: async () => [],
+              };
+              return qb;
+            },
+          },
+        },
       ],
     }).compile();
     app = moduleRef.createNestApplication();

@@ -9,7 +9,10 @@ import {
   Req,
 } from '@nestjs/common';
 import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
-import { HARVEST_SHIFTS, HARVEST_TASK_STATUSES } from '../entities/harvest-task.entity';
+import {
+  HARVEST_SHIFTS,
+  HARVEST_TASK_STATUSES,
+} from '../entities/harvest-task.entity';
 import { Request } from 'express';
 import { AuditService } from '../audit';
 import { AuthUser } from '../common/auth-user';

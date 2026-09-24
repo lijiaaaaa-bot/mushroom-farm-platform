@@ -144,7 +144,7 @@ onMounted(() => {
     <p v-if="error" class="text-sm text-danger">{{ error }}</p>
     <section class="panel overflow-x-auto">
       <h2 class="text-lg">出菇批次</h2>
-      <p v-if="!loading && !items.length" class="text-mist">还没有批次。</p>
+      <p v-if="!loading && !error && !items.length" class="text-mist">还没有批次。</p>
       <table v-else-if="items.length" class="data-table">
         <thead>
           <tr>

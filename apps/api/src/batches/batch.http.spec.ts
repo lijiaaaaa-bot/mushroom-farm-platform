@@ -8,10 +8,7 @@ import request from 'supertest';
 import { RolesGuard } from '../common/guards';
 import { configureApp } from '../configure-app';
 import { AuthUser } from '../common/auth-user';
-import {
-  FlushBatch,
-  FlushPhaseEvent,
-} from '../entities/flush-batch.entity';
+import { FlushBatch, FlushPhaseEvent } from '../entities/flush-batch.entity';
 import { MetricBucketDay } from '../entities/metric-bucket.entity';
 import { METRIC_MATURE_COUNT, METRIC_MUSHROOM_COUNT } from '../growth';
 import { BatchController } from './batch.controller';
@@ -151,11 +148,9 @@ describe('flush batch HTTP', () => {
       .get(`/api/v1/batches/${id}/replay`)
       .set('x-test-role', 'viewer');
     expect(replay.status).toBe(200);
-    expect(replay.body.phases.map((phase: { phase: string }) => phase.phase)).toEqual([
-      'flush',
-      'fast_growth',
-      'mature',
-    ]);
+    expect(
+      replay.body.phases.map((phase: { phase: string }) => phase.phase),
+    ).toEqual(['flush', 'fast_growth', 'mature']);
     expect(replay.body.curve).toEqual([
       expect.objectContaining({
         day: '2026-09-03',

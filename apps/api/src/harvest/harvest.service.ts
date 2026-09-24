@@ -73,13 +73,13 @@ export class HarvestService {
   constructor(
     @InjectRepository(RecognitionRecord)
     private readonly records: Repository<RecognitionRecord>,
-    @Optional()
-    @Inject(GrowthTrendService)
-    private readonly growth?: GrowthTrendService,
     @InjectRepository(HarvestTask)
     private readonly tasks: Repository<HarvestTask>,
     @InjectRepository(MetricBucketDay)
     private readonly dayBuckets: Repository<MetricBucketDay>,
+    @Optional()
+    @Inject(GrowthTrendService)
+    private readonly growth?: GrowthTrendService,
   ) {}
 
   @Cron('15 6 * * *', { timeZone: 'Asia/Shanghai' })
@@ -269,7 +269,10 @@ export class HarvestService {
     const filter = shedCode?.trim() || null;
     if (filter) scope.assert(filter);
     const today = todayShanghai();
-    const startDay = shiftShanghaiDate(today, -(BUCKET_FORECAST_WINDOW_DAYS - 1));
+    const startDay = shiftShanghaiDate(
+      today,
+      -(BUCKET_FORECAST_WINDOW_DAYS - 1),
+    );
     const start = shanghaiDayRange(startDay).start;
     const end = shanghaiDayRange(today).end;
     const rows = await this.dayBuckets
@@ -308,9 +311,9 @@ export class HarvestService {
     const picks = (await this.latestPerCameraScope(scope, day)).filter(
       (item) => item.matureCount > 0,
     );
-    const existing = (await this.tasks.find({ where: { taskDate: day } })).filter(
-      (task) => scope.allows(task.shedCode),
-    );
+    const existing = (
+      await this.tasks.find({ where: { taskDate: day } })
+    ).filter((task) => scope.allows(task.shedCode));
     const plan = planHarvestTasks(existing, picks, (pick) => {
       const now = new Date();
       return this.tasks.create({

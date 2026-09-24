@@ -24,4 +24,4 @@
    `npm --prefix apps/api test -- --testPathPattern=reports.preview.spec --watchman=false`
 
 7. 管理端页面：批次回放、采摘任务与桶增速、报表预览与打印。  
-   `npm --prefix apps/web exec vitest run src/views/BatchesView.spec.ts src/views/HarvestView.spec.ts src/views/ReportsPreview.spec.ts`
+   `npm --prefix apps/web test -- src/views/BatchesView.spec.ts src/views/HarvestView.spec.ts src/views/ReportsPreview.spec.ts`

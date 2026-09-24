@@ -90,7 +90,22 @@ const thinForecast = {
 function routeGets(
   dailyResponses: Array<ReturnType<typeof daily>>,
   estimate: typeof thinEstimate | typeof fullEstimate = thinEstimate,
-  extras?: { tasks?: typeof emptyTasks; forecast?: typeof thinForecast },
+  extras?: {
+    tasks?: {
+      date: string;
+      schedule: { morning: number; afternoon: number; unassigned: number };
+      sheds: Array<{ shedCode: string; matureCount: number; cameraCount: number }>;
+      items: Array<Record<string, unknown>>;
+    };
+    forecast?: {
+      label: string;
+      sufficient: boolean;
+      method: string;
+      message: string | null;
+      speedPerDay: number | null;
+      days: Array<{ date: string; offsetDays: number; matureCount: number }>;
+    };
+  },
 ) {
   let index = 0;
   httpGet.mockImplementation((url: string) => {
