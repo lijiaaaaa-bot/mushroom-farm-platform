@@ -13,7 +13,6 @@ const features = [
   'ingest',
   'maintenance',
   'meta',
-  'phase2',
   'redis',
   'reports',
   'seed',

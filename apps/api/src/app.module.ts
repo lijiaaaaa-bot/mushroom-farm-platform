@@ -17,7 +17,6 @@ import { HarvestModule } from './harvest';
 import { IngestModule } from './ingest';
 import { MaintenanceModule } from './maintenance';
 import { MetaModule } from './meta';
-import { Phase2Module } from './phase2';
 import { RedisModule } from './redis';
 import { ReportsModule } from './reports';
 import { SeedModule } from './seed';
@@ -52,7 +51,6 @@ import { StorageModule } from './storage';
     DashboardModule,
     DiseasesModule,
     MaintenanceModule,
-    Phase2Module,
     MetaModule,
     SeedModule,
   ],
