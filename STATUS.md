@@ -41,7 +41,7 @@
 - #69 Timescale 可选路径与对象生命周期已完成；PR [#71](https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/71) 已 squash 合入 main（d5f0838f）；Issue #69 已关闭。
 
 ## 进行中
-- #73 (B) 停写并删除 `daily_aggregates`。识别 ingest 不再 `mergeDaily`；`refreshDay` 只回写 `metric_buckets_hour` / `metric_buckets_day`。迁移 `010_drop_daily_aggregates.sql`。小时 cron 与采摘蘑菇数修正仍重扫该日识别明细。读路径本来就是桶。
+- #73 (B) 停写并删除 `daily_aggregates`。识别 ingest 不再 `mergeDaily`；`refreshDay` 只回写 `metric_buckets_hour` / `metric_buckets_day`。迁移 `010_drop_daily_aggregates.sql`。小时 cron 与采摘蘑菇数修正仍重扫该日识别明细。读路径本来就是桶。PR https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/75 。不自动合并，不关 Issue #73。
 
 ## 待开
 - #73 (C) 保留：`scripts/object-lifecycle.mjs` 默认打印「未下发」；`009_timescale_optional.sql` 只 NOTICE；`/phase2/wecom` 与 `phase2/big-screen` 重定向。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/issues/73 。(A) 已由 PR #74 合入。
