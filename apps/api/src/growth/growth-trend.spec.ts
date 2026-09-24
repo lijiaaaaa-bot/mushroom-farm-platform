@@ -7,6 +7,11 @@ import request from 'supertest';
 import { AuthUser } from '../common/auth-user';
 import { configureApp } from '../configure-app';
 import { DailyAggregate } from '../entities/daily-aggregate.entity';
+import {
+  MetricBucketBase,
+  MetricBucketDay,
+  MetricBucketHour,
+} from '../entities/metric-bucket.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { HarvestService } from '../harvest';
 import {
@@ -14,6 +19,11 @@ import {
   aggregateDay,
   shiftShanghaiDay,
 } from './growth-trend.aggregate';
+import {
+  METRIC_CAP_DIAMETER_MEAN,
+  METRIC_MUSHROOM_COUNT,
+  METRIC_SAMPLE_COUNT,
+} from './metric-bucket.apply';
 import { GrowthTrendsController } from './growth-trend.controller';
 import { GrowthTrendService } from './growth-trend.service';
 
@@ -114,6 +124,86 @@ function memoryRecords(initial: AggregateSource[]) {
       return qb;
     },
   };
+}
+
+function memoryMetricBuckets() {
+  const rows: MetricBucketBase[] = [];
+  let seq = 0;
+  const copy = (row: MetricBucketBase): MetricBucketBase => ({
+    ...row,
+    bucketStart: new Date(row.bucketStart),
+    latestAt: row.latestAt ? new Date(row.latestAt) : null,
+    updatedAt: new Date(row.updatedAt),
+  });
+  return {
+    rows,
+    create: (input: Partial<MetricBucketBase>) =>
+      ({ ...input }) as MetricBucketBase,
+    find: async (options?: {
+      where?: { shedCode?: string; bucketStart?: Date };
+    }) => {
+      const where = options?.where;
+      return rows
+        .filter((row) => {
+          if (where?.shedCode && row.shedCode !== where.shedCode) return false;
+          if (
+            where?.bucketStart &&
+            new Date(row.bucketStart).getTime() !==
+              new Date(where.bucketStart).getTime()
+          ) {
+            return false;
+          }
+          return true;
+        })
+        .map(copy);
+    },
+    save: async (input: MetricBucketBase) => {
+      const saved = {
+        ...input,
+        id: input.id ?? `bucket-${++seq}`,
+        updatedAt: input.updatedAt ?? new Date(),
+      };
+      const index = rows.findIndex((row) => row.id === saved.id);
+      if (index >= 0) rows[index] = saved;
+      else rows.push(saved);
+      return copy(saved);
+    },
+    delete: async (criteria: { id: string }) => {
+      const index = rows.findIndex((row) => row.id === criteria.id);
+      if (index >= 0) rows.splice(index, 1);
+      return { affected: index >= 0 ? 1 : 0 };
+    },
+    createQueryBuilder() {
+      let start = new Date(0);
+      let end = new Date(0);
+      const qb = {
+        where(_sql: string, params: { start: Date; end: Date }) {
+          start = new Date(params.start);
+          end = new Date(params.end);
+          return qb;
+        },
+        async getMany() {
+          return rows
+            .filter((row) => {
+              const at = new Date(row.bucketStart).getTime();
+              return at >= start.getTime() && at < end.getTime();
+            })
+            .map(copy);
+        },
+      };
+      return qb;
+    },
+  };
+}
+
+function bucketValue(
+  rows: MetricBucketBase[],
+  metric: string,
+  cameraCode: string,
+) {
+  return rows.find(
+    (row) => row.metric === metric && row.cameraCode === cameraCode,
+  );
 }
 
 function point(
@@ -241,12 +331,19 @@ describe('daily growth aggregates', () => {
         avgCapDiameter: 5,
       },
     ]);
+    const hours = memoryMetricBuckets();
+    const days = memoryMetricBuckets();
     const service = new GrowthTrendService(
       aggregates as never,
       records as never,
+      hours as never,
+      days as never,
     );
     await service.refreshDay('2026-09-23');
     expect(aggregates.rows).toHaveLength(3);
+    expect(bucketValue(hours.rows, METRIC_MUSHROOM_COUNT, 'CAM-2')?.value).toBe(
+      8,
+    );
 
     records.rows.splice(1, 1);
     records.rows[0].mushroomCount = 15;
@@ -258,6 +355,97 @@ describe('daily growth aggregates', () => {
     expect(
       aggregates.rows.find((row) => row.grain === 'shed')?.mushroomCount,
     ).toBe(15);
+    expect(
+      bucketValue(hours.rows, METRIC_MUSHROOM_COUNT, 'CAM-2'),
+    ).toBeUndefined();
+    expect(bucketValue(days.rows, METRIC_MUSHROOM_COUNT, 'CAM-1')?.value).toBe(
+      15,
+    );
+  });
+
+  it('upserts hour and day buckets for recognizedAt and ignores the arrival day', async () => {
+    const aggregates = memoryAggregates();
+    const records = memoryRecords([]);
+    const hours = memoryMetricBuckets();
+    const days = memoryMetricBuckets();
+    const service = new GrowthTrendService(
+      aggregates as never,
+      records as never,
+      hours as never,
+      days as never,
+    );
+    const scan = jest.spyOn(records, 'createQueryBuilder');
+    const backfill = {
+      shedCode: 'S01',
+      cameraCode: 'CAM-1',
+      recognizedAt: new Date('2026-09-20T03:15:00.000Z'),
+      mushroomCount: 7,
+      avgCapDiameter: 4,
+    };
+    await service.applyRecognition(backfill);
+    await service.applyRecognition({
+      ...backfill,
+      recognizedAt: new Date('2026-09-20T03:40:00.000Z'),
+      mushroomCount: 9,
+      avgCapDiameter: 6,
+    });
+    await service.applyRecognition({
+      ...backfill,
+      recognizedAt: new Date('2026-09-20T03:05:00.000Z'),
+      mushroomCount: 3,
+      avgCapDiameter: 5,
+    });
+    await service.applyRecognition({
+      shedCode: 'S01',
+      cameraCode: 'CAM-2',
+      recognizedAt: new Date('2026-09-20T05:10:00.000Z'),
+      mushroomCount: 4,
+      avgCapDiameter: 8,
+    });
+
+    expect(scan).not.toHaveBeenCalled();
+    const hourStart = new Date('2026-09-20T03:00:00.000Z').getTime();
+    const laterHour = new Date('2026-09-20T05:00:00.000Z').getTime();
+    const dayStart = new Date('2026-09-20T00:00:00+08:00').getTime();
+    const cam1Hour = hours.rows.filter(
+      (row) =>
+        row.cameraCode === 'CAM-1' &&
+        new Date(row.bucketStart).getTime() === hourStart,
+    );
+    expect(bucketValue(cam1Hour, METRIC_MUSHROOM_COUNT, 'CAM-1')).toMatchObject(
+      { value: 9, latestAt: new Date('2026-09-20T03:40:00.000Z') },
+    );
+    expect(bucketValue(cam1Hour, METRIC_SAMPLE_COUNT, 'CAM-1')?.value).toBe(3);
+    expect(
+      bucketValue(cam1Hour, METRIC_CAP_DIAMETER_MEAN, 'CAM-1')?.value,
+    ).toBe(5);
+    expect(
+      hours.rows.find(
+        (row) =>
+          row.cameraCode === 'CAM-2' &&
+          row.metric === METRIC_MUSHROOM_COUNT &&
+          new Date(row.bucketStart).getTime() === laterHour,
+      )?.value,
+    ).toBe(4);
+    expect(bucketValue(days.rows, METRIC_MUSHROOM_COUNT, '')?.value).toBe(13);
+    expect(bucketValue(days.rows, METRIC_SAMPLE_COUNT, '')?.value).toBe(4);
+    expect(bucketValue(days.rows, METRIC_CAP_DIAMETER_MEAN, '')?.value).toBe(
+      5.75,
+    );
+    expect(
+      days.rows.every(
+        (row) => new Date(row.bucketStart).getTime() === dayStart,
+      ),
+    ).toBe(true);
+    expect(aggregates.rows.find((row) => row.grain === 'shed')).toMatchObject({
+      day: '2026-09-20',
+      mushroomCount: 13,
+      capDiameterMean: 5.75,
+      sampleCount: 4,
+    });
+    expect(
+      aggregates.rows.find((row) => row.cameraCode === 'CAM-1'),
+    ).toMatchObject({ mushroomCount: 9, sampleCount: 3, capDiameterMean: 5 });
   });
 });
 
@@ -341,6 +529,14 @@ describe('growth trend API', () => {
         {
           provide: getRepositoryToken(RecognitionRecord),
           useValue: memoryRecords([]),
+        },
+        {
+          provide: getRepositoryToken(MetricBucketHour),
+          useValue: memoryMetricBuckets(),
+        },
+        {
+          provide: getRepositoryToken(MetricBucketDay),
+          useValue: memoryMetricBuckets(),
         },
       ],
     }).compile();

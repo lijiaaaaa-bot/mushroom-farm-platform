@@ -345,6 +345,13 @@ export function shanghaiDayRange(date: string): { start: Date; end: Date } {
   return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
 }
 
+/** 上海整点。上海无夏令时，按当地日历日的零点再截小时。 */
+export function shanghaiHourStart(value: Date): Date {
+  const dayStart = shanghaiDayRange(shanghaiDate(value)).start;
+  const hour = Math.floor((value.getTime() - dayStart.getTime()) / 3_600_000);
+  return new Date(dayStart.getTime() + hour * 3_600_000);
+}
+
 /** 按上海日历移动整天。上海无夏令时。 */
 export function shiftShanghaiDate(date: string, deltaDays: number): string {
   const start = new Date(`${date}T00:00:00+08:00`);

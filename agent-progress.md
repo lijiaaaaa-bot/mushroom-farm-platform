@@ -3,8 +3,8 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：Issue #63 去掉总览/大屏大色块，拉高状态对比，标题改短
-- 进行中文件：`apps/web/src/layouts/AdminLayout.vue`、`apps/web/src/views/DashboardView.vue`、`apps/web/src/views/BigScreenView.vue`、`apps/web/src/components/ResultCard.vue`
+- 本会话目标：指标预聚合需求入仓，开切片 B–E，实现切片 B 小时桶与识别增量 upsert
+- 进行中文件：`docs/metrics-preaggregation-requirements.md`、`apps/api/src/growth/growth-trend.service.ts`、`apps/api/src/ingest/ingest.service.ts`
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -57,3 +57,4 @@
 | 2026-09-23 | 总览去掉 8 格指标条和深绿侧栏。顶栏放名称，左侧 188px 白导航，基地大屏仍在总览后。平面用床位底图和状态色块，芯片写温度、湿度、在线；缺坐标的棚落在底边并写未标坐标。温度图虚线只画已启用的温度过高/过低规则。近 7 日为面积图。大屏夜色仍只在 `.screen[data-skin=tb-night]`，抓拍空态是虚线框「无抓拍」。分支已 rebase 到含 #61 的 main，未改 `007` 与 alert_reads uuid | `make test` 退出码 0（API jest 98，web vitest 93）；`make gates` 退出码 0。本机无 Docker，用本地 mock 打开总览、悬停芯片、窄屏菜单、设备页、大屏指挥/抓拍墙/多区 | 下一人：对照 ThingsBoard 浅色总览和夜色大屏看总览平面与抓拍墙。不改接入接口 |
 | 2026-09-24 | #63：白导航去掉实心绿标和角标口号；总览标题只留短名，平面改为状态色钉，告警程度用红/琥珀胶囊，在线深绿字、离线灰字，温度阈值线加粗。大屏抓拍空态为细框「无图」，`snapshotUrl` 的 http/data 与对象存储 JPEG 直接出图，媒体区不再铺实心品牌绿 | web vitest 93、vue-tsc、web eslint、API jest 98、API eslint、`make gates` 均通过。Chrome 1440 总览与 1600 大屏：品牌绿像素低于 0.2%，侧栏左侧 200px 为 0 | 不关 Issue #63。未跑 `make test` 里的 contracts node 与边界脚本 |
 | 2026-09-24 | 监控样张入库 `docs/evidence/monitor-batch`（8 张 JPEG，`cam-s03-01` 含绿霉）。STATUS：#63/#64、#55/#59、#47/#52、#49+#50/#53 从进行中移入已完成；#48/#51 与 #54/#58 已在已完成，去掉进行中重复行。进行中改为无 | `gh pr view` 均为 MERGED，对应 Issue 均为 CLOSED；`make gates` | 不改应用代码。本地演示规模可少于需求规格约 30 棚、110 路 |
+| 2026-09-24 | 指标预聚合需求入仓；Issue #66 切片 B、#67 C、#68 D、#69 E。切片 B：`metric_buckets_hour` / `metric_buckets_day`，识别 ingest 按 `recognizedAt` 增量 upsert，重复幂等键不双计，补传改历史桶。小时 cron 与采摘修正仍走 `refreshDay` 重算昨/当日并回写桶 | `make test` 退出码 0（contracts 9，API jest 100，web vitest 93）；`make gates` 退出码 0 | 趋势/大屏仍读 `daily_aggregates`（切片 C）。不安装 Timescale（切片 E）。不关 #66，等 PR 合并 |

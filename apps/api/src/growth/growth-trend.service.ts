@@ -2,10 +2,20 @@ import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { shanghaiDayRange, todayShanghai } from '@mushroom/contracts';
+import {
+  shanghaiDate,
+  shanghaiDayRange,
+  shanghaiHourStart,
+  todayShanghai,
+} from '@mushroom/contracts';
 import { AuthUser } from '../common/auth-user';
 import { ShedScope } from '../common/shed-scope';
 import { DailyAggregate } from '../entities/daily-aggregate.entity';
+import {
+  MetricBucketBase,
+  MetricBucketDay,
+  MetricBucketHour,
+} from '../entities/metric-bucket.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import {
   AggregateSource,
@@ -13,6 +23,14 @@ import {
   aggregateDay,
   shiftShanghaiDay,
 } from './growth-trend.aggregate';
+import {
+  BucketView,
+  RecognitionDelta,
+  bucketKey,
+  dailyDraftsFromBuckets,
+  foldBuckets,
+  applyRecognitionToBuckets,
+} from './metric-bucket.apply';
 
 export interface GrowthPoint {
   day: string;
@@ -43,6 +61,10 @@ export class GrowthTrendService {
     private readonly aggregates: Repository<DailyAggregate>,
     @InjectRepository(RecognitionRecord)
     private readonly records: Repository<RecognitionRecord>,
+    @InjectRepository(MetricBucketHour)
+    private readonly hourBuckets: Repository<MetricBucketHour>,
+    @InjectRepository(MetricBucketDay)
+    private readonly dayBuckets: Repository<MetricBucketDay>,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -72,7 +94,24 @@ export class GrowthTrendService {
         end,
       })
       .getMany();
-    return this.applyRecords(day, rows);
+    const points = await this.applyRecords(day, rows);
+    await this.rebuildMetricBuckets(start, end, rows);
+    return points;
+  }
+
+  /**
+   * 识别入库后的写路径：按 recognizedAt 的上海小时和上海日增量 upsert。
+   * 不扫描当日明细。同一幂等键只能调用一次。
+   */
+  async applyRecognition(input: RecognitionDelta): Promise<void> {
+    const recognizedAt = new Date(input.recognizedAt);
+    const record: RecognitionDelta = { ...input, recognizedAt };
+    const day = shanghaiDate(recognizedAt);
+    const dayStart = shanghaiDayRange(day).start;
+    const hourStart = shanghaiHourStart(recognizedAt);
+    await this.upsertBucket(this.hourBuckets, record, hourStart);
+    const dayRows = await this.upsertBucket(this.dayBuckets, record, dayStart);
+    await this.mergeDaily(day, dayRows);
   }
 
   async applyRecords(day: string, records: AggregateSource[]) {
@@ -129,16 +168,121 @@ export class GrowthTrendService {
     return { ...empty, sheds: groupSheds(rows) };
   }
 
+  private async upsertBucket(
+    repo: Repository<MetricBucketHour> | Repository<MetricBucketDay>,
+    record: RecognitionDelta,
+    bucketStart: Date,
+  ): Promise<BucketView[]> {
+    const existing = await repo.find({
+      where: { shedCode: record.shedCode, bucketStart },
+    });
+    const { rows, dirty } = applyRecognitionToBuckets(
+      existing.map(toBucketView),
+      record,
+      bucketStart,
+    );
+    const byKey = new Map(existing.map((row) => [bucketKey(row), row]));
+    for (const view of dirty) {
+      const prev = byKey.get(bucketKey(view));
+      if (prev) {
+        prev.value = view.value;
+        prev.sampleCount = view.sampleCount;
+        prev.valueSum = view.valueSum;
+        prev.latestAt = view.latestAt;
+        await repo.save(prev);
+      } else {
+        await repo.save(repo.create(view));
+      }
+    }
+    return rows;
+  }
+
+  private async mergeDaily(day: string, rows: BucketView[]) {
+    const drafts = dailyDraftsFromBuckets(day, rows);
+    if (!drafts.length) return;
+    const shedCode = drafts[0].shedCode;
+    const existing = (await this.aggregates.find({ where: { day } })).filter(
+      (row) => row.shedCode === shedCode,
+    );
+    await this.writeDaily(day, drafts, existing, false);
+  }
+
+  private async rebuildMetricBuckets(
+    start: Date,
+    end: Date,
+    records: AggregateSource[],
+  ) {
+    const dayRows = foldBuckets(records, start);
+    const byHour = new Map<number, AggregateSource[]>();
+    for (const record of records) {
+      const hour = shanghaiHourStart(new Date(record.recognizedAt)).getTime();
+      const list = byHour.get(hour) ?? [];
+      list.push(record);
+      byHour.set(hour, list);
+    }
+    const hourRows: BucketView[] = [];
+    for (const [time, list] of byHour) {
+      hourRows.push(...foldBuckets(list, new Date(time)));
+    }
+    const storedDays = await this.dayBuckets.find({
+      where: { bucketStart: start },
+    });
+    const storedHours = await this.hourBuckets
+      .createQueryBuilder('b')
+      .where('b.bucketStart >= :start AND b.bucketStart < :end', {
+        start,
+        end,
+      })
+      .getMany();
+    await this.replaceBucketRows(this.dayBuckets, storedDays, dayRows);
+    await this.replaceBucketRows(this.hourBuckets, storedHours, hourRows);
+  }
+
+  private async replaceBucketRows(
+    repo: Repository<MetricBucketHour> | Repository<MetricBucketDay>,
+    existing: MetricBucketBase[],
+    next: BucketView[],
+  ) {
+    const wanted = new Set(next.map((row) => bucketKey(row)));
+    for (const row of existing) {
+      if (!wanted.has(bucketKey(row))) await repo.delete({ id: row.id });
+    }
+    const byKey = new Map(existing.map((row) => [bucketKey(row), row]));
+    for (const view of next) {
+      const prev = byKey.get(bucketKey(view));
+      if (prev && wanted.has(bucketKey(view))) {
+        prev.value = view.value;
+        prev.sampleCount = view.sampleCount;
+        prev.valueSum = view.valueSum;
+        prev.latestAt = view.latestAt;
+        await repo.save(prev);
+      } else {
+        await repo.save(repo.create(view));
+      }
+    }
+  }
+
   private async persist(day: string, points: DailyAggregateDraft[]) {
     const existing = await this.aggregates.find({ where: { day } });
+    await this.writeDaily(day, points, existing, true);
+  }
+
+  private async writeDaily(
+    day: string,
+    points: DailyAggregateDraft[],
+    existing: DailyAggregate[],
+    replaceMissing: boolean,
+  ) {
     const keyOf = (row: {
       grain: string;
       shedCode: string;
       cameraCode: string;
     }) => `${row.grain}|${row.shedCode}|${row.cameraCode}`;
     const next = new Set(points.map(keyOf));
-    for (const row of existing) {
-      if (!next.has(keyOf(row))) await this.aggregates.delete({ id: row.id });
+    if (replaceMissing) {
+      for (const row of existing) {
+        if (!next.has(keyOf(row))) await this.aggregates.delete({ id: row.id });
+      }
     }
     const byKey = new Map(existing.map((row) => [keyOf(row), row]));
     for (const point of points) {
@@ -153,6 +297,19 @@ export class GrowthTrendService {
       }
     }
   }
+}
+
+function toBucketView(row: MetricBucketBase): BucketView {
+  return {
+    shedCode: row.shedCode,
+    cameraCode: row.cameraCode,
+    bucketStart: new Date(row.bucketStart),
+    metric: row.metric,
+    value: row.value,
+    sampleCount: row.sampleCount,
+    valueSum: row.valueSum,
+    latestAt: row.latestAt ? new Date(row.latestAt) : null,
+  };
 }
 
 function parseWindow(days?: string): 7 | 30 {

@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   buildSnapshotObjectKey,
+  shanghaiHourStart,
   shiftShanghaiDate,
   parseAlertFalsePositive,
   parseAlertNote,
@@ -163,6 +164,21 @@ describe('golden fixtures', () => {
     if (!staleEnvironment.ok) {
       assert.ok(staleEnvironment.errors.includes('观测时间超出补传窗口'));
     }
+  });
+
+  it('truncates a timestamp to the Shanghai hour', () => {
+    assert.equal(
+      shanghaiHourStart(new Date('2026-09-20T03:15:00.000Z')).toISOString(),
+      '2026-09-20T03:00:00.000Z',
+    );
+    assert.equal(
+      shanghaiHourStart(new Date('2026-09-19T16:00:00.000Z')).toISOString(),
+      '2026-09-19T16:00:00.000Z',
+    );
+    assert.equal(
+      shanghaiHourStart(new Date('2026-09-20T15:59:00.000Z')).toISOString(),
+      '2026-09-20T15:00:00.000Z',
+    );
   });
 
   it('loads the snapshot key fixture', () => {
