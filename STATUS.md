@@ -45,7 +45,7 @@
 - #79 报表筛选预览与 xlsx：六类 `growth` / `yield` / `disease` / `environment` / `devices` / `alerts`；`/reports` 预览、`export.xlsx`、浏览器 `window.print()`。PR #81（04f7665）；Issue #79 已关闭。报表页没有登录后的浏览器端到端测试。
 - #80 对象生命周期：`scripts/object-lifecycle.mjs` 默认打印未下发并退出码 0。仅当 `MINIO_APPLY_LIFECYCLE=1` 且端点与密钥齐全、读回同一前缀的启用规则，才算已下发；失败退出码非 0。本地 compose MinIO 无远端存储类时下发失败（fail-closed）。PR #81（04f7665）；Issue #80 已关闭。能力对照见 [`docs/CURRENT_CAPABILITIES.md`](docs/CURRENT_CAPABILITIES.md)。
 
-- 登录日志、Postgres 备份与可选热冷 MinIO：`login_logs` 记录成功/失败（用户、时间、IP、User-Agent），`GET /api/v1/login-logs` 仅超管与生产管理员，`/audit` 上方可看。`make backup` 用 `pg_dump` 写 `backups/mushroom-<时间>.sql`（Redis 与 MinIO 不在文件内）。热盘卷 `minio-hot`；冷盘为 `docker-compose.minio-cold.yml`。`make object-tier` 未设置 `MINIO_APPLY_TIER=1` 时只打印计划；设置后复制超龄 `snapshots/` 到冷端，读回一致才删热端。云归档仍走 `object-lifecycle.mjs`，本地无远端存储类则 fail-closed。批次阶段仍人工，自动切换待业主确认规则。说明见 `docs/OPS_STORAGE_BACKUP.md`。
+- 登录日志、Postgres 备份与可选热冷 MinIO：`login_logs` 记录成功/失败（用户、时间、IP、User-Agent），`GET /api/v1/login-logs` 仅超管与生产管理员，`/audit` 上方可看。`make backup` 用 `pg_dump` 写 `backups/mushroom-<时间>.sql`（Redis 与 MinIO 不在文件内）。热盘卷 `minio-hot`；冷盘为 `docker-compose.minio-cold.yml`。`make object-tier` 未设置 `MINIO_APPLY_TIER=1` 时只打印计划；设置后复制超龄 `snapshots/` 到冷端，读回一致才删热端。云归档仍走 `object-lifecycle.mjs`，本地无远端存储类则 fail-closed。批次阶段仍人工，自动切换待业主确认规则。说明见 `docs/OPS_STORAGE_BACKUP.md`。PR #85。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/85
 
 ## 进行中
 - 无
