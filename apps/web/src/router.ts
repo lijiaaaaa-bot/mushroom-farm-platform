@@ -41,8 +41,6 @@ const router = createRouter({
         { path: 'sheds', component: ShedsView, meta: { title: '棚区' } },
         { path: 'audit', component: AuditView, meta: { title: '审计' } },
         { path: 'phase2/big-screen', redirect: '/big-screen' },
-        { path: 'phase2/trends', redirect: '/growth-trends' },
-        { path: 'phase2/yield', redirect: '/harvest' },
       ],
     },
   ],

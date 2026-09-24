@@ -1,6 +1,6 @@
 # STATUS｜mushroom-farm-platform
 
-更新：2026-09-24 13:22（Asia/Shanghai）
+更新：2026-09-24 13:50（Asia/Shanghai）
 仓：https://github.com/lijiaaaaa-bot/mushroom-farm-platform
 
 进度只认：已合并 PR + 已关闭 Issue + 本文件一行。聊天文字不算交付。
@@ -44,7 +44,7 @@
 - 无（诚实说明：`node scripts/object-lifecycle.mjs` 仍打印「未下发」；Timescale 可选路径默认未启用。）
 
 ## 待开
-- 无
+- 死代码清理清单：https://github.com/lijiaaaaa-bot/mushroom-farm-platform/issues/73 。(A) 无调用的二期占位页、未测试的旧重定向、placeholder API、空测试；(B) `daily_aggregates` 仍双写，读路径已是桶，停写后再删表；(C) 对象生命周期脚本与桶读写保留。
 
 ## 规范
 - 指标预聚合与时序存储：[`docs/metrics-preaggregation-requirements.md`](docs/metrics-preaggregation-requirements.md)（切片 B–E：#66 #67 #68 #69）
