@@ -1,5 +1,4 @@
 import { averageDiameter } from '@mushroom/contracts';
-import { DailyAggregateDraft } from './growth-trend.aggregate';
 
 export const METRIC_MUSHROOM_COUNT = 'mushroom_count';
 export const METRIC_CAP_DIAMETER_MEAN = 'cap_diameter_mean';
@@ -270,36 +269,4 @@ export function foldBuckets(
     all.push(...state);
   }
   return all;
-}
-
-function compareCameraCode(a: string, b: string): number {
-  if (a === b) return 0;
-  if (a === '') return -1;
-  if (b === '') return 1;
-  return a < b ? -1 : 1;
-}
-
-export function dailyDraftsFromBuckets(
-  day: string,
-  rows: BucketView[],
-): DailyAggregateDraft[] {
-  if (!rows.length) return [];
-  const shedCode = rows[0].shedCode;
-  const cameras = [...new Set(rows.map((row) => row.cameraCode))].sort(
-    compareCameraCode,
-  );
-  return cameras.map((cameraCode) => {
-    const metric = (name: string) =>
-      rows.find((row) => row.cameraCode === cameraCode && row.metric === name);
-    const mean = metric(METRIC_CAP_DIAMETER_MEAN);
-    return {
-      day,
-      grain: cameraCode ? 'camera' : 'shed',
-      shedCode,
-      cameraCode,
-      mushroomCount: Math.round(metric(METRIC_MUSHROOM_COUNT)?.value ?? 0),
-      capDiameterMean: mean && mean.value !== null ? mean.value : null,
-      sampleCount: Math.round(metric(METRIC_SAMPLE_COUNT)?.value ?? 0),
-    };
-  });
 }

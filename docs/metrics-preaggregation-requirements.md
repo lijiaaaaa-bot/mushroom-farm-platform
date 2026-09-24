@@ -46,7 +46,9 @@
 
 ## 4. 相对现行实现的差距
 
-现行已有：`daily_aggregates`；识别入库后 `refreshDay` **整日重算**；小时 cron 重建昨+今；趋势读日表。
+现行：`metric_buckets_hour` / `metric_buckets_day`。识别 ingest 按业务时间增量 upsert 小时桶与日桶，不写 `daily_aggregates`（`010_drop_daily_aggregates.sql` 删表）。趋势、总览、大屏、病害高发读桶。小时 cron 重建昨+今、采摘修正蘑菇数后，仍 `refreshDay` 重扫该日识别明细并回写识别指标桶；环境桶保留。
+
+下面是相对「只有 `daily_aggregates`、趋势读日表」时写下的改动。ingest 增量、小时桶、环境入桶、Timescale 可选 NOTICE 已落地。采摘修正与小时回写仍整日重扫识别明细，因为原地改数不能再做一次增量加计。
 
 须改为：
 

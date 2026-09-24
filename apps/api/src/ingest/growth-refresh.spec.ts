@@ -15,7 +15,6 @@ import { AlertEngineService } from '../alerts';
 import { IngestTokenGuard } from '../common/guards';
 import { configureApp } from '../configure-app';
 import { DevicesService } from '../devices';
-import { DailyAggregate } from '../entities/daily-aggregate.entity';
 import { EnvironmentReading } from '../entities/environment-reading.entity';
 import { HeartbeatReceipt } from '../entities/heartbeat-receipt.entity';
 import { IngestReject } from '../entities/ingest-reject.entity';
@@ -74,7 +73,7 @@ function ingestProviders(
   ];
 }
 
-describe('ingest refreshes daily aggregates', () => {
+describe('ingest refreshes metric buckets', () => {
   it('upserts hour and day buckets after a new ingest and skips duplicates', async () => {
     const applyRecognition = jest.fn().mockResolvedValue(undefined);
     const saved: Partial<RecognitionRecord>[] = [];
@@ -228,7 +227,6 @@ describe('ingest backfill updates historical buckets', () => {
           },
         },
         { provide: getRepositoryToken(HeartbeatReceipt), useValue: {} },
-        { provide: getRepositoryToken(DailyAggregate), useValue: memoryRows() },
         { provide: getRepositoryToken(MetricBucketHour), useValue: hours },
         { provide: getRepositoryToken(MetricBucketDay), useValue: days },
         {
