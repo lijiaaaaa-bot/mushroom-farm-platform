@@ -10,6 +10,8 @@ import { AuthUser } from '../common/auth-user';
 import { RolesGuard } from '../common/guards';
 import { configureApp } from '../configure-app';
 import { AuditLog } from '../entities/audit-log.entity';
+import { HarvestTask } from '../entities/harvest-task.entity';
+import { MetricBucketDay } from '../entities/metric-bucket.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { HarvestController } from './harvest.controller';
 import { HarvestService } from './harvest.service';
@@ -168,6 +170,29 @@ describe('harvest correction HTTP', () => {
           useValue: records,
         },
         { provide: getRepositoryToken(AuditLog), useValue: logs },
+        {
+          provide: getRepositoryToken(HarvestTask),
+          useValue: {
+            find: async () => [],
+            findOne: async () => null,
+            create: (input: Partial<HarvestTask>) => input,
+            save: async (input: HarvestTask) => input,
+            delete: async () => undefined,
+          },
+        },
+        {
+          provide: getRepositoryToken(MetricBucketDay),
+          useValue: {
+            createQueryBuilder: () => {
+              const qb = {
+                where: () => qb,
+                andWhere: () => qb,
+                getMany: async () => [],
+              };
+              return qb;
+            },
+          },
+        },
       ],
     }).compile();
     app = moduleRef.createNestApplication();

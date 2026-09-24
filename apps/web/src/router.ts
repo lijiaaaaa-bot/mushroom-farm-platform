@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import AdminLayout from './layouts/AdminLayout.vue';
 import AlertsView from './views/AlertsView.vue';
+import BatchesView from './views/BatchesView.vue';
 import AuditView from './views/AuditView.vue';
 import BigScreenView from './views/BigScreenView.vue';
 import DashboardView from './views/DashboardView.vue';
@@ -37,6 +38,7 @@ const router = createRouter({
         { path: 'alert-rules', component: RulesView, meta: { title: '阈值规则' } },
         { path: 'harvest', component: HarvestView, meta: { title: '采摘' } },
         { path: 'growth-trends', component: GrowthTrendsView, meta: { title: '生长趋势' } },
+        { path: 'batches', component: BatchesView, meta: { title: '出菇批次' } },
         { path: 'reports', component: ReportsView, meta: { title: '报表' } },
         { path: 'sheds', component: ShedsView, meta: { title: '棚区' } },
         { path: 'audit', component: AuditView, meta: { title: '审计' } },

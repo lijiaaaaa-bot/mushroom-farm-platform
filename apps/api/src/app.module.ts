@@ -4,6 +4,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AlertsModule } from './alerts';
+import { BatchesModule } from './batches';
 import { AuditModule } from './audit';
 import { AuthModule } from './auth';
 import configuration from './config/configuration';
@@ -46,6 +47,7 @@ import { StorageModule } from './storage';
     IngestModule,
     AlertsModule,
     HarvestModule,
+    BatchesModule,
     GrowthTrendModule,
     ReportsModule,
     DashboardModule,

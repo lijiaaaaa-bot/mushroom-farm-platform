@@ -1,6 +1,6 @@
 # STATUS｜mushroom-farm-platform
 
-更新：2026-09-24 14:30（Asia/Shanghai）
+更新：2026-09-24 14:45（Asia/Shanghai）
 仓：https://github.com/lijiaaaaa-bot/mushroom-farm-platform
 
 进度只认：已合并 PR + 已关闭 Issue + 本文件一行。聊天文字不算交付。
@@ -40,11 +40,13 @@
 - #68 环境入桶与病害高发读桶已完成；PR [#71](https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/71) 已 squash 合入 main（d5f0838f）；Issue #68 已关闭。
 - #69 Timescale 可选路径与对象生命周期已完成；PR [#71](https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/71) 已 squash 合入 main（d5f0838f）；Issue #69 已关闭。
 
+- #75 停写并删除 `daily_aggregates`。识别 ingest 不再双写日聚合表；`refreshDay` 只回写小时桶与日桶。迁移 `010_drop_daily_aggregates.sql`。PR #75 squash 合入 main（59a9083）。Issue #73 已关闭。
+
 ## 进行中
-- #73 (B) 停写并删除 `daily_aggregates`。识别 ingest 不再 `mergeDaily`；`refreshDay` 只回写 `metric_buckets_hour` / `metric_buckets_day`。迁移 `010_drop_daily_aggregates.sql`。小时 cron 与采摘蘑菇数修正仍重扫该日识别明细。读路径本来就是桶。PR https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/75 。不自动合并，不关 Issue #73。
+- 原始需求缺口：批次潮次（#77）、每日采摘任务与日桶增速估计（#78）、报表筛选预览导出（#79）、对象生命周期配置后真下发（#80）。分支 `overnight/orig-gaps-batch-harvest-reports-lifecycle`。谓词 `docs/OVERNIGHT_PRED_GAPS.md`。不自动合并。#76 是误开探测单，本环境不能关闭，需人工关。
 
 ## 待开
-- #73 (C) 保留：`scripts/object-lifecycle.mjs` 默认打印「未下发」；`009_timescale_optional.sql` 只 NOTICE；`/phase2/wecom` 与 `phase2/big-screen` 重定向。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/issues/73 。(A) 已由 PR #74 合入。
+- 无
 
 ## 规范
 - 指标预聚合与时序存储：[`docs/metrics-preaggregation-requirements.md`](docs/metrics-preaggregation-requirements.md)（切片 B–E：#66 #67 #68 #69）

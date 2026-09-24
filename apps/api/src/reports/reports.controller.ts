@@ -50,6 +50,53 @@ export class ReportsController {
     return this.file(await this.reports.alertsSheet(user), 'alerts.xlsx');
   }
 
+  @Get('preview')
+  preview(
+    @CurrentUser() user: AuthUser,
+    @Query('kind') kind?: string,
+    @Query('grain') grain?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('shedCode') shedCode?: string,
+    @Query('online') online?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.reports.preview(user, {
+      kind,
+      grain,
+      from,
+      to,
+      shedCode,
+      online,
+      status,
+    });
+  }
+
+  @Get('export.xlsx')
+  async exportFile(
+    @CurrentUser() user: AuthUser,
+    @Query('kind') kind?: string,
+    @Query('grain') grain?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
+    @Query('shedCode') shedCode?: string,
+    @Query('online') online?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.file(
+      await this.reports.exportPreview(user, {
+        kind,
+        grain,
+        from,
+        to,
+        shedCode,
+        online,
+        status,
+      }),
+      'export.xlsx',
+    );
+  }
+
   private file(buffer: Buffer, filename: string) {
     return new StreamableFile(buffer, {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
