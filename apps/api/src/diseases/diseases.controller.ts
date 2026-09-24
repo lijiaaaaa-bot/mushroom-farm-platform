@@ -10,6 +10,7 @@ import {
 import { AuthUser } from '../common/auth-user';
 import { CurrentUser } from '../common/decorators';
 import { ListQuery } from '../common/pagination';
+import { GrowthTrendService } from '../growth';
 import { IngestService } from '../ingest';
 
 class DiseaseEnvironmentQuery {
@@ -33,7 +34,19 @@ class DiseaseEnvironmentQuery {
 
 @Controller('diseases')
 export class DiseasesController {
-  constructor(private readonly ingest: IngestService) {}
+  constructor(
+    private readonly ingest: IngestService,
+    private readonly trends: GrowthTrendService,
+  ) {}
+
+  @Get('peaks')
+  peaks(
+    @CurrentUser() user: AuthUser,
+    @Query('grain') grain?: string,
+    @Query('shedCode') shedCode?: string,
+  ) {
+    return this.trends.diseasePeaks(user, { grain, shedCode });
+  }
 
   @Get()
   list(@CurrentUser() user: AuthUser, @Query() query: ListQuery) {

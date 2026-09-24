@@ -131,6 +131,34 @@ describe('DiseasesView', () => {
     wrapper.unmount();
   });
 
+  it('shows peak counts from buckets beside the recognition archive', async () => {
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/diseases/peaks') {
+        return Promise.resolve({
+          data: {
+            grain: 'hour',
+            byTime: [{ bucketStart: '2026-09-24T03:00:00.000Z', diseaseCount: 4 }],
+            byShed: [{ shedCode: 'S01', diseaseCount: 4 }],
+            peak: { bucketStart: '2026-09-24T03:00:00.000Z', diseaseCount: 4 },
+          },
+        });
+      }
+      if (String(url).includes('/snapshot')) {
+        return Promise.resolve({ data: new Blob(['jpeg'], { type: 'image/jpeg' }) });
+      }
+      if (String(url).includes('/environment')) {
+        return Promise.resolve({ data: emptyEnvironment });
+      }
+      return Promise.resolve({ data: { items: [withSnapshot], total: 1 } });
+    });
+    const wrapper = await mountView();
+    expect(httpGet).toHaveBeenCalledWith('/diseases/peaks');
+    expect(wrapper.get('[data-testid="disease-peaks"]').text()).toContain('S01');
+    expect(wrapper.get('[data-testid="disease-peaks"]').text()).toContain('4');
+    expect(wrapper.text()).toContain('病害 3');
+    wrapper.unmount();
+  });
+
   it('shows empty copy when the disease list has no rows', async () => {
     httpGet.mockResolvedValue({ data: { items: [], total: 0 } });
     const wrapper = await mountView();

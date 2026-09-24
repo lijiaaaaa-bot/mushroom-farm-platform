@@ -43,6 +43,32 @@ describe('EnvironmentView', () => {
     wrapper.unmount();
   });
 
+  it('lists 24h means from hour buckets when the series has points', async () => {
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/growth-trends/environment') {
+        return Promise.resolve({
+          data: {
+            points: [
+              {
+                hour: '2026-09-24T03:00:00.000Z',
+                temperature: 21,
+                humidity: 80,
+              },
+            ],
+          },
+        });
+      }
+      return Promise.resolve({ data: { items: [reading], total: 1 } });
+    });
+    const wrapper = await mountView();
+    expect(httpGet).toHaveBeenCalledWith('/growth-trends/environment', {
+      params: { hours: 24 },
+    });
+    expect(wrapper.get('[data-testid="env-hours"]').text()).toContain('21℃');
+    expect(wrapper.get('[data-testid="env-hours"]').text()).toContain('80%');
+    wrapper.unmount();
+  });
+
   it('shows empty copy when there are no readings', async () => {
     httpGet.mockResolvedValue({ data: { items: [], total: 0 } });
     const wrapper = await mountView();

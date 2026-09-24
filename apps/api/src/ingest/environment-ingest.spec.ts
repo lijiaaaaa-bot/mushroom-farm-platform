@@ -19,6 +19,7 @@ import { IngestReject } from '../entities/ingest-reject.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { RedisService } from '../redis';
 import { MinioStorageService } from '../storage';
+import { GrowthTrendService } from '../growth';
 import { IngestController } from './ingest.controller';
 import { IngestService } from './ingest.service';
 import { MqttIngestAdapter } from './mqtt.adapter';
@@ -164,6 +165,7 @@ describe('environment ingest', () => {
   const readings = memoryReadings();
   const recognitionSave = jest.fn();
   const heartbeat = jest.fn();
+  const applyEnvironment = jest.fn();
   const redisKeys = new Set<string>();
   let redisMode: 'nx' | 'down' = 'nx';
   const rejects: { errors: string[] }[] = [];
@@ -175,6 +177,8 @@ describe('environment ingest', () => {
     rejects.splice(0, rejects.length);
     recognitionSave.mockReset();
     heartbeat.mockReset();
+    applyEnvironment.mockReset();
+    applyEnvironment.mockResolvedValue(undefined);
     heartbeat.mockResolvedValue(undefined);
     const moduleRef = await Test.createTestingModule({
       controllers: [IngestController],
@@ -225,6 +229,10 @@ describe('environment ingest', () => {
         { provide: MinioStorageService, useValue: {} },
         { provide: DevicesService, useValue: { heartbeat } },
         { provide: AlertEngineService, useValue: { evaluate: jest.fn() } },
+        {
+          provide: GrowthTrendService,
+          useValue: { applyEnvironment },
+        },
       ],
     }).compile();
     app = moduleRef.createNestApplication();
@@ -263,6 +271,14 @@ describe('environment ingest', () => {
     });
     expect(heartbeat).toHaveBeenCalledWith('S01', 'SENSOR-S01', 'sensor', true);
     expect(recognitionSave).not.toHaveBeenCalled();
+    expect(applyEnvironment).toHaveBeenCalledTimes(1);
+    expect(applyEnvironment.mock.calls[0][0]).toMatchObject({
+      shedCode: 'S01',
+      sensorCode: 'SENSOR-S01',
+      temperature: 22.5,
+      humidity: 88,
+      observedAt: readings.rows[0]?.observedAt,
+    });
 
     const listed = await request(app.getHttpServer())
       .get('/api/v1/ingest/environment-readings')
@@ -291,6 +307,7 @@ describe('environment ingest', () => {
     });
     expect(readings.rows).toHaveLength(1);
     expect(heartbeat).toHaveBeenCalledTimes(1);
+    expect(applyEnvironment).toHaveBeenCalledTimes(1);
   });
 
   it('dedupes a payload without an idempotency key by shed, sensor, and time', async () => {

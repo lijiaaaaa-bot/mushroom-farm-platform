@@ -9,6 +9,7 @@ type Mode = 'shed' | 'camera';
 
 interface Point {
   day: string;
+  hour?: string;
   mushroomCount: number;
   capDiameterMean: number | null;
   sampleCount: number;
@@ -48,6 +49,7 @@ const error = ref('');
 const sheds = ref<ShedOption[]>([]);
 const shedCode = ref(typeof route.query.shedCode === 'string' ? route.query.shedCode : '');
 const days = ref<WindowDays>(route.query.days === '30' ? 30 : 7);
+const grain = ref<'day' | 'hour'>(route.query.grain === 'hour' ? 'hour' : 'day');
 const mode = ref<Mode>('shed');
 const cameraQuery = computed(() =>
   typeof route.query.cameraCode === 'string' ? route.query.cameraCode : '',
@@ -158,9 +160,50 @@ function render() {
   }
 }
 
+function hourLabel(iso: string) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date(iso));
+  const pick = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
+  const hour = pick('hour') === '24' ? '00' : pick('hour');
+  return `${pick('year')}-${pick('month')}-${pick('day')} ${hour}:00`;
+}
+
 async function loadTrends() {
   if (!shedCode.value) {
     data.value = null;
+    return;
+  }
+  if (grain.value === 'hour') {
+    const response = await http.get<{
+      from: string;
+      to: string;
+      sheds: Array<{
+        shedCode: string;
+        points: Array<Point & { hour: string }>;
+        cameras: Array<{ cameraCode: string; points: Array<Point & { hour: string }> }>;
+      }>;
+    }>('/growth-trends/hours', {
+      params: { hours: 24, shedCode: shedCode.value },
+    });
+    data.value = {
+      days: 7,
+      from: response.data.from,
+      to: response.data.to,
+      sheds: response.data.sheds.map((shed) => ({
+        shedCode: shed.shedCode,
+        points: shed.points.map((point) => ({ ...point, day: hourLabel(point.hour) })),
+        cameras: shed.cameras.map((camera) => ({
+          cameraCode: camera.cameraCode,
+          points: camera.points.map((point) => ({ ...point, day: hourLabel(point.hour) })),
+        })),
+      })),
+    };
     return;
   }
   const response = await http.get<TrendResponse>('/growth-trends', {
@@ -194,8 +237,25 @@ async function reload() {
 }
 
 async function setDays(next: WindowDays) {
-  if (days.value === next) return;
+  if (grain.value === 'day' && days.value === next) return;
+  grain.value = 'day';
   days.value = next;
+  loading.value = true;
+  error.value = '';
+  try {
+    await loadTrends();
+  } catch (cause) {
+    error.value = errorText(cause);
+    data.value = null;
+  } finally {
+    loading.value = false;
+  }
+  await paint();
+}
+
+async function setHours() {
+  if (grain.value === 'hour') return;
+  grain.value = 'hour';
   loading.value = true;
   error.value = '';
   try {
@@ -253,11 +313,14 @@ onBeforeUnmount(() => {
         </select>
       </label>
       <div class="flex gap-2">
-        <button type="button" data-days="7" :class="days === 7 ? 'btn-primary' : 'btn-ghost'" @click="setDays(7)">
+        <button type="button" data-days="7" :class="grain === 'day' && days === 7 ? 'btn-primary' : 'btn-ghost'" @click="setDays(7)">
           7 天
         </button>
-        <button type="button" data-days="30" :class="days === 30 ? 'btn-primary' : 'btn-ghost'" @click="setDays(30)">
+        <button type="button" data-days="30" :class="grain === 'day' && days === 30 ? 'btn-primary' : 'btn-ghost'" @click="setDays(30)">
           30 天
+        </button>
+        <button type="button" data-grain="hour" :class="grain === 'hour' ? 'btn-primary' : 'btn-ghost'" @click="setHours">
+          24 小时
         </button>
       </div>
       <p v-if="cameraQuery" class="text-sm text-mist">摄像头 {{ cameraQuery }}</p>
@@ -275,7 +338,8 @@ onBeforeUnmount(() => {
     <p v-else-if="error" class="text-danger">{{ error }}</p>
     <p v-else-if="!sheds.length" class="text-mist">没有可查看的棚区。</p>
     <p v-else-if="data && !hasPoints" class="text-mist">
-      <template v-if="cameraQuery">{{ cameraQuery }} 在 {{ data.from }} 至 {{ data.to }} 没有日聚合，未绘制曲线。</template>
+      <template v-if="grain === 'hour'">{{ data.from }} 至 {{ data.to }} 没有小时桶，未绘制曲线。</template>
+      <template v-else-if="cameraQuery">{{ cameraQuery }} 在 {{ data.from }} 至 {{ data.to }} 没有日聚合，未绘制曲线。</template>
       <template v-else>{{ data.from }} 至 {{ data.to }} 没有日聚合，未绘制曲线。</template>
     </p>
     <template v-else-if="data && hasPoints">
@@ -292,7 +356,7 @@ onBeforeUnmount(() => {
         <table class="data-table">
           <thead>
             <tr>
-              <th>日期</th>
+              <th>{{ grain === 'hour' ? '小时' : '日期' }}</th>
               <th>对象</th>
               <th>蘑菇数量</th>
               <th>菌盖直径均值</th>

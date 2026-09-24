@@ -16,6 +16,7 @@ interface Row {
 const rows = ref<Row[]>([]);
 const loading = ref(true);
 const error = ref('');
+const hourPoints = ref<Array<{ hour: string; temperature: number | null; humidity: number | null }>>([]);
 
 onMounted(async () => {
   try {
@@ -25,6 +26,14 @@ onMounted(async () => {
     error.value = errorText(cause);
   } finally {
     loading.value = false;
+  }
+  try {
+    const series = await http.get<{
+      points?: Array<{ hour: string; temperature: number | null; humidity: number | null }>;
+    }>('/growth-trends/environment', { params: { hours: 24 } });
+    if (Array.isArray(series.data.points)) hourPoints.value = series.data.points;
+  } catch {
+    hourPoints.value = [];
   }
 });
 
@@ -39,6 +48,11 @@ function reading(value: number | null, unit: string) {
     <p class="mb-3 text-sm text-mist">
       HTTP {{ INGEST_ENVIRONMENT_HTTP_PATH }} · MQTT {{ MQTT_ENVIRONMENT_TOPIC }}
     </p>
+    <ul v-if="hourPoints.length" class="mb-3 text-sm" data-testid="env-hours">
+      <li v-for="point in hourPoints" :key="point.hour" class="font-mono">
+        {{ point.hour }} · {{ reading(point.temperature, '℃') }} · {{ reading(point.humidity, '%') }}
+      </li>
+    </ul>
     <p v-if="loading" class="text-mist">加载中…</p>
     <p v-else-if="error" class="text-danger">{{ error }}</p>
     <p v-else-if="!rows.length" class="text-mist">暂无环境读数。</p>

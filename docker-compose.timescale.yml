@@ -1,0 +1,6 @@
+# Optional overlay. `docker compose up` / `make up` keeps postgres:16-alpine.
+# Use a fresh volume. Do not mount a vanilla PostgreSQL data directory here.
+#   docker compose -f docker-compose.yml -f docker-compose.timescale.yml up -d postgres
+services:
+  postgres:
+    image: timescale/timescaledb:latest-pg16

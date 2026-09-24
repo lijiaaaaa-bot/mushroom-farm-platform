@@ -123,6 +123,44 @@ describe('GrowthTrendsView', () => {
     wrapper.unmount();
   });
 
+  it('requests hour buckets from the 24h control', async () => {
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/sheds') return Promise.resolve({ data: sheds });
+      if (url === '/growth-trends/hours') {
+        return Promise.resolve({
+          data: {
+            hours: 24,
+            from: '2026-09-23T16:00:00.000Z',
+            to: '2026-09-24T03:00:00.000Z',
+            sheds: [
+              {
+                shedCode: 'S01',
+                points: [
+                  {
+                    hour: '2026-09-24T03:00:00.000Z',
+                    mushroomCount: 6,
+                    capDiameterMean: 4,
+                    sampleCount: 1,
+                  },
+                ],
+                cameras: [],
+              },
+            ],
+          },
+        });
+      }
+      return Promise.resolve({ data: series });
+    });
+    const wrapper = await mountView();
+    await wrapper.get('[data-grain="hour"]').trigger('click');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/growth-trends/hours', {
+      params: { hours: 24, shedCode: 'S01' },
+    });
+    expect(wrapper.text()).toContain('6');
+    wrapper.unmount();
+  });
+
   it('requests 30 days from the window control', async () => {
     mockTrends();
     const wrapper = await mountView();
