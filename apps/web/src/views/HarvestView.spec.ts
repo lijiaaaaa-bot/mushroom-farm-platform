@@ -217,10 +217,13 @@ describe('HarvestView correction', () => {
     const panel = wrapper.get('[data-testid="yield-estimate"]');
 
     expect(httpGet).toHaveBeenCalledWith('/harvest/yield-estimate');
+    expect(panel.text()).toContain('近 2–3 日成熟估计（30 日线性）');
+    expect(panel.text()).toContain('两种算法对照同一数量（未来日成熟数），不是两套产量，也不是公斤。');
+    expect(panel.text()).toContain('近 30 日各摄像头当日最新成熟数之和，按日序线性外推');
     expect(panel.text()).toContain('估计');
-    expect(panel.get('[data-testid="yield-day"]').text()).toContain('估计 41');
-    expect(panel.text()).toContain('估计 42');
-    expect(panel.text()).toContain('估计 43');
+    expect(panel.get('[data-testid="yield-day"]').text()).toContain('估计 41 成熟');
+    expect(panel.text()).toContain('估计 42 成熟');
+    expect(panel.text()).toContain('估计 43 成熟');
     expect(panel.text()).toContain('2026-09-24');
     wrapper.unmount();
   });
@@ -282,8 +285,10 @@ describe('HarvestView correction', () => {
     });
     const wrapper = await mountView();
     const forecast = wrapper.get('[data-testid="bucket-forecast"]');
-    expect(forecast.text()).toContain('估计 18');
-    expect(forecast.text()).toContain('估计 22');
+    expect(forecast.text()).toContain('近 2–3 日成熟估计（日桶增速）');
+    expect(forecast.text()).toContain('近 7 个上海自然日棚级成熟日桶首尾增速，外推未来 3 日');
+    expect(forecast.text()).toContain('估计 18 成熟');
+    expect(forecast.text()).toContain('估计 22 成熟');
     expect(wrapper.get('[data-testid="harvest-tasks"]').text()).toContain('CAM-A');
     expect(wrapper.get('[data-testid="harvest-tasks"]').text()).toContain('未排 1 条');
     await wrapper.get('button.btn-primary').trigger('click');
