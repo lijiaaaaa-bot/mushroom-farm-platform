@@ -23,16 +23,25 @@ make migrate
 
 抓拍字节进 MinIO 或云 OSS，PostgreSQL 只存对象键和 URL。热数据按 90 天对齐补传窗口，更早的对象按前缀 `snapshots/` 转入冷存储或归档。本地 compose 的 MinIO 没有远端存储类，脚本不会假装已经执行生命周期。
 
-计划文件：`infra/object-lifecycle.json`（`hotDays` 可用环境变量 `OBJECT_HOT_DAYS` 覆盖打印值）。
+计划文件：`infra/object-lifecycle.json`（`hotDays` 可用环境变量 `OBJECT_HOT_DAYS` 覆盖）。
 
 ```bash
 node scripts/object-lifecycle.mjs
 ```
 
-退出码 0，并说明本地未下发生命周期。只有同时设置 `MINIO_APPLY_LIFECYCLE=1` 和 `MC_ALIAS`，且本机有 `mc` 时，脚本才会调用 `mc ilm rule add`。缺任一条件则仍然退出码 0，不改桶。
+未设置 `MINIO_APPLY_LIFECYCLE=1` 时退出码 0，并说明未下发。不调用 MinIO，也不把未执行写成已经生效。
+
+要真下发，同时设置：
+
+- `MINIO_APPLY_LIFECYCLE=1`
+- `MINIO_ENDPOINT`（`主机:端口`，或带 `http://` / `https://`）
+- `MINIO_ACCESS_KEY`
+- `MINIO_SECRET_KEY`
+
+可选：`MINIO_BUCKET`、`MINIO_USE_SSL=1`、`OBJECT_HOT_DAYS`。脚本用 MinIO 的 `setBucketLifecycle` 写入前缀 `snapshots/` 的过渡规则，再 `getBucketLifecycle` 读回。读回的启用规则带同一前缀才打印「已下发」并退出码 0。端点不可达、密钥缺失、存储类被拒绝或读回不匹配时退出码非 0，并在标准错误写明原因。不得在失败时退出码 0。
 
 ## 怎么验
 
 1. `make migrate` 在普通 PostgreSQL 上能记上 `009_timescale_optional.sql`，`recognition_records` 仍是普通表。
-2. `node scripts/object-lifecycle.mjs` 退出码 0，输出含 “未下发”。
+2. `node scripts/object-lifecycle.mjs` 在未设置 `MINIO_APPLY_LIFECYCLE` 时退出码 0，输出含 “未下发”。`MINIO_APPLY_LIFECYCLE=1` 但端点不可达时退出码非 0。
 3. 趋势、大屏 24 小时、环境 24 小时和病害高发读 `metric_buckets_hour` / `metric_buckets_day`。打开页面的这些接口不扫识别明细。验收测试见 `apps/api/src/growth/growth-trend.spec.ts` 与 `apps/api/src/dashboard/dashboard.buckets.spec.ts`。

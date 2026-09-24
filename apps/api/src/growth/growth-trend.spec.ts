@@ -894,6 +894,8 @@ describe('growth trend write path', () => {
     };
     const harvest = new HarvestService(
       records as never,
+      { find: async () => [], save: async (input: unknown) => input } as never,
+      { createQueryBuilder: () => ({}) } as never,
       {
         refreshDay,
       } as never,

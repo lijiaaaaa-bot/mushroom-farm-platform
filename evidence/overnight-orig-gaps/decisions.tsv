@@ -1,0 +1,9 @@
+time	phase	decision	reason	evidence	result
+2026-09-24T06:22:23Z	open	从 origin/main 59a9083 切 overnight/orig-gaps-batch-harvest-reports-lifecycle	桶读路径与 daily_aggregates 删除已在 main，本轮只补四段缺口	git log origin/main	已切分支
+2026-09-24T06:30:00Z	batch	批次用 flush_batches 与 flush_phase_events，曲线读 metric_buckets_day 棚级行	原始需求（四）是批次叙事，不是再做趋势页	docs/metrics-preaggregation-requirements.md §2.2；Issue #77	代码已写入
+2026-09-24T06:30:00Z	harvest	任务清单按当日成熟摄像头生成；2–3 日估计改用近 7 日成熟日桶首尾增速。保留原 30 日 yield-estimate	原估计扫识别明细且要满 30 天；本缺口要求读桶增速且不满不编造	Issue #78	代码已写入
+2026-09-24T06:30:00Z	reports	新增 preview 与 export.xlsx，六类共用筛选；旧的五份 xlsx 仍保留	管理端现有下载按钮测试依赖旧路径	Issue #79	代码已写入
+2026-09-24T06:30:00Z	lifecycle	MINIO_APPLY_LIFECYCLE=1 时 set 后必须 get 读回；失败退出码 1。未配置仍打印未下发并退出码 0	旧脚本在 mc 缺失时仍退出码 0，会把未下发说成成功	Issue #80；scripts/object-lifecycle.mjs	代码已写入
+2026-09-24T06:28:00Z	issues	#76 为误开探测单，本令牌不能 close 或 edit。正式缺口为 #77 #78 #79 #80	gh issue close / edit 返回 Resource not accessible by integration；gh issue create 成功	https://github.com/lijiaaaaa-bot/mushroom-farm-platform/issues/76	#76 仍开着，需人工关闭
+2026-09-24T06:35:36Z	verify	谓词不降级。修构造参数顺序与 xlsx 读回类型后重跑全量	make test 与 make gates 退出码 0	API jest 113，web vitest 102，gates OK	PR #81 草稿，不合并
+2026-09-24T06:44:07Z	smoke	AppModule 改为导入 BatchModule	barrel 只导出 BatchModule；jest 不编译 AppModule，nest start 才报 TS2724	make smoke 退出码 0（smoke ok）；make test 退出码 0（jest 113，vitest 102）	已推到 PR #81，不合并

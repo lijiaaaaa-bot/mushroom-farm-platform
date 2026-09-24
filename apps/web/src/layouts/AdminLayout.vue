@@ -20,6 +20,7 @@ const links: Array<{ to: string; label: string }> = [
   { to: '/alert-rules', label: '阈值规则' },
   { to: '/harvest', label: '采摘' },
   { to: '/growth-trends', label: '生长趋势' },
+  { to: '/batches', label: '出菇批次' },
   { to: '/reports', label: '报表' },
   { to: '/sheds', label: '棚区' },
   { to: '/audit', label: '审计' },

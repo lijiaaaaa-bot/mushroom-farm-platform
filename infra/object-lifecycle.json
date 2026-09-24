@@ -3,5 +3,5 @@
   "prefix": "snapshots/",
   "hotDays": 90,
   "coldStorageClass": "GLACIER",
-  "note": "Plan only. Local MinIO in docker-compose.yml has no remote tier. PostgreSQL stores object keys, not image bytes. hotDays aligns with the 90-day backfill window."
+  "note": "Applied only when MINIO_APPLY_LIFECYCLE=1 and the endpoint accepts the rule. Unset apply exits 0 and prints that nothing was sent. PostgreSQL stores object keys, not image bytes. hotDays aligns with the 90-day backfill window. Local compose MinIO has no remote tier, so a real apply there fails closed."
 }
