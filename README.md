@@ -4,6 +4,10 @@
 
 管理端接收已有物联网 / 边缘 AI 的识别结果。这里不做图像识别。
 
+## 当前能力
+
+已落地的管理端路由、接口、数据来源和已知限制见 [`docs/CURRENT_CAPABILITIES.md`](docs/CURRENT_CAPABILITIES.md)。下面的命令和主题是跑起来要用的入口，能力边界以该文为准。
+
 ## 唯一入口
 
 只使用仓库根目录的 Make 目标：
@@ -31,7 +35,7 @@ make gates   # 交付物门禁（与 test 分开；CI 的 deliverable-gates 跑�
 
 ## 假设
 
-- MQTT 主题：`mushroom/+/+/recognition`，心跳 `mushroom/+/+/heartbeat`
+- MQTT 主题：`mushroom/+/+/recognition`，环境 `mushroom/+/+/environment`，心跳 `mushroom/+/+/heartbeat`
 - HTTP：`POST /api/v1/ingest/recognition`
 - 抓拍保留 30 天，时序保留 90 天；识别与环境补传窗口 90 天
 - 约 110 路摄像头、30 个棚区；角色为超管 / 生产管理员 / 棚区负责人 / 查看

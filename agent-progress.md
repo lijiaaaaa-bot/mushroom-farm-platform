@@ -3,8 +3,7 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 本会话目标：原始需求缺口（批次潮次、采摘任务与日桶增速、报表预览导出、对象生命周期配置后真下发）
-- 进行中文件：`docs/OVERNIGHT_PRED_GAPS.md`、`apps/api/src/batches/`、`apps/api/src/harvest/`、`apps/api/src/reports/`、`scripts/object-lifecycle.mjs`
+- 2026-09-24：PR #81 已 squash 合入 main（`04f7665`）。Issue #77 #78 #79 #80 已关，#76 误开单也已关。批次、采摘任务、报表预览、对象生命周期（仅配置且读回成功才算下发）已在 main。能力说明见 `docs/CURRENT_CAPABILITIES.md`。
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -63,3 +62,4 @@
 | 2026-09-24 | 同上缺口补测：HarvestService 必填仓储放在可选生长服务之前；报表 xlsx 用 exceljs 读回棚与数量；批次列表失败时不显示空文案 | `make test` 退出码 0（contracts 9，API jest 113，web vitest 102）；`make gates` 退出码 0。PR #81 草稿 | 不合并。#76 仍需人工关闭。未做登录后浏览器走查 |
 | 2026-09-24 | 死代码审计。Issue #73：(A) 删无引用 Phase2View、phase2/trends 与 phase2/yield 重定向、placeholder phase2 API、空 app.controller.spec 与空 e2e；(B) daily_aggregates 仍双写，读已走桶；(C) object-lifecycle 仍打印未下发，phase2/wecom 与 phase2/big-screen 重定向保留 | `make test` 退出码 0（contracts 9，API jest 105，web vitest 97）；`make gates` 与 `make gates-selftest` 退出码 0。PR #74 | 不关 #73。不删桶读写，不删对象生命周期脚本 |
 | 2026-09-24 | #73 (B)：停写 daily_aggregates。applyRecognition 只 upsert 小时/日桶；refreshDay 重扫该日识别明细并回写识别桶，环境桶保留。删实体、aggregateDay、dailyDraftsFromBuckets。010 删表。§4 现行改为读桶。不关 #73 | `make test` 退出码 0（contracts 9，API jest 105，web vitest 97）；`make gates` 与 `make gates-selftest` 退出码 0。PR #75 | (C) 仍留：object-lifecycle 未下发、009 NOTICE、phase2/wecom 与 phase2/big-screen 重定向。需求规格说明书仍列 DailyAggregate 域名 |
+| 2026-09-24 | PR #81 squash 合入 main（04f7665），Issue #77–#80 已关。批次潮次、采摘任务与日桶增速、六类报表预览导出、对象生命周期（`MINIO_APPLY_LIFECYCLE=1` 且读回成功才算下发；本地 MinIO 无远端存储类则 fail-closed）已在 main。#76 已关。能力对照写入 `docs/CURRENT_CAPABILITIES.md` | `gh pr view 81` MERGED；`gh issue view` 77–80 CLOSED | 报表页仍无登录后浏览器走查。Timescale 仍只 NOTICE，不建 hypertable |
