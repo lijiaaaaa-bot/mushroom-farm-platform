@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue';
+import { ALERT_STATUS_LABEL, alertStatusSchema } from '@mushroom/contracts';
 import { errorText, http } from '../api';
 
 interface PreviewColumn {
@@ -37,6 +38,9 @@ const grain = ref('day');
 const from = ref('');
 const to = ref('');
 const shedCode = ref('');
+const online = ref('');
+const alertStatus = ref('');
+const alertStatuses = alertStatusSchema.options;
 const preview = ref<Preview | null>(null);
 const previewError = ref('');
 
@@ -47,6 +51,8 @@ function params() {
     from: from.value || undefined,
     to: to.value || undefined,
     shedCode: shedCode.value || undefined,
+    online: kind.value === 'devices' && online.value ? online.value : undefined,
+    status: kind.value === 'alerts' && alertStatus.value ? alertStatus.value : undefined,
   };
 }
 
@@ -134,6 +140,19 @@ async function download(path: string) {
           <option value="day">日</option>
           <option value="week">周</option>
           <option value="month">月</option>
+        </select>
+      </label>
+      <label v-if="kind === 'devices'" class="text-sm">在线
+        <select v-model="online" class="field mt-1" data-testid="report-online">
+          <option value="">全部</option>
+          <option value="online">在线</option>
+          <option value="offline">离线</option>
+        </select>
+      </label>
+      <label v-if="kind === 'alerts'" class="text-sm">状态
+        <select v-model="alertStatus" class="field mt-1" data-testid="report-status">
+          <option value="">全部</option>
+          <option v-for="value in alertStatuses" :key="value" :value="value">{{ ALERT_STATUS_LABEL[value] }}</option>
         </select>
       </label>
       <label class="text-sm">棚区

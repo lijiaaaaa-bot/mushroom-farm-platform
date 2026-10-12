@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
+  alertStatusSchema,
   shanghaiDayRange,
   shiftShanghaiDate,
   todayShanghai,
@@ -310,7 +311,8 @@ export class ReportsService {
       .orderBy('a.createdAt', 'DESC')
       .take(5000)
       .getMany();
-    const wanted = status === 'open' || status === 'closed' ? status : null;
+    const parsed = alertStatusSchema.safeParse(status);
+    const wanted = parsed.success ? parsed.data : null;
     return rows
       .filter((row) => scope.allows(row.shedCode))
       .filter((row) => !shedCode || row.shedCode === shedCode)
@@ -318,11 +320,7 @@ export class ReportsService {
         const at = new Date(row.createdAt).getTime();
         return at >= start && at < end;
       })
-      .filter((row) => {
-        if (!wanted) return true;
-        if (wanted === 'open') return row.status !== 'closed';
-        return row.status === 'closed';
-      })
+      .filter((row) => !wanted || row.status === wanted)
       .map((row) => ({
         level: row.level,
         status: row.status,
