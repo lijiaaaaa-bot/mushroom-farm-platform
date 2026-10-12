@@ -306,7 +306,8 @@ describe('AlertsView', () => {
     await status.setValue('');
     await level.setValue('');
     await flushPromises();
-    const last = httpGet.mock.calls.at(-1);
+    const calls = httpGet.mock.calls;
+    const last = calls[calls.length - 1];
     expect(last?.[0]).toBe('/alerts');
     expect(last?.[1].params.pageSize).toBe(50);
     expect(last?.[1].params.status).toBeUndefined();
