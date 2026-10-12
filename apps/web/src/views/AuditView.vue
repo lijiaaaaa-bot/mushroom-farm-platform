@@ -59,14 +59,28 @@ const loading = ref(true);
 const loginRows = ref<LoginRow[]>([]);
 const loginError = ref('');
 const loginLoading = ref(true);
+const username = ref('');
+const from = ref('');
+const to = ref('');
+
+function loginLogParams() {
+  return {
+    username: username.value || undefined,
+    from: from.value || undefined,
+    to: to.value || undefined,
+  };
+}
 
 onMounted(async () => {
   await Promise.all([loadLoginLogs(), loadAudit()]);
 });
 
 async function loadLoginLogs() {
+  loginError.value = '';
   try {
-    const response = await http.get<{ items: LoginRow[] }>('/login-logs');
+    const response = await http.get<{ items: LoginRow[] }>('/login-logs', {
+      params: loginLogParams(),
+    });
     loginRows.value = response.data.items;
   } catch (cause) {
     loginError.value = errorText(cause);
@@ -91,6 +105,20 @@ async function loadAudit() {
   <section class="panel mb-4 overflow-x-auto">
     <h2 class="mb-3 text-lg">登录日志</h2>
     <p class="mb-3 text-sm text-mist">成功与失败。仅超管与生产管理员可查看。</p>
+    <form class="mb-3 grid gap-3 sm:grid-cols-4" data-testid="login-log-filters" @submit.prevent="loadLoginLogs">
+      <label class="text-sm">用户
+        <input v-model="username" class="field mt-1" data-testid="login-log-username" />
+      </label>
+      <label class="text-sm">从
+        <input v-model="from" class="field mt-1" type="date" data-testid="login-log-from" />
+      </label>
+      <label class="text-sm">到
+        <input v-model="to" class="field mt-1" type="date" data-testid="login-log-to" />
+      </label>
+      <div class="flex items-end">
+        <button class="btn-primary" type="submit">筛选</button>
+      </div>
+    </form>
     <p v-if="loginLoading" class="text-mist">加载中…</p>
     <p v-else-if="loginError" class="text-danger">{{ loginError }}</p>
     <table v-else class="data-table">
