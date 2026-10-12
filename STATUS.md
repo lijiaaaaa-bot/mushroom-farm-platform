@@ -49,6 +49,7 @@
 - 报表预览与导出：设备可按在线（`online=online|offline`）、告警可按状态（`open` / `acked` / `closed`）筛选，与已有 preview / export.xlsx 参数一致。`make test` 与 `make gates` 退出码 0。PR #87。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/87
 - 审计页登录日志区可填用户名与起止日期，请求已有的 `GET /api/v1/login-logs` 参数 `username`、`from`、`to`；空值不传。登录日志接口未改。`make test` 与 `make gates` 退出码 0。PR #88。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/88
 - 告警页可按状态（全部 / 待确认 / 已确认 / 已关闭）和级别（全部 / 提示 / 一般 / 严重）筛选，请求已有的 `GET /api/v1/alerts` 参数 `status`、`level`；选全部不传。告警接口未改。`make test` 与 `make gates` 退出码 0。PR #90。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/90
+- 热盘与冷盘对象存储镜像改为 `pgsty/silo:RELEASE.2026-09-16T00-00-00Z`。`quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z` 匿名拉取返回 401，`make smoke` 在 `docker compose up` 退出，接入报文未发出。
 
 ## 进行中
 - 无

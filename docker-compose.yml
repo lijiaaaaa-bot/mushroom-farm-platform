@@ -22,7 +22,8 @@ services:
       timeout: 3s
       retries: 30
   minio:
-    image: quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z
+    # pgsty/silo：匿名可拉取，入口把 `server` 交给 silo。端口、MINIO_ROOT_* 与数据卷格式沿用。
+    image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minioadmin
