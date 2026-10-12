@@ -125,7 +125,9 @@ describe('AlertsView', () => {
     httpGet.mockResolvedValue({ data: { items: [alert], total: 1 } });
     const wrapper = await mountView(AlertsView);
 
-    expect(httpGet).toHaveBeenCalledWith('/alerts?pageSize=50');
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: undefined, level: undefined },
+    });
     expect(wrapper.get('a[href="/phase2/wecom"]').text()).toBe('企微/钉钉推送');
     expect(wrapper.text()).toContain('高温');
     expect(wrapper.text()).toContain('严重');
@@ -273,6 +275,65 @@ describe('AlertsView', () => {
     expect(buttonText(wrapper, '关闭')).toBe(false);
     expect(buttonText(wrapper, '新建告警')).toBe(false);
     expect(wrapper.find('table').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it('sends status and level when selected and omits both when set back to 全部', async () => {
+    httpGet.mockResolvedValue({ data: { items: [alert], total: 1 } });
+    const wrapper = await mountView(AlertsView);
+
+    const status = wrapper.get('[data-testid="alert-status-filter"]');
+    expect(status.text()).toContain('全部');
+    expect(status.text()).toContain('待确认');
+    expect(status.text()).toContain('已确认');
+    expect(status.text()).toContain('已关闭');
+    const level = wrapper.get('[data-testid="alert-level-filter"]');
+    expect(level.text()).toContain('全部');
+    expect(level.text()).toContain('严重');
+
+    await status.setValue('open');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: 'open', level: undefined },
+    });
+
+    await level.setValue('severe');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: 'open', level: 'severe' },
+    });
+
+    await status.setValue('');
+    await level.setValue('');
+    await flushPromises();
+    const last = httpGet.mock.calls.at(-1);
+    expect(last?.[0]).toBe('/alerts');
+    expect(last?.[1].params.pageSize).toBe(50);
+    expect(last?.[1].params.status).toBeUndefined();
+    expect(last?.[1].params.level).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it('keeps the current status and level when reloading after claim', async () => {
+    asUser('shed_manager');
+    httpGet.mockResolvedValue({ data: { items: [alert], total: 1 } });
+    httpPost.mockResolvedValue({ data: {} });
+    const wrapper = await mountView(AlertsView);
+
+    await wrapper.get('[data-testid="alert-status-filter"]').setValue('acked');
+    await wrapper.get('[data-testid="alert-level-filter"]').setValue('severe');
+    await flushPromises();
+    httpGet.mockClear();
+
+    await wrapper.get('input[placeholder="处置备注（误报必填）"]').setValue('继续跟进');
+    const claim = wrapper.findAll('button').find((button) => button.text() === '认领');
+    await claim?.trigger('click');
+    await flushPromises();
+
+    expect(httpPost).toHaveBeenCalledWith('/alerts/alert-1/claim', { note: '继续跟进' });
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: 'acked', level: 'severe' },
+    });
     wrapper.unmount();
   });
 });

@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import {
   ALERT_CLOSE_REASON_LABEL,
   ALERT_LEVEL_LABEL,
   ALERT_STATUS_LABEL,
   alertLevelSchema,
+  alertStatusSchema,
   type AlertCloseReason,
   type AlertLevel,
   type AlertStatus,
@@ -40,12 +41,25 @@ const form = ref<CreateAlertInput>({
   message: '',
 });
 const levels = alertLevelSchema.options;
+const statuses = alertStatusSchema.options;
+const statusFilter = ref('');
+const levelFilter = ref('');
+
+function listParams() {
+  return {
+    pageSize: 50,
+    status: statusFilter.value || undefined,
+    level: levelFilter.value || undefined,
+  };
+}
 
 async function load() {
   loading.value = true;
   error.value = '';
   try {
-    const response = await http.get<{ items: AlertRow[] }>('/alerts?pageSize=50');
+    const response = await http.get<{ items: AlertRow[] }>('/alerts', {
+      params: listParams(),
+    });
     rows.value = response.data.items;
   } catch (cause) {
     error.value = errorText(cause);
@@ -82,6 +96,10 @@ async function act(id: string, action: 'ack' | 'close' | 'claim' | 'false-positi
   }
 }
 
+watch([statusFilter, levelFilter], () => {
+  void load();
+});
+
 onMounted(load);
 </script>
 
@@ -103,6 +121,20 @@ onMounted(load);
     </form>
     <p v-if="error" class="text-sm text-danger">{{ error }}</p>
     <section class="panel overflow-x-auto">
+      <div class="mb-3 flex flex-wrap gap-3">
+        <label class="text-sm">状态
+          <select v-model="statusFilter" class="field mt-1" data-testid="alert-status-filter">
+            <option value="">全部</option>
+            <option v-for="value in statuses" :key="value" :value="value">{{ ALERT_STATUS_LABEL[value] }}</option>
+          </select>
+        </label>
+        <label class="text-sm">级别
+          <select v-model="levelFilter" class="field mt-1" data-testid="alert-level-filter">
+            <option value="">全部</option>
+            <option v-for="level in levels" :key="level" :value="level">{{ ALERT_LEVEL_LABEL[level] }}</option>
+          </select>
+        </label>
+      </div>
       <p v-if="loading" class="text-mist">加载中…</p>
       <p v-else-if="!error && !rows.length" class="text-mist">暂无告警。</p>
       <table v-else-if="rows.length" class="data-table">
