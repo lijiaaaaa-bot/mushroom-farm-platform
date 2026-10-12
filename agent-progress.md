@@ -3,6 +3,7 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
+- 2026-10-12：`ingest-smoke` 在拉镜像阶段失败。热盘与冷盘改为 `pgsty/silo:RELEASE.2026-09-16T00-00-00Z`。分支 `cursor/fix-ingest-smoke-minio-pull-3b59`。
 - 2026-09-24：登录日志、`make backup`、可选冷 MinIO 与 `make object-tier` 在分支 `cursor/ops-storage-login-backup-fdce`。批次自动切阶段只写在 `docs/OPS_STORAGE_BACKUP.md`，不发明阈值。README 只留运维文档指针。
 
 ## 日志
@@ -68,3 +69,4 @@
 | 2026-09-24 | README 收成运行入口、接入主题和能力文档链接。删掉 MQTT 手发步骤、大屏长描述和告警推送长文 | `make gates` | 不改应用代码。能力正文仍在 `docs/CURRENT_CAPABILITIES.md` |
 | 2026-09-24 | README 改为产品说明：启动命令、端口、开发账号、接入主题。去掉「唯一入口」、禁止直接跑 npm/vite/compose、ARCHITECTURE_WALLS 与 Day-0 说教 | `make gates` | 不改应用代码 |
 | 2026-10-12 | 报表页设备在线与告警状态筛选接到已有 preview / export.xlsx。设备传 `online`/`offline`，告警传 `open`/`acked`/`closed`；全部不传。告警状态按契约精确匹配 | `make test` 退出码 0（contracts 9，脚本 node:test 36，API jest 119，web vitest 105）；`make gates` 退出码 0。PR #87 | 不合并。未做登录后浏览器走查 |
+| 2026-10-12 | `ingest-smoke` 失败点是 `docker compose up` 拉取 `quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z` 返回 401。热盘与冷盘改为 `pgsty/silo:RELEASE.2026-09-16T00-00-00Z`。报表筛选未改 | `node --test scripts/compose-minio-image.spec.mjs`；`make gates` | 本机无 Docker，未跑 `make smoke`。CI ingest-smoke 待看 |
