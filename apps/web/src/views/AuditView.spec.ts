@@ -56,7 +56,12 @@ describe('AuditView', () => {
     const wrapper = mount(AuditView);
     await flushPromises();
 
-    expect(httpGet).toHaveBeenCalledWith('/login-logs');
+    const loginCall = httpGet.mock.calls.find((call) => call[0] === '/login-logs');
+    expect(loginCall?.[1].params).toEqual({
+      username: undefined,
+      from: undefined,
+      to: undefined,
+    });
     expect(httpGet).toHaveBeenCalledWith('/audit-logs');
     expect(wrapper.text()).toContain('admin');
     expect(wrapper.text()).toContain('失败');
@@ -92,6 +97,38 @@ describe('AuditView', () => {
     await flushPromises();
     expect(wrapper.text()).toContain('请求失败');
     expect(wrapper.text()).toContain('harvest.correct');
+    wrapper.unmount();
+  });
+
+  it('sends username, from, and to when set and omits them when blank', async () => {
+    httpGet.mockResolvedValue({ data: { items: [] } });
+    const wrapper = mount(AuditView);
+    await flushPromises();
+
+    await wrapper.get('[data-testid="login-log-username"]').setValue('admin');
+    await wrapper.get('[data-testid="login-log-from"]').setValue('2026-09-01');
+    await wrapper.get('[data-testid="login-log-to"]').setValue('2026-09-30');
+    await wrapper.get('form[data-testid="login-log-filters"]').trigger('submit');
+    await flushPromises();
+
+    expect(httpGet).toHaveBeenCalledWith('/login-logs', {
+      params: {
+        username: 'admin',
+        from: '2026-09-01',
+        to: '2026-09-30',
+      },
+    });
+
+    await wrapper.get('[data-testid="login-log-username"]').setValue('');
+    await wrapper.get('[data-testid="login-log-from"]').setValue('');
+    await wrapper.get('[data-testid="login-log-to"]').setValue('');
+    await wrapper.get('form[data-testid="login-log-filters"]').trigger('submit');
+    await flushPromises();
+
+    const blank = httpGet.mock.calls.filter((call) => call[0] === '/login-logs').at(-1);
+    expect(blank?.[1].params.username).toBeUndefined();
+    expect(blank?.[1].params.from).toBeUndefined();
+    expect(blank?.[1].params.to).toBeUndefined();
     wrapper.unmount();
   });
 });
