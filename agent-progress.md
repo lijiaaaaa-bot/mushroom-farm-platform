@@ -3,7 +3,7 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
-- 2026-10-12：审计页登录日志区接上已有 `username`、`from`、`to`。空值不传。不改登录日志接口，不加成功/失败筛选。
+- 2026-10-12：告警页接上已有 `status`、`level`。选全部不传。不改告警接口，不加棚号筛选。
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
@@ -69,3 +69,4 @@
 | 2026-09-24 | README 改为产品说明：启动命令、端口、开发账号、接入主题。去掉「唯一入口」、禁止直接跑 npm/vite/compose、ARCHITECTURE_WALLS 与 Day-0 说教 | `make gates` | 不改应用代码 |
 | 2026-10-12 | 报表页设备在线与告警状态筛选接到已有 preview / export.xlsx。设备传 `online`/`offline`，告警传 `open`/`acked`/`closed`；全部不传。告警状态按契约精确匹配 | `make test` 退出码 0（contracts 9，脚本 node:test 36，API jest 119，web vitest 105）；`make gates` 退出码 0。PR #87 | 不合并。未做登录后浏览器走查 |
 | 2026-10-12 | 审计页登录日志区可填用户名与起止日期，筛选时带已有 `username`、`from`、`to`；空值不传。初次进入仍拉全部可见日志。登录失败仍显示操作审计表 | `make test` 退出码 0（contracts 9，脚本 node:test 36，API jest 119，web vitest 106）；`make gates` 退出码 0。PR #88 | 不改登录日志接口。不加结果筛选。不合并。未做登录后浏览器走查 |
+| 2026-10-12 | 告警页状态与级别筛选接到已有 `GET /alerts`。选中传 `status`（open / acked / closed）或 `level`（info / warning / severe）；全部不传。确认、认领、关闭、误报、新建后仍带当前筛选 | `make test` 退出码 0（contracts 9，脚本 node:test 36，API jest 119，web vitest 108）；`make gates` 退出码 0。PR #90 | 不改告警接口。不做棚号筛选。不合并。未做登录后浏览器走查 |
