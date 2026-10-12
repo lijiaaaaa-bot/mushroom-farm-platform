@@ -47,6 +47,7 @@
 
 - 登录日志、Postgres 备份与可选热冷 MinIO：`login_logs` 记录成功/失败（用户、时间、IP、User-Agent），`GET /api/v1/login-logs` 仅超管与生产管理员，`/audit` 上方可看。`make backup` 用 `pg_dump` 写 `backups/mushroom-<时间>.sql`（Redis 与 MinIO 不在文件内）。热盘卷 `minio-hot`；冷盘为 `docker-compose.minio-cold.yml`。`make object-tier` 未设置 `MINIO_APPLY_TIER=1` 时只打印计划；设置后复制超龄 `snapshots/` 到冷端，读回一致才删热端。云归档仍走 `object-lifecycle.mjs`，本地无远端存储类则 fail-closed。批次阶段仍人工，自动切换待业主确认规则。说明见 `docs/OPS_STORAGE_BACKUP.md`。PR #85。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/85
 - 报表预览与导出：设备可按在线（`online=online|offline`）、告警可按状态（`open` / `acked` / `closed`）筛选，与已有 preview / export.xlsx 参数一致。`make test` 与 `make gates` 退出码 0。PR #87。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/87
+- 审计页登录日志区可填用户名与起止日期，请求已有的 `GET /api/v1/login-logs` 参数 `username`、`from`、`to`；空值不传。登录日志接口未改。`make test` 与 `make gates` 退出码 0。PR #88。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/88
 - 热盘与冷盘对象存储镜像改为 `pgsty/silo:RELEASE.2026-09-16T00-00-00Z`。`quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z` 匿名拉取返回 401，`make smoke` 在 `docker compose up` 退出，接入报文未发出。
 
 ## 进行中

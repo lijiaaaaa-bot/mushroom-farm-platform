@@ -172,7 +172,7 @@
 
 棚隔离在认证之后（`ShedScope`）。超管与生产管理员不限制棚；棚区负责人与查看只保留账号上的棚号；棚号列表为空则看不到任何棚。越权返回 403。
 
-用户接口 `GET/POST /api/v1/users` 仅超管。管理端没有用户页。审计页 `/audit`：上方是登录日志，下方是操作审计。`GET /api/v1/audit-logs` 与 `GET /api/v1/login-logs` 都仅超管与生产管理员。登录日志可按 `username`、`from`、`to` 筛选。
+用户接口 `GET/POST /api/v1/users` 仅超管。管理端没有用户页。审计页 `/audit`：上方是登录日志，下方是操作审计。`GET /api/v1/audit-logs` 与 `GET /api/v1/login-logs` 都仅超管与生产管理员。登录日志可按 `username`、`from`、`to` 筛选。审计页登录日志区可填用户名与起止日期，空值不传这些参数。
 
 ## 存储
 
