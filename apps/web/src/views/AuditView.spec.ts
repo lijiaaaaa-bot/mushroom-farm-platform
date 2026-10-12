@@ -125,7 +125,8 @@ describe('AuditView', () => {
     await wrapper.get('form[data-testid="login-log-filters"]').trigger('submit');
     await flushPromises();
 
-    const blank = httpGet.mock.calls.filter((call) => call[0] === '/login-logs').at(-1);
+    const loginCalls = httpGet.mock.calls.filter((call) => call[0] === '/login-logs');
+    const blank = loginCalls[loginCalls.length - 1];
     expect(blank?.[1].params.username).toBeUndefined();
     expect(blank?.[1].params.from).toBeUndefined();
     expect(blank?.[1].params.to).toBeUndefined();
