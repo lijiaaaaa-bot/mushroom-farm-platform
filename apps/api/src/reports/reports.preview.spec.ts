@@ -2,7 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { shanghaiDayRange, Role } from '@mushroom/contracts';
+import { shanghaiDayRange, Role, type AlertStatus } from '@mushroom/contracts';
 import ExcelJS from 'exceljs';
 import { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
@@ -227,6 +227,29 @@ describe('report preview and export HTTP', () => {
       .set('x-test-role', 'super_admin');
     expect(bad.status).toBe(400);
   });
+
+  it('filters each alert status on its own', async () => {
+    alerts.push(
+      alert('a-open', 'S01', 'open', '2026-09-24T01:00:00.000Z'),
+      alert('a-acked', 'S01', 'acked', '2026-09-24T02:00:00.000Z'),
+      alert('a-closed', 'S01', 'closed', '2026-09-24T03:00:00.000Z'),
+    );
+    for (const status of ['open', 'acked', 'closed'] as const) {
+      const preview = await request(app.getHttpServer())
+        .get('/api/v1/reports/preview')
+        .query({
+          kind: 'alerts',
+          status,
+          from: '2026-09-24',
+          to: '2026-09-24',
+        })
+        .set('x-test-role', 'super_admin');
+      expect(preview.status).toBe(200);
+      expect(
+        preview.body.rows.map((row: { status: string }) => row.status),
+      ).toEqual([status]);
+    }
+  });
 });
 
 function fact(
@@ -272,7 +295,7 @@ function device(
 function alert(
   id: string,
   shedCode: string,
-  status: 'open' | 'closed',
+  status: AlertStatus,
   createdAt: string,
 ): Alert {
   return {

@@ -60,4 +60,76 @@ describe('ReportsView preview', () => {
     expect(wrapper.find('[data-testid="report-preview"]').exists()).toBe(false);
     wrapper.unmount();
   });
+
+  it('previews devices with online=online and exports the same params', async () => {
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:report');
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    httpGet.mockImplementation((url: string) => {
+      if (String(url).includes('/reports/preview')) {
+        return Promise.resolve({
+          data: { title: '设备在线', columns: [], rows: [] },
+        });
+      }
+      return Promise.resolve({ data: new Blob(['xlsx']) });
+    });
+    const wrapper = mount(ReportsView);
+    expect(wrapper.find('[data-testid="report-online"]').exists()).toBe(false);
+
+    await wrapper.get('[data-testid="report-filters"] select').setValue('devices');
+    expect(wrapper.find('[data-testid="report-status"]').exists()).toBe(false);
+    const online = wrapper.get('[data-testid="report-online"]');
+    expect(online.text()).toContain('全部');
+    expect(online.text()).toContain('在线');
+    expect(online.text()).toContain('离线');
+
+    await wrapper.get('form[data-testid="report-filters"]').trigger('submit');
+    await flushPromises();
+    const allCall = httpGet.mock.calls.find((call) => call[0] === '/reports/preview');
+    expect(allCall?.[1].params.online).toBeUndefined();
+    expect(allCall?.[1].params.status).toBeUndefined();
+
+    await online.setValue('online');
+    await wrapper.get('form[data-testid="report-filters"]').trigger('submit');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/reports/preview', {
+      params: expect.objectContaining({ kind: 'devices', online: 'online' }),
+    });
+
+    const exportButton = wrapper.findAll('button').find((button) => button.text() === '导出');
+    await exportButton?.trigger('click');
+    await flushPromises();
+    const exportCall = httpGet.mock.calls.find((call) => call[0] === '/reports/export.xlsx');
+    expect(exportCall?.[1]).toEqual(
+      expect.objectContaining({
+        params: expect.objectContaining({ kind: 'devices', online: 'online' }),
+        responseType: 'blob',
+      }),
+    );
+    expect(exportCall?.[1].params.status).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it('previews alerts with the selected status', async () => {
+    httpGet.mockResolvedValue({
+      data: { title: '告警闭环', columns: [], rows: [] },
+    });
+    const wrapper = mount(ReportsView);
+    await wrapper.get('[data-testid="report-filters"] select').setValue('alerts');
+    expect(wrapper.find('[data-testid="report-online"]').exists()).toBe(false);
+    const status = wrapper.get('[data-testid="report-status"]');
+    expect(status.text()).toContain('待确认');
+    expect(status.text()).toContain('已确认');
+    expect(status.text()).toContain('已关闭');
+
+    await status.setValue('acked');
+    await wrapper.get('form[data-testid="report-filters"]').trigger('submit');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/reports/preview', {
+      params: expect.objectContaining({ kind: 'alerts', status: 'acked' }),
+    });
+    const call = httpGet.mock.calls.find((call) => call[0] === '/reports/preview');
+    expect(call?.[1].params.online).toBeUndefined();
+    wrapper.unmount();
+  });
 });
