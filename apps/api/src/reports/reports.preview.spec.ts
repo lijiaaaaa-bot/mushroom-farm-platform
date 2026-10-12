@@ -245,9 +245,9 @@ describe('report preview and export HTTP', () => {
         })
         .set('x-test-role', 'super_admin');
       expect(preview.status).toBe(200);
-      expect(preview.body.rows.map((row: { status: string }) => row.status)).toEqual([
-        status,
-      ]);
+      expect(
+        preview.body.rows.map((row: { status: string }) => row.status),
+      ).toEqual([status]);
     }
   });
 });

@@ -67,3 +67,4 @@
 | 2026-09-24 | PR #81 squash 合入 main（04f7665），Issue #77–#80 已关。批次潮次、采摘任务与日桶增速、六类报表预览导出、对象生命周期（`MINIO_APPLY_LIFECYCLE=1` 且读回成功才算下发；本地 MinIO 无远端存储类则 fail-closed）已在 main。#76 已关。能力对照写入 `docs/CURRENT_CAPABILITIES.md` | `gh pr view 81` MERGED；`gh issue view` 77–80 CLOSED | 报表页仍无登录后浏览器走查。Timescale 仍只 NOTICE，不建 hypertable |
 | 2026-09-24 | README 收成运行入口、接入主题和能力文档链接。删掉 MQTT 手发步骤、大屏长描述和告警推送长文 | `make gates` | 不改应用代码。能力正文仍在 `docs/CURRENT_CAPABILITIES.md` |
 | 2026-09-24 | README 改为产品说明：启动命令、端口、开发账号、接入主题。去掉「唯一入口」、禁止直接跑 npm/vite/compose、ARCHITECTURE_WALLS 与 Day-0 说教 | `make gates` | 不改应用代码 |
+| 2026-10-12 | 报表页设备在线与告警状态筛选接到已有 preview / export.xlsx。设备传 `online`/`offline`，告警传 `open`/`acked`/`closed`；全部不传。告警状态按契约精确匹配 | `make test` 退出码 0（contracts 9，脚本 node:test 36，API jest 119，web vitest 105）；`make gates` 退出码 0。PR #87 | 不合并。未做登录后浏览器走查 |
