@@ -189,7 +189,7 @@ describe('DutyShedDetailView', () => {
 
   it('opens that alert on /alerts with shed, status, and id', async () => {
     const wrapper = await mountDetail('S02');
-    await wrapper.get('[data-alert="alert-warn"]').get('[data-field="time"]').trigger('click');
+    await wrapper.get('[data-alert="alert-warn"] [data-field="time"]').trigger('click');
     await flushPromises();
     expect(memoryRouter.currentRoute.value.path).toBe('/alerts');
     expect(memoryRouter.currentRoute.value.query).toEqual({
