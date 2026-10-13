@@ -5,6 +5,7 @@ import BatchesView from './views/BatchesView.vue';
 import AuditView from './views/AuditView.vue';
 import BigScreenView from './views/BigScreenView.vue';
 import DutyScreenView from './views/DutyScreenView.vue';
+import DutyShedDetailView from './views/DutyShedDetailView.vue';
 import DashboardView from './views/DashboardView.vue';
 import DiseasesView from './views/DiseasesView.vue';
 import DevicesView from './views/DevicesView.vue';
@@ -24,7 +25,13 @@ const router = createRouter({
   routes: [
     { path: '/login', component: LoginView, meta: { public: true, title: '登录' } },
     { path: '/big-screen', component: BigScreenView, meta: { title: '基地大屏' } },
-    { path: '/duty-screen', component: DutyScreenView, meta: { title: '值班看板' } },
+    { path: '/duty-screen', name: 'duty-screen', component: DutyScreenView, meta: { title: '值班看板' } },
+    {
+      path: '/duty-screen/:shedCode',
+      name: 'duty-shed',
+      component: DutyShedDetailView,
+      meta: { title: '值班棚详情' },
+    },
     {
       path: '/',
       component: AdminLayout,
