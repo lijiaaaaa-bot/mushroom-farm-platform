@@ -26,7 +26,7 @@ make web      # http://127.0.0.1:43123
 | 环境 | `mushroom/+/+/environment` | `POST /api/v1/ingest/environment` |
 | 心跳 | `mushroom/+/+/heartbeat` | `POST /api/v1/ingest/heartbeat` |
 
-基地大屏路由：`/big-screen`。严重告警可选推送到企业微信 / 钉钉，见 `.env.example`。
+基地大屏路由：`/big-screen`。值班看板路由：`/duty-screen`。严重告警可选推送到企业微信 / 钉钉，见 `.env.example`。
 
 ## 部署与运维
 

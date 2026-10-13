@@ -11,6 +11,7 @@ const open = ref(false);
 const links: Array<{ to: string; label: string }> = [
   { to: '/', label: '总览' },
   { to: '/big-screen', label: '基地大屏' },
+  { to: '/duty-screen', label: '值班看板' },
   { to: '/devices', label: '设备' },
   { to: '/recognitions', label: '识别记录' },
   { to: '/environment', label: '环境读数' },
@@ -44,6 +45,7 @@ function leave() {
       <p class="hidden text-sm text-mist sm:block">{{ route.meta.title }}</p>
       <div class="ml-auto flex items-center gap-2 text-sm">
         <router-link class="btn-ghost" to="/big-screen">基地大屏</router-link>
+        <router-link class="btn-ghost" to="/duty-screen">值班看板</router-link>
         <AlertInbox />
         <span class="hidden text-mist lg:inline">{{ currentUser?.displayName }} · {{ roleLabel }}</span>
         <button class="btn-ghost" type="button" @click="leave">退出</button>

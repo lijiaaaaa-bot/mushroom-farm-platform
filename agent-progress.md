@@ -3,12 +3,15 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
+- 2026-10-13：值班看板 `/duty-screen`。棚卡接棚、摄像头在线、日桶 `sampleCount`、未闭合告警。不改 `/big-screen`。分支 `cursor/duty-screen-5dc8`。
 - 2026-10-12：`ingest-smoke` 在拉镜像阶段失败。热盘与冷盘改为 `pgsty/silo:RELEASE.2026-09-16T00-00-00Z`。分支 `cursor/fix-ingest-smoke-minio-pull-3b59`。
 - 2026-10-12：告警页接上已有 `status`、`level`。选全部不传。不改告警接口，不加棚号筛选。
 
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
+| 2026-10-13 | 值班看板 `/duty-screen`：棚卡状态、在线摄像头、当日日桶识别条数、一条未闭合告警。侧栏在基地大屏之后。右侧接入近窗与告警/拒收。底部总览与分棚日桶。不改 `/big-screen`，不加后端 | `make test` 退出码 0（contracts 9，脚本 node:test 38，API jest 119，web vitest 115）；`make gates` 退出码 0。PR #91 | 草稿 PR #86 不合并。未做登录后浏览器走查。CI ingest-smoke 待看 |
+| 2026-10-13 | PR #91 的 test、gates、ingest-smoke 均为 success | `gh pr checks 91` | 草稿 PR #86 不合并。未做登录后浏览器走查 |
 | 2026-09-24 | 同上。`make test` 退出码 0（contracts 9，脚本 node:test 36，API jest 118，web vitest 103）；`make gates` 退出码 0。PR #85 | 本地命令已通过 | 批次自动切阶段等业主定规则。打开冷端抓拍不自动回源。未做登录后浏览器走查。PR 未合 |
 | 2026-09-24 | 登录成功/失败写入 `login_logs` 并提供 `GET /api/v1/login-logs`（超管、生产管理员）；`/audit` 增加登录日志表。`make backup` 用 pg_dump 写日期文件，空文件或找不到工具则非 0。热 MinIO 挂 `minio-hot`；`docker-compose.minio-cold.yml` 为可选冷端；`object-tier.mjs` 默认只打印，`MINIO_APPLY_TIER=1` 时读回一致才删热端对象。云 GLACIER 脚本保持 fail-closed。运维说明 `docs/OPS_STORAGE_BACKUP.md` | `make test` 与 `make gates` 待本轮命令验收 | 批次自动切阶段等业主定规则。打开冷端抓拍不自动回源。未做登录后浏览器走查 |
 | 2026-09-23 | 接入 gates + 上下文文档 | PR #11/#12、make gates | 大屏 Issue #2、文档口径 PR #9 |
