@@ -52,6 +52,7 @@
 - 热盘与冷盘对象存储镜像改为 `pgsty/silo:RELEASE.2026-09-16T00-00-00Z`。`quay.io/minio/minio:RELEASE.2024-12-18T13-15-44Z` 匿名拉取返回 401，`make smoke` 在 `docker compose up` 退出，接入报文未发出。
 - 值班看板 `/duty-screen`：棚卡为正常、告警、离线或未知，在线摄像头、当日日桶识别条数、一条未闭合告警。侧栏与顶栏在基地大屏之后。右侧为接入近窗与告警、拒收。底部为总览与分棚日桶。`/big-screen` 不变。PR #91。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/91
 - 值班看板棚卡进入 `/duty-screen/:shedCode`：该棚摄像头（名称、编码、在线或离线、最近心跳）和未闭合告警（标题、级别、状态、时间）。返回 `/duty-screen`。沿用 `GET /api/v1/devices?type=camera&shedCode=`、`GET /api/v1/alerts` 的 `status` 与 `shedCode`、`GET /api/v1/sheds`。`/big-screen` 不变。PR #92。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/92
+- 值班棚详情的未闭合告警可点进 `/alerts`，查询带棚号、状态和告警 id；告警页按棚和状态筛选并高亮该条。不改告警接口，不改 `/big-screen`。
 
 ## 进行中
 - 无

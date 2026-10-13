@@ -1,5 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { flushPromises, mount } from '@vue/test-utils';
+import type { Component } from 'vue';
+import { createMemoryHistory, createRouter } from 'vue-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { farmOpsTokens as tokens } from '../farm-ops-tokens';
 import AdminLayout from './AdminLayout.vue';
@@ -99,7 +101,11 @@ describe('farm-ops light admin theme', () => {
       ['ingest', IngestObservabilityView],
     ] as const;
     for (const [label, component] of pages) {
-      const wrapper = mount(component);
+      const memory = createRouter({
+        history: createMemoryHistory(),
+        routes: [{ path: '/', component: { template: '<div />' } }],
+      });
+      const wrapper = mount(component as Component, { global: { plugins: [memory] } });
       await flushPromises();
       expect(wrapper.find('.ops-page').exists(), label).toBe(true);
       wrapper.unmount();

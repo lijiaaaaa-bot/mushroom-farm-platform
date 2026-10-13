@@ -1,5 +1,6 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import type { Component } from 'vue';
+import { createMemoryHistory, createRouter, type Router } from 'vue-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AlertsView from './AlertsView.vue';
 import DevicesView from './DevicesView.vue';
@@ -55,8 +56,16 @@ const harvestSummary = {
   harvestableCameras: 1,
 };
 
-async function mountView(component: Component) {
-  const wrapper = mount(component);
+let memoryRouter: Router;
+
+async function mountView(component: Component, query: Record<string, string> = {}) {
+  memoryRouter = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: '/:pathMatch(.*)*', component: { template: '<div />' } }],
+  });
+  await memoryRouter.push({ path: '/alerts', query });
+  await memoryRouter.isReady();
+  const wrapper = mount(component, { global: { plugins: [memoryRouter] } });
   await flushPromises();
   return wrapper;
 }
@@ -335,6 +344,61 @@ describe('AlertsView', () => {
     expect(httpGet).toHaveBeenCalledWith('/alerts', {
       params: { pageSize: 50, status: 'acked', level: 'severe' },
     });
+    wrapper.unmount();
+  });
+
+  it('applies shed and status from the duty deep link and highlights that alert', async () => {
+    const scrollIntoView = vi.fn();
+    const original = HTMLElement.prototype.scrollIntoView;
+    HTMLElement.prototype.scrollIntoView = scrollIntoView as typeof HTMLElement.prototype.scrollIntoView;
+    httpGet.mockResolvedValue({
+      data: {
+        items: [alert, { ...alert, id: 'alert-2', title: '另一条' }],
+        total: 2,
+      },
+    });
+    try {
+      const wrapper = await mountView(AlertsView, {
+        shedCode: 'S01',
+        status: 'open',
+        alertId: 'alert-1',
+      });
+
+      expect(httpGet).toHaveBeenCalledWith('/alerts', {
+        params: { pageSize: 50, status: 'open', level: undefined, shedCode: 'S01' },
+      });
+      expect((wrapper.get('[data-testid="alert-status-filter"]').element as HTMLSelectElement).value).toBe('open');
+      expect(wrapper.get('[data-testid="alert-shed-scope"]').text()).toBe('棚 S01');
+      expect(wrapper.get('[data-alert-id="alert-1"]').attributes('data-highlight')).toBe('true');
+      expect(wrapper.get('[data-alert-id="alert-2"]').attributes('data-highlight')).toBeUndefined();
+      expect(scrollIntoView).toHaveBeenCalledWith({ block: 'center' });
+
+      await wrapper.get('[data-testid="alert-status-filter"]').setValue('acked');
+      await flushPromises();
+      expect(httpGet).toHaveBeenCalledWith('/alerts', {
+        params: { pageSize: 50, status: 'acked', level: undefined, shedCode: 'S01' },
+      });
+
+      await memoryRouter.push('/alerts');
+      await flushPromises();
+      expect(httpGet).toHaveBeenCalledWith('/alerts', {
+        params: { pageSize: 50, status: undefined, level: undefined },
+      });
+      expect(wrapper.find('[data-testid="alert-shed-scope"]').exists()).toBe(false);
+      expect(wrapper.get('[data-alert-id="alert-1"]').attributes('data-highlight')).toBeUndefined();
+      wrapper.unmount();
+    } finally {
+      HTMLElement.prototype.scrollIntoView = original;
+    }
+  });
+
+  it('ignores a status query that is not an alert status', async () => {
+    httpGet.mockResolvedValue({ data: { items: [alert], total: 1 } });
+    const wrapper = await mountView(AlertsView, { status: 'nope', shedCode: 'S02' });
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: undefined, level: undefined, shedCode: 'S02' },
+    });
+    expect((wrapper.get('[data-testid="alert-status-filter"]').element as HTMLSelectElement).value).toBe('');
     wrapper.unmount();
   });
 });
