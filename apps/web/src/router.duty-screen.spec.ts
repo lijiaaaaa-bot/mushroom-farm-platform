@@ -13,6 +13,7 @@ import AdminLayout from './layouts/AdminLayout.vue';
 import router from './router';
 import BigScreenView from './views/BigScreenView.vue';
 import DutyScreenView from './views/DutyScreenView.vue';
+import DutyShedDetailView from './views/DutyShedDetailView.vue';
 
 describe('/duty-screen route', () => {
   beforeEach(async () => {
@@ -58,5 +59,30 @@ describe('/duty-screen route', () => {
     expect(topbar.find('a[href="/big-screen"]').text()).toBe('基地大屏');
     expect(topbar.find('a[href="/duty-screen"]').text()).toBe('值班看板');
     wrapper.unmount();
+  });
+
+  it('registers /duty-screen/:shedCode on DutyShedDetailView outside the admin shell', async () => {
+    const detail = router.getRoutes().find((record) => record.path === '/duty-screen/:shedCode');
+    expect(detail?.name).toBe('duty-shed');
+    expect(detail?.components?.default).toBe(DutyShedDetailView);
+    expect(detail?.meta.title).toBe('值班棚详情');
+
+    localStorage.setItem('token', 'test-token');
+    await router.push('/duty-screen/S01');
+    await flushPromises();
+
+    expect(router.currentRoute.value.path).toBe('/duty-screen/S01');
+    expect(router.currentRoute.value.params.shedCode).toBe('S01');
+    expect(router.currentRoute.value.matched.map((record) => record.path)).toEqual([
+      '/duty-screen/:shedCode',
+    ]);
+    expect(router.currentRoute.value.matched[0]?.components?.default).toBe(DutyShedDetailView);
+  });
+
+  it('sends /duty-screen/:shedCode to login when there is no token', async () => {
+    await router.push('/duty-screen/S01');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/login');
+    expect(router.currentRoute.value.query.redirect).toBe('/duty-screen/S01');
   });
 });

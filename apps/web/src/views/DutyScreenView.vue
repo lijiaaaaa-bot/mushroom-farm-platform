@@ -574,10 +574,11 @@ onBeforeUnmount(() => {
         <p v-if="devicesTruncated" class="zone-error">摄像头列表未取全，在线数可能偏少</p>
         <p v-if="alertsTruncated" class="zone-error">未闭合告警未取全</p>
         <div v-if="!loading && sheds.length" class="shed-grid">
-          <article
+          <router-link
             v-for="card in cards"
             :key="card.id"
             class="shed"
+            :to="{ name: 'duty-shed', params: { shedCode: card.code } }"
             :data-status="card.status"
             :data-shed="card.code"
           >
@@ -598,7 +599,7 @@ onBeforeUnmount(() => {
             <p class="shed-alert" :data-kind="card.alertKind" data-field="alert" :title="card.alertLine">
               {{ card.alertLine }}
             </p>
-          </article>
+          </router-link>
         </div>
       </section>
 
@@ -755,6 +756,16 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 10px;
   margin-top: 10px;
+}
+a.shed {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+a.shed:hover { border-color: rgba(0, 229, 255, 0.45); }
+a.shed:focus-visible {
+  outline: 1px solid #00e5ff;
+  outline-offset: 2px;
 }
 .shed {
   position: relative;

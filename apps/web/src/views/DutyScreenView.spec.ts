@@ -155,8 +155,10 @@ function payloadFor(url: string, config?: { params?: Record<string, string | num
   throw new Error(`unexpected ${url}`);
 }
 
+let memoryRouter: ReturnType<typeof createRouter>;
+
 async function mountDuty(): Promise<VueWrapper> {
-  const router = createRouter({
+  memoryRouter = createRouter({
     history: createMemoryHistory(),
     routes: [
       { path: '/', component: { template: '<div />' } },
@@ -164,9 +166,16 @@ async function mountDuty(): Promise<VueWrapper> {
       { path: '/big-screen', component: { template: '<div />' } },
       { path: '/alerts', component: { template: '<div />' } },
       { path: '/duty-screen', component: DutyScreenView },
+      {
+        path: '/duty-screen/:shedCode',
+        name: 'duty-shed',
+        component: { template: '<div data-test="shed-detail" />' },
+      },
     ],
   });
-  const wrapper = mount(DutyScreenView, { global: { plugins: [router] } });
+  await memoryRouter.push('/duty-screen');
+  await memoryRouter.isReady();
+  const wrapper = mount(DutyScreenView, { global: { plugins: [memoryRouter] } });
   await flushPromises();
   return wrapper;
 }
@@ -237,6 +246,16 @@ describe('DutyScreenView', () => {
     expect(wrapper.get('[data-test="shed-counts"]').text()).toContain('S01');
     expect(wrapper.get('[data-test="shed-counts"]').text()).toContain('蘑菇 9');
     expect(wrapper.text()).toContain('22.5');
+    expect(wrapper.get('[data-shed="S02"]').attributes('href')).toBe('/duty-screen/S02');
+    wrapper.unmount();
+  });
+
+  it('opens /duty-screen/:shedCode from a shed card', async () => {
+    const wrapper = await mountDuty();
+    await wrapper.get('[data-shed="S01"]').trigger('click');
+    await flushPromises();
+    expect(memoryRouter.currentRoute.value.path).toBe('/duty-screen/S01');
+    expect(memoryRouter.currentRoute.value.params.shedCode).toBe('S01');
     wrapper.unmount();
   });
 
