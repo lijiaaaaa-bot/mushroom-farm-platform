@@ -262,6 +262,21 @@ function leave() {
   void router.push('/login');
 }
 
+function alertTo(row: AlertRow) {
+  return {
+    path: '/alerts',
+    query: {
+      shedCode: row.shedCode,
+      status: row.status,
+      alertId: row.id,
+    },
+  };
+}
+
+function openAlert(row: AlertRow) {
+  void router.push(alertTo(row));
+}
+
 watch(shedCode, () => {
   resetForShed();
   void load();
@@ -346,8 +361,16 @@ onBeforeUnmount(() => {
               </tr>
             </thead>
             <tbody>
-              <tr v-for="row in openAlerts" :key="row.id" :data-alert="row.id">
-                <td data-field="title">{{ row.title }}</td>
+              <tr
+                v-for="row in openAlerts"
+                :key="row.id"
+                class="alert-row"
+                :data-alert="row.id"
+                @click="openAlert(row)"
+              >
+                <td data-field="title">
+                  <router-link data-test="alert-link" :to="alertTo(row)" @click.stop>{{ row.title }}</router-link>
+                </td>
                 <td data-field="level">{{ ALERT_LEVEL_LABEL[row.level] }}</td>
                 <td data-field="status">{{ ALERT_STATUS_LABEL[row.status] }}</td>
                 <td data-field="time">{{ minuteStamp(row.createdAt) }}</td>
@@ -453,6 +476,13 @@ td[data-field="online"], td[data-field="heartbeat"], td[data-field="time"], td[d
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+.alert-row { cursor: pointer; }
+.alert-row:hover td { background: rgba(0, 229, 255, 0.06); }
+.alert-row a {
+  color: #00e5ff;
+  text-decoration: none;
+}
+.alert-row a:hover { text-decoration: underline; }
 .zone-error, .empty { margin: 8px 0 0; font-size: 13px; }
 .zone-error { color: #fca5a5; }
 .empty { color: #7a8ba3; }

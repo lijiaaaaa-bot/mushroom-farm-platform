@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
+import { nextTick, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import {
   ALERT_CLOSE_REASON_LABEL,
   ALERT_LEVEL_LABEL,
@@ -40,17 +41,54 @@ const form = ref<CreateAlertInput>({
   title: '',
   message: '',
 });
+const route = useRoute();
 const levels = alertLevelSchema.options;
 const statuses = alertStatusSchema.options;
-const statusFilter = ref('');
-const levelFilter = ref('');
+const rowEls = new Map<string, HTMLElement>();
+
+function plainQuery(key: string): string {
+  const value = route.query[key];
+  return typeof value === 'string' ? value : '';
+}
+
+function allowedQuery(key: string, options: readonly string[]): string {
+  const value = plainQuery(key);
+  return options.includes(value) ? value : '';
+}
+
+const statusFilter = ref(allowedQuery('status', statuses));
+const levelFilter = ref(allowedQuery('level', levels));
+const shedCodeFilter = ref(plainQuery('shedCode'));
+const highlightId = ref(plainQuery('alertId'));
 
 function listParams() {
   return {
     pageSize: 50,
     status: statusFilter.value || undefined,
     level: levelFilter.value || undefined,
+    ...(shedCodeFilter.value ? { shedCode: shedCodeFilter.value } : {}),
   };
+}
+
+function bindRow(id: string, el: unknown) {
+  if (el instanceof HTMLElement) rowEls.set(id, el);
+  else rowEls.delete(id);
+}
+
+async function scrollHighlight() {
+  await nextTick();
+  const id = highlightId.value;
+  const node = id ? rowEls.get(id) : undefined;
+  if (node && typeof node.scrollIntoView === 'function') {
+    node.scrollIntoView({ block: 'center' });
+  }
+}
+
+function applyRouteQuery() {
+  statusFilter.value = allowedQuery('status', statuses);
+  levelFilter.value = allowedQuery('level', levels);
+  shedCodeFilter.value = plainQuery('shedCode');
+  highlightId.value = plainQuery('alertId');
 }
 
 async function load() {
@@ -66,6 +104,7 @@ async function load() {
   } finally {
     loading.value = false;
   }
+  await scrollHighlight();
 }
 
 async function createAlert() {
@@ -96,8 +135,16 @@ async function act(id: string, action: 'ack' | 'close' | 'claim' | 'false-positi
   }
 }
 
-watch([statusFilter, levelFilter], () => {
+watch([statusFilter, levelFilter, shedCodeFilter], () => {
   void load();
+});
+
+watch(() => route.fullPath, () => {
+  applyRouteQuery();
+});
+
+watch(highlightId, () => {
+  void scrollHighlight();
 });
 
 onMounted(load);
@@ -134,6 +181,7 @@ onMounted(load);
             <option v-for="level in levels" :key="level" :value="level">{{ ALERT_LEVEL_LABEL[level] }}</option>
           </select>
         </label>
+        <p v-if="shedCodeFilter" class="self-end text-sm text-mist" data-testid="alert-shed-scope">棚 {{ shedCodeFilter }}</p>
       </div>
       <p v-if="loading" class="text-mist">加载中…</p>
       <p v-else-if="!error && !rows.length" class="text-mist">暂无告警。</p>
@@ -142,7 +190,13 @@ onMounted(load);
           <tr><th>等级</th><th>状态</th><th>原因</th><th>认领人</th><th>棚区</th><th>标题</th><th>时间</th><th></th></tr>
         </thead>
         <tbody>
-          <tr v-for="row in rows" :key="row.id">
+          <tr
+            v-for="row in rows"
+            :key="row.id"
+            :ref="(el) => bindRow(row.id, el)"
+            :data-alert-id="row.id"
+            :data-highlight="row.id === highlightId ? 'true' : undefined"
+          >
             <td>{{ ALERT_LEVEL_LABEL[row.level] }}</td>
             <td>
               {{ ALERT_STATUS_LABEL[row.status] }}
@@ -177,3 +231,11 @@ onMounted(load);
     </section>
   </div>
 </template>
+
+<style scoped>
+tr[data-highlight='true'] {
+  background: #fff7e6;
+  outline: 2px solid #f59e0b;
+  outline-offset: -2px;
+}
+</style>

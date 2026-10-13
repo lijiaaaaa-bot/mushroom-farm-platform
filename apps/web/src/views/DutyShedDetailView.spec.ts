@@ -81,6 +81,16 @@ function alert(
   return { id, shedCode, level, status, title, createdAt };
 }
 
+function alertQuery(row: { get: (selector: string) => { attributes: (name: string) => string | undefined } }) {
+  const href = row.get('[data-test="alert-link"]').attributes('href') ?? '';
+  const url = new URL(href, 'http://local');
+  return {
+    shedCode: url.searchParams.get('shedCode'),
+    status: url.searchParams.get('status'),
+    alertId: url.searchParams.get('alertId'),
+  };
+}
+
 function payloadFor(url: string, config?: { params?: Record<string, string | number> }) {
   const params = config?.params ?? {};
   if (url === '/sheds') return sheds;
@@ -103,6 +113,7 @@ async function mountDetail(shedCode: string): Promise<VueWrapper> {
       { path: '/big-screen', component: { template: '<div />' } },
       { path: '/duty-screen', component: { template: '<div data-test="board" />' } },
       { path: '/duty-screen/:shedCode', component: DutyShedDetailView },
+      { path: '/alerts', component: { template: '<div data-test="alerts-page" />' } },
     ],
   });
   await memoryRouter.push(`/duty-screen/${shedCode}`);
@@ -166,11 +177,26 @@ describe('DutyShedDetailView', () => {
     expect(open.get('[data-field="level"]').text()).toBe('一般');
     expect(open.get('[data-field="status"]').text()).toBe('待确认');
     expect(open.get('[data-field="time"]').text()).toBe('2026-10-13 09:00');
+    expect(alertQuery(open)).toEqual({ shedCode: 'S02', status: 'open', alertId: 'alert-warn' });
+    expect(alertQuery(acked)).toEqual({ shedCode: 'S02', status: 'acked', alertId: 'alert-info' });
     expect(alerts.text().indexOf('基质含水率过低告警')).toBeLessThan(alerts.text().indexOf('湿度过高告警'));
 
     expect(wrapper.text()).not.toContain('已关闭的旧告警');
     expect(wrapper.text()).not.toContain('他棚高温');
     expect(wrapper.get('[data-test="back"]').attributes('href')).toBe('/duty-screen');
+    wrapper.unmount();
+  });
+
+  it('opens that alert on /alerts with shed, status, and id', async () => {
+    const wrapper = await mountDetail('S02');
+    await wrapper.get('[data-alert="alert-warn"]').get('[data-field="time"]').trigger('click');
+    await flushPromises();
+    expect(memoryRouter.currentRoute.value.path).toBe('/alerts');
+    expect(memoryRouter.currentRoute.value.query).toEqual({
+      shedCode: 'S02',
+      status: 'open',
+      alertId: 'alert-warn',
+    });
     wrapper.unmount();
   });
 

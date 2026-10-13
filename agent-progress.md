@@ -3,6 +3,7 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
+- 2026-10-13：值班棚详情未闭合告警点进 `/alerts?shedCode=&status=&alertId=`，告警页按棚和状态筛选并高亮。分支 `cursor/duty-alert-link-827a`。
 - 2026-10-13：值班看板棚卡进入 `/duty-screen/:shedCode`，列出该棚摄像头和未闭合告警。分支 `cursor/duty-shed-detail-e28b`。
 - 2026-10-13：值班看板 `/duty-screen`。棚卡接棚、摄像头在线、日桶 `sampleCount`、未闭合告警。不改 `/big-screen`。分支 `cursor/duty-screen-5dc8`。
 - 2026-10-12：`ingest-smoke` 在拉镜像阶段失败。热盘与冷盘改为 `pgsty/silo:RELEASE.2026-09-16T00-00-00Z`。分支 `cursor/fix-ingest-smoke-minio-pull-3b59`。
@@ -11,6 +12,7 @@
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
+| 2026-10-13 | 值班棚详情未闭合告警进入 `/alerts`，查询 `shedCode`、`status`、`alertId`。告警页把棚号和合法状态传给已有列表接口，高亮并滚到该条。不改接口，不改 `/big-screen` | 待 `make test` 与 `make gates` | 未做登录后浏览器走查 |
 | 2026-10-13 | 值班看板棚卡进入 `/duty-screen/:shedCode`。详情用已有 `devices?type=camera&shedCode=`、`alerts?status=open|acked&shedCode=`、`GET /sheds`。摄像头名称在详情，不在棚卡。返回 `/duty-screen`。不改 `/big-screen`，不加接口 | `make test` 退出码 0（contracts 9，脚本 node:test 38，API jest 119，web vitest 124）；`make gates` 退出码 0。PR #92 | 不合并。未做登录后浏览器走查 |
 | 2026-10-13 | PR #92 的 test、gates、ingest-smoke 均为 success | `gh pr checks 92` | 不合并。未做登录后浏览器走查 |
 | 2026-10-13 | 值班看板 `/duty-screen`：棚卡状态、在线摄像头、当日日桶识别条数、一条未闭合告警。侧栏在基地大屏之后。右侧接入近窗与告警/拒收。底部总览与分棚日桶。不改 `/big-screen`，不加后端 | `make test` 退出码 0（contracts 9，脚本 node:test 38，API jest 119，web vitest 115）；`make gates` 退出码 0。PR #91 | 草稿 PR #86 不合并。未做登录后浏览器走查。CI ingest-smoke 待看 |

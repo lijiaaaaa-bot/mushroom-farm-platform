@@ -58,7 +58,7 @@
 
 值班看板路由 `/duty-screen`，同样不在管理端壳内。侧栏与顶栏在「基地大屏」后面链到此页。中部每棚一张卡，没有摄像头名牌，点进 `/duty-screen/:shedCode`。状态按可见数据取：摄像头全部离线（或没有摄像头）为离线；否则有未闭合告警为告警；两者都清楚且没有未闭合告警为正常；缺一截则是未知，不把失败写成正常。在线数只数 `type=camera`，来自 `GET /api/v1/devices?type=camera`。今日识别是 `GET /api/v1/growth-trends?days=7` 当天棚级日桶的 `sampleCount`（识别条数，不是蘑菇数）；日桶请求失败时显示「—」，不用 0 充数。未闭合告警分两次拉 `GET /api/v1/alerts` 的 `status=open` 与 `status=acked`，每棚只留一条：严重优先，同级取较新。有告警时这一行用告警说明（去掉「摄像头 …」字样）；整棚离线且没有告警时写最近心跳。列表每页 100 条，最多再翻 19 页；取不全时页面写明。右侧用 `GET /api/v1/ingest/observability` 的默认近窗（接收、拒收、分通道、最近错误）和未闭合告警标题。底部用 `GET /api/v1/dashboard/overview` 的棚数、设备在线、今日蘑菇、今日成熟、未闭合告警、严重告警和环境均值，以及分棚当日识别条数和棚级蘑菇数。不画准确率、帕累托或机器资源。`/big-screen` 不改。
 
-棚详情路由 `/duty-screen/:shedCode`（`DutyShedDetailView`），同样不在管理端壳内，夜色与值班看板同一套。返回链回 `/duty-screen`。页上是棚名和编码、与棚卡相同的状态（正常、告警、离线、未知），以及在线摄像头数和未闭合条数。摄像头来自 `GET /api/v1/devices?type=camera&shedCode=`，列出名称、编码、在线或离线、`lastHeartbeatAt`（Asia/Shanghai，精确到分钟）；没有心跳写「—」。未闭合告警分两次拉 `GET /api/v1/alerts` 的 `status=open` 与 `status=acked`，并带已有的 `shedCode`，按时间从新到旧，每条显示标题、级别、状态、时间。棚列表仍是 `GET /api/v1/sheds`；编码不在可见棚里时写「没有这个棚」，状态为未知。列表失败不把空表写成没有摄像头或没有告警。每页 100 条，最多再翻 19 页。不改接口，不改 `/big-screen`。
+棚详情路由 `/duty-screen/:shedCode`（`DutyShedDetailView`），同样不在管理端壳内，夜色与值班看板同一套。返回链回 `/duty-screen`。页上是棚名和编码、与棚卡相同的状态（正常、告警、离线、未知），以及在线摄像头数和未闭合条数。摄像头来自 `GET /api/v1/devices?type=camera&shedCode=`，列出名称、编码、在线或离线、`lastHeartbeatAt`（Asia/Shanghai，精确到分钟）；没有心跳写「—」。未闭合告警分两次拉 `GET /api/v1/alerts` 的 `status=open` 与 `status=acked`，并带已有的 `shedCode`，按时间从新到旧，每条显示标题、级别、状态、时间。点一条进入 `/alerts?shedCode=&status=&alertId=`。告警页把棚号和合法状态传给已有的 `GET /api/v1/alerts`，并把该 `alertId` 高亮、滚到视口内。棚列表仍是 `GET /api/v1/sheds`；编码不在可见棚里时写「没有这个棚」，状态为未知。列表失败不把空表写成没有摄像头或没有告警。每页 100 条，最多再翻 19 页。不改接口，不改 `/big-screen`。
 
 棚区页 `/sheds`：`GET /api/v1/sheds` 按棚隔离列出。`PATCH /api/v1/sheds/:id` 只改平面坐标（0–100），仅超管与生产管理员可写。
 
@@ -74,7 +74,7 @@
 
 ## 告警与阈值规则
 
-告警 `/alerts`。`GET /api/v1/alerts`。
+告警 `/alerts`。`GET /api/v1/alerts`。页面可按状态、级别筛选，选全部不传。值班棚详情带入的 `shedCode` 传给同一列表接口；`alertId` 只高亮该行，不是新的查询参数。侧栏再打开 `/alerts` 时不带这三项。
 
 | 动作 | 接口 | 结果 |
 |------|------|------|
