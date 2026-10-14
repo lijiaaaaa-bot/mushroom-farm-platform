@@ -127,8 +127,39 @@ describe('AlertDetailView', () => {
     expect(wrapper.get('[data-field="threshold"]').text()).toBe('28℃');
     expect(wrapper.find('[data-field="sensor"]').exists()).toBe(false);
     expect(wrapper.get('[data-field="claimedBy"]').text()).toBe('—');
+    expect(wrapper.get('[data-field="claimedAt"]').text()).toBe('—');
+    expect(wrapper.get('[data-field="ackedBy"]').text()).toBe('—');
+    expect(wrapper.get('[data-field="ackedAt"]').text()).toBe('—');
     expect(wrapper.get('[data-field="closeReason"]').text()).toBe('—');
+    expect(wrapper.get('[data-field="closedBy"]').text()).toBe('—');
+    expect(wrapper.get('[data-field="closedAt"]').text()).toBe('—');
     expect(wrapper.text()).not.toContain('暂无告警');
+    wrapper.unmount();
+  });
+
+  it('shows the people and times the detail API already returns', async () => {
+    httpGet.mockResolvedValue({
+      data: {
+        ...alert,
+        status: 'closed',
+        claimedBy: 'shed-a',
+        claimedAt: '2026-09-23T02:00:00.000Z',
+        ackedBy: 'admin',
+        ackedAt: '2026-09-23T02:05:00.000Z',
+        closeReason: 'resolved',
+        closedBy: 'admin',
+        closedAt: '2026-09-23T03:10:00.000Z',
+      },
+    });
+    const wrapper = await mountDetail();
+
+    expect(wrapper.get('[data-field="claimedBy"]').text()).toBe('shed-a');
+    expect(wrapper.get('[data-field="claimedAt"]').text()).toBe('2026-09-23 10:00');
+    expect(wrapper.get('[data-field="ackedBy"]').text()).toBe('admin');
+    expect(wrapper.get('[data-field="ackedAt"]').text()).toBe('2026-09-23 10:05');
+    expect(wrapper.get('[data-field="closeReason"]').text()).toBe('正常关闭');
+    expect(wrapper.get('[data-field="closedBy"]').text()).toBe('admin');
+    expect(wrapper.get('[data-field="closedAt"]').text()).toBe('2026-09-23 11:10');
     wrapper.unmount();
   });
 

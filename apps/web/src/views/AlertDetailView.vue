@@ -31,9 +31,14 @@ interface AlertDetail {
   threshold: number | null;
   createdAt: string;
   claimedBy: string | null;
+  claimedAt?: string | null;
   claimNote: string | null;
+  ackedBy?: string | null;
+  ackedAt?: string | null;
   ackNote: string | null;
   closeReason: AlertCloseReason | null;
+  closedBy?: string | null;
+  closedAt?: string | null;
   closeNote: string | null;
   recognitionId?: string | null;
   snapshotObjectKey?: string | null;
@@ -145,11 +150,16 @@ const fields = computed(() => {
     { key: 'value', label: '当前值', value: quantity(current.metric, current.metricValue) },
     { key: 'threshold', label: '阈值', value: quantity(current.metric, current.threshold) },
     { key: 'claimedBy', label: '认领人', value: current.claimedBy || '—' },
+    { key: 'claimedAt', label: '认领时间', value: shanghaiStamp(current.claimedAt) },
+    { key: 'ackedBy', label: '确认人', value: current.ackedBy || '—' },
+    { key: 'ackedAt', label: '确认时间', value: shanghaiStamp(current.ackedAt) },
     {
       key: 'closeReason',
       label: '关闭原因',
       value: current.closeReason ? ALERT_CLOSE_REASON_LABEL[current.closeReason] : '—',
     },
+    { key: 'closedBy', label: '关闭人', value: current.closedBy || '—' },
+    { key: 'closedAt', label: '关闭时间', value: shanghaiStamp(current.closedAt) },
     ...(current.claimNote ? [{ key: 'claimNote', label: '认领备注', value: current.claimNote }] : []),
     ...(current.ackNote ? [{ key: 'ackNote', label: '确认备注', value: current.ackNote }] : []),
     ...(current.closeNote ? [{ key: 'closeNote', label: '关闭备注', value: current.closeNote }] : []),
