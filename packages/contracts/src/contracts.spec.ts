@@ -181,6 +181,27 @@ describe('golden fixtures', () => {
     );
   });
 
+  it('demo-one sample covers the received recognition fields', () => {
+    const fixture = load('recognition.demo-one.json');
+    const result = parseRecognitionIngress(fixture.body, new Date(String(fixture.clock)));
+    assert.equal(result.ok, true, JSON.stringify(result));
+    if (!result.ok) return;
+    const value = result.value;
+    assert.equal(value.shedCode, 'S01');
+    assert.ok(value.cameraCode);
+    assert.ok(value.recognizedAt);
+    assert.equal(Number.isInteger(value.mushroomCount), true);
+    assert.equal(Number.isInteger(value.matureCount), true);
+    assert.ok(value.capDiameters.length > 0);
+    assert.equal(Number.isInteger(value.diseaseCount), true);
+    assert.equal(Number.isInteger(value.diseaseLevel), true);
+    assert.ok(value.snapshotBase64 || value.snapshotUrl);
+    assert.equal(typeof value.temperature, 'number');
+    assert.equal(typeof value.humidity, 'number');
+    assert.equal(typeof value.co2, 'number');
+    assert.equal(typeof value.substrateMoisture, 'number');
+  });
+
   it('loads the snapshot key fixture', () => {
     const fixture = load('snapshot-key.json');
     const when = new Date(String(fixture.recognizedAt));

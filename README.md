@@ -16,7 +16,8 @@ make web      # http://127.0.0.1:43123
 开发登录：`admin` / `Admin@123456`  
 接入令牌请求头：`X-Ingest-Token: dev-ingest-token`
 
-联调可用 `make smoke` 或 `scripts/edge-simulator.mjs` 发送样例报文。
+联调可用 `make smoke` 或 `scripts/edge-simulator.mjs` 发送样例报文。  
+发一条样例识别并在识别记录里看到：[`docs/DEMO_ONE_INGEST.md`](docs/DEMO_ONE_INGEST.md)（`make demo-one-ingest`）。
 
 ## 接入
 
