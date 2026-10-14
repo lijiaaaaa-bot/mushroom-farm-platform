@@ -433,6 +433,22 @@ describe('growth trend API', () => {
     seedGrowth(days, outside, 'S01', '', 1);
     seedGrowth(days, today, 'S02', '', 50);
     seedGrowth(days, today, 'S02', 'CAM-9', 50);
+    seedMetric(
+      days,
+      shanghaiDayRange(today).start,
+      'S01',
+      'CAM-1',
+      METRIC_MATURE_COUNT,
+      5,
+    );
+    seedMetric(
+      days,
+      shanghaiDayRange(today).start,
+      'S01',
+      '',
+      METRIC_MATURE_COUNT,
+      7,
+    );
     const moduleRef = await Test.createTestingModule({
       controllers: [GrowthTrendsController],
       providers: [
@@ -480,6 +496,17 @@ describe('growth trend API', () => {
     expect(
       s01.cameras.map((row: { cameraCode: string }) => row.cameraCode),
     ).toEqual(['CAM-1', 'CAM-2']);
+    expect(
+      s01.points.find((row: { day: string }) => row.day === today),
+    ).toEqual(expect.objectContaining({ mushroomCount: 20, matureCount: 7 }));
+    expect(
+      s01.points.find((row: { day: string }) => row.day === recent),
+    ).toEqual(expect.objectContaining({ mushroomCount: 9, matureCount: 0 }));
+    expect(
+      s01.cameras.find(
+        (row: { cameraCode: string }) => row.cameraCode === 'CAM-1',
+      ).points[0],
+    ).toEqual(expect.objectContaining({ mushroomCount: 12, matureCount: 5 }));
   });
 
   it('includes a 20-day-old point in the 30-day window and omits older days', async () => {

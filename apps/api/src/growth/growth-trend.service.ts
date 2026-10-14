@@ -41,6 +41,7 @@ import {
 export interface GrowthPoint {
   day: string;
   mushroomCount: number;
+  matureCount: number;
   capDiameterMean: number | null;
   sampleCount: number;
 }
@@ -48,6 +49,7 @@ export interface GrowthPoint {
 export interface HourPoint {
   hour: string;
   mushroomCount: number;
+  matureCount: number;
   capDiameterMean: number | null;
   sampleCount: number;
 }
@@ -191,7 +193,12 @@ export class GrowthTrendService {
       this.dayBuckets,
       shanghaiDayRange(from).start,
       shanghaiDayRange(to).end,
-      [METRIC_MUSHROOM_COUNT, METRIC_CAP_DIAMETER_MEAN, METRIC_SAMPLE_COUNT],
+      [
+        METRIC_MUSHROOM_COUNT,
+        METRIC_MATURE_COUNT,
+        METRIC_CAP_DIAMETER_MEAN,
+        METRIC_SAMPLE_COUNT,
+      ],
       scope,
       shedCode,
     );
@@ -233,7 +240,12 @@ export class GrowthTrendService {
       this.hourBuckets,
       start,
       end,
-      [METRIC_MUSHROOM_COUNT, METRIC_CAP_DIAMETER_MEAN, METRIC_SAMPLE_COUNT],
+      [
+        METRIC_MUSHROOM_COUNT,
+        METRIC_MATURE_COUNT,
+        METRIC_CAP_DIAMETER_MEAN,
+        METRIC_SAMPLE_COUNT,
+      ],
       scope,
       shedCode,
     );
@@ -244,6 +256,7 @@ export class GrowthTrendService {
       points: shed.points.map((point) => ({
         hour: point.day,
         mushroomCount: point.mushroomCount,
+        matureCount: point.matureCount,
         capDiameterMean: point.capDiameterMean,
         sampleCount: point.sampleCount,
       })),
@@ -252,6 +265,7 @@ export class GrowthTrendService {
         points: camera.points.map((point) => ({
           hour: point.day,
           mushroomCount: point.mushroomCount,
+          matureCount: point.matureCount,
           capDiameterMean: point.capDiameterMean,
           sampleCount: point.sampleCount,
         })),
@@ -685,11 +699,14 @@ function groupGrowth(
     const point = slots.get(key) ?? {
       day: label,
       mushroomCount: 0,
+      matureCount: 0,
       capDiameterMean: null,
       sampleCount: 0,
     };
     if (row.metric === METRIC_MUSHROOM_COUNT) {
       point.mushroomCount = Math.round(row.value ?? 0);
+    } else if (row.metric === METRIC_MATURE_COUNT) {
+      point.matureCount = Math.round(row.value ?? 0);
     } else if (row.metric === METRIC_CAP_DIAMETER_MEAN) {
       point.capDiameterMean = row.value;
     } else if (row.metric === METRIC_SAMPLE_COUNT) {
