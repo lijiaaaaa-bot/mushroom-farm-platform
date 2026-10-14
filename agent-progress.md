@@ -13,7 +13,7 @@
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
-| 2026-10-14 | `make demo-one-ingest` 用 `recognition.demo-one.json` POST 一条识别。识别时间改为当前时刻，幂等键 `demo-one-<毫秒>`。终端打印 id 与 `/recognitions?cameraCode=CAM-DEMO-01`。契约测试断言样例字段；脚本测试在样例缺字段时失败 | `make test` 退出码 0（contracts 10，脚本 node:test 42，API jest 119，web vitest 127）；`make gates` 退出码 0 | 本机无 Docker，未对运行中的 API 点页面。CI 待看 |
+| 2026-10-14 | `make demo-one-ingest` 用 `recognition.demo-one.json` POST 一条识别。识别时间改为当前时刻，幂等键 `demo-one-<毫秒>`。终端打印 id 与 `/recognitions?cameraCode=CAM-DEMO-01`。契约测试断言样例字段；脚本测试在样例缺字段时失败 | `make test` 退出码 0（contracts 10，脚本 node:test 42，API jest 119，web vitest 127）；`make gates` 退出码 0。PR #94 | 本机无 Docker，未对运行中的 API 点页面。CI 待看 |
 | 2026-10-13 | 值班棚详情未闭合告警进入 `/alerts`，查询 `shedCode`、`status`、`alertId`。告警页把棚号和合法状态传给已有列表接口，高亮并滚到该条。不改接口，不改 `/big-screen` | `make test` 退出码 0（contracts 9，脚本 node:test 38，API jest 119，web vitest 127）；`make gates` 退出码 0。PR #93 | 未做登录后浏览器走查。CI 待看 |
 | 2026-10-13 | 值班看板棚卡进入 `/duty-screen/:shedCode`。详情用已有 `devices?type=camera&shedCode=`、`alerts?status=open|acked&shedCode=`、`GET /sheds`。摄像头名称在详情，不在棚卡。返回 `/duty-screen`。不改 `/big-screen`，不加接口 | `make test` 退出码 0（contracts 9，脚本 node:test 38，API jest 119，web vitest 124）；`make gates` 退出码 0。PR #92 | 不合并。未做登录后浏览器走查 |
 | 2026-10-13 | PR #92 的 test、gates、ingest-smoke 均为 success | `gh pr checks 92` | 不合并。未做登录后浏览器走查 |
