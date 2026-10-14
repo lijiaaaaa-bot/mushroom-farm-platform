@@ -25,6 +25,7 @@ make web      # http://127.0.0.1:43123
 登记 `CAM-REG-02` 再发一条心跳，设备页和值班看板看到在线：[`docs/DEMO_REGISTER_AND_HEARTBEAT.md`](docs/DEMO_REGISTER_AND_HEARTBEAT.md)（`make demo-register-and-heartbeat`）。  
 心跳停够之后设备变离线，并打开「设备离线」告警：[`docs/DEMO_HEARTBEAT_OFFLINE_ALERT.md`](docs/DEMO_HEARTBEAT_OFFLINE_ALERT.md)（`make demo-heartbeat-offline-alert`）。  
 值班看板一眼看到在线、离线和待确认，点进去对列表：[`docs/DEMO_DUTY_BOARD.md`](docs/DEMO_DUTY_BOARD.md)（`make demo-duty-board`）。  
+设备列表 `/devices` 同一页能看到 `CAM-ON-01` 在线和 `CAM-OFF-01` 离线：[`docs/DEMO_DEVICE_ONLINE.md`](docs/DEMO_DEVICE_ONLINE.md)（`make demo-device-online`）。  
 发一条温度过高告警，在告警列表点进详情：[`docs/DEMO_ONE_ALERT.md`](docs/DEMO_ONE_ALERT.md)（`make demo-one-alert`）。  
 确认或关闭这条待确认告警，刷新后状态仍在：[`docs/DEMO_ACK_CLOSE_ALERT.md`](docs/DEMO_ACK_CLOSE_ALERT.md)（`make demo-ack-one-alert`、`make demo-close-one-alert`）。  
 改二氧化碳阈值后再发一条超限识别，告警列表出现对应告警：[`docs/DEMO_THRESHOLD_ALERT.md`](docs/DEMO_THRESHOLD_ALERT.md)（`make demo-threshold-alert`）。  
