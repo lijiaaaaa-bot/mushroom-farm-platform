@@ -86,6 +86,8 @@
 - 超管打开 `/users` 至少看到两条账号及角色：`make demo-user-mgmt` 用 `admin` / `Admin@123456` 把 `viewer` / `Viewer@123456` 写成查看（与 `make demo-rbac` 同一写入）。列表有 `admin`（超管）和 `viewer`（查看），不含密码。查看该接口 403，侧栏没有「用户」，打开 `/users` 回到总览。页面没有新建或重设密码表单。不发识别，不发心跳，不改告警。步骤见 `docs/DEMO_USER_MGMT.md`。PR #124。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/124
 - 设备列表 `/devices` 同一页能看见在线和离线：`make demo-device-online` 登记 `CAM-ON-01` 并 POST 一次在线心跳，保证 `CAM-OFF-01` 离线（已在线则只 PATCH `onlineStatus`）。不带 `online` 的 `GET /api/v1/devices?pageSize=100` 里这两行分别是 `online` 与 `offline`。登录后打开 `/devices`，状态列一行写「在线」、一行写「离线」。不发识别，不新建告警，不改超时，不改值班看板与已有演示命令。步骤见 `docs/DEMO_DEVICE_ONLINE.md`。PR #125。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/125
 
+- 告警列表可确认再关闭：`make demo-alert-ack` 留下 `CAM-ACK-01`（待确认操作告警，保持待确认）、`CAM-ACK-02`（已确认操作告警，只确认）和 `CAM-ACK-03`（已关闭操作告警，先确认再关闭，确认备注仍是「已确认」）。`/alerts` 状态下拉保持全部。待确认那一行点「确认」变为已确认，再点「关闭」变为已关闭。不发识别，不改 `make demo-one-alert`、`make demo-ack-one-alert`、`make demo-close-one-alert` 与 `make demo-alert-status-filter`。步骤见 `docs/DEMO_ALERT_ACK.md`。PR #126。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/126
+
 ## 进行中
 - 无
 
