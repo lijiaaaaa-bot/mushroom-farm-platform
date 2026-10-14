@@ -432,4 +432,139 @@ describe('harvest correction HTTP', () => {
       harvestableCameras: 0,
     });
   });
+
+  it('filters the daily list by shed and by an inclusive time window', async () => {
+    const day = todayShanghai();
+    const { start } = shanghaiDayRange(day);
+    const early = new Date(start.getTime() + 60 * 1000);
+    const late = new Date(start.getTime() + 3 * 60 * 60 * 1000);
+    const beforeDay = new Date(start.getTime() - 60 * 60 * 1000);
+    records.rows.push(
+      sample({
+        id: 'rec-s01',
+        shedCode: 'S01',
+        cameraCode: 'CAM-HF-S01',
+        matureCount: 5,
+        mushroomCount: 12,
+        recognizedAt: early,
+      }),
+      sample({
+        id: 'rec-s02',
+        shedCode: 'S02',
+        cameraCode: 'CAM-HF-S02',
+        matureCount: 9,
+        mushroomCount: 17,
+        recognizedAt: late,
+      }),
+      sample({
+        id: 'rec-old',
+        shedCode: 'S01',
+        cameraCode: 'CAM-HF-OLD',
+        matureCount: 1,
+        mushroomCount: 2,
+        recognizedAt: beforeDay,
+      }),
+    );
+
+    const wide = await request(app.getHttpServer())
+      .get('/api/v1/harvest/daily')
+      .query({
+        date: day,
+        from: beforeDay.toISOString(),
+        to: late.toISOString(),
+      })
+      .set('x-test-role', 'super_admin');
+
+    expect(wide.status).toBe(200);
+    expect(
+      wide.body.items.map((item: { id: string }) => item.id).sort(),
+    ).toEqual(['rec-old', 'rec-s01', 'rec-s02']);
+    expect(wide.body.summary).toMatchObject({
+      matureCount: 15,
+      mushroomCount: 31,
+      harvestableCameras: 3,
+    });
+    expect(wide.body.from).toBe(beforeDay.toISOString());
+    expect(wide.body.to).toBe(late.toISOString());
+
+    const shed = await request(app.getHttpServer())
+      .get('/api/v1/harvest/daily')
+      .query({
+        from: beforeDay.toISOString(),
+        to: late.toISOString(),
+        shedCode: 'S01',
+      })
+      .set('x-test-role', 'super_admin');
+
+    expect(shed.status).toBe(200);
+    expect(shed.body.shedCode).toBe('S01');
+    expect(
+      shed.body.items
+        .map((item: { cameraCode: string }) => item.cameraCode)
+        .sort(),
+    ).toEqual(['CAM-HF-OLD', 'CAM-HF-S01']);
+    expect(
+      shed.body.items.every(
+        (item: { shedCode: string }) => item.shedCode === 'S01',
+      ),
+    ).toBe(true);
+    expect(shed.body.items.length).toBeLessThan(wide.body.items.length);
+    expect(shed.body.summary.matureCount).toBeLessThan(
+      wide.body.summary.matureCount,
+    );
+
+    const narrow = await request(app.getHttpServer())
+      .get('/api/v1/harvest/daily')
+      .query({
+        from: new Date(start.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+        to: late.toISOString(),
+      })
+      .set('x-test-role', 'super_admin');
+
+    expect(narrow.status).toBe(200);
+    expect(narrow.body.items).toEqual([
+      expect.objectContaining({
+        id: 'rec-s02',
+        shedCode: 'S02',
+        cameraCode: 'CAM-HF-S02',
+        matureCount: 9,
+        mushroomCount: 17,
+      }),
+    ]);
+    expect(narrow.body.items.length).toBeLessThan(wide.body.items.length);
+    expect(narrow.body.summary.matureCount).toBeLessThan(
+      wide.body.summary.matureCount,
+    );
+
+    const dayOnly = await request(app.getHttpServer())
+      .get('/api/v1/harvest/daily')
+      .query({ date: day })
+      .set('x-test-role', 'super_admin');
+
+    expect(dayOnly.status).toBe(200);
+    expect(dayOnly.body.from).toBeNull();
+    expect(
+      dayOnly.body.items.map((item: { id: string }) => item.id).sort(),
+    ).toEqual(['rec-s01', 'rec-s02']);
+
+    const denied = await request(app.getHttpServer())
+      .get('/api/v1/harvest/daily')
+      .query({ shedCode: 'S02' })
+      .set('x-test-role', 'shed_manager');
+    expect(denied.status).toBe(403);
+
+    const reversed = await request(app.getHttpServer())
+      .get('/api/v1/harvest/daily')
+      .query({ from: late.toISOString(), to: early.toISOString() })
+      .set('x-test-role', 'super_admin');
+    expect(reversed.status).toBe(400);
+    expect(reversed.body.message).toBe('时间筛选无效');
+
+    const half = await request(app.getHttpServer())
+      .get('/api/v1/harvest/daily')
+      .query({ from: early.toISOString() })
+      .set('x-test-role', 'super_admin');
+    expect(half.status).toBe(400);
+    expect(half.body.message).toBe('时间筛选无效');
+  });
 });

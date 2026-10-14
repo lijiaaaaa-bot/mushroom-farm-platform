@@ -171,7 +171,7 @@ describe('HarvestView correction', () => {
 
       expect(matureText(wrapper)).toContain('4');
       await wrapper.get('input[aria-label="CAM-S01 成熟数"]').setValue('6');
-      await wrapper.get('button.btn-ghost').trigger('click');
+      await wrapper.get('[data-testid="harvest-list"] button.btn-ghost').trigger('click');
       await flushPromises();
 
       expect(httpPatch).toHaveBeenCalledWith('/harvest/daily/rec-1', {
@@ -194,7 +194,7 @@ describe('HarvestView correction', () => {
     const wrapper = await mountView();
 
     await wrapper.get('input[aria-label="CAM-S01 成熟数"]').setValue('6');
-    await wrapper.get('button.btn-ghost').trigger('click');
+    await wrapper.get('[data-testid="harvest-list"] button.btn-ghost').trigger('click');
     await flushPromises();
 
     expect(wrapper.text()).toContain('请求失败');
@@ -355,6 +355,154 @@ describe('HarvestView correction', () => {
     expect(wrapper.get('[data-testid="harvest-empty"]').text()).toBe('没有符合条件的采摘记录。');
     expect(wrapper.find('[data-testid="harvest-list"]').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('当日无识别记录');
+    wrapper.unmount();
+  });
+
+  it('requests a shed and a time window and shows both rows for 全部', async () => {
+    asUser('viewer');
+    const early = {
+      ...harvestItem,
+      id: 'rec-s01',
+      shedCode: 'S01',
+      cameraCode: 'CAM-HF-S01',
+      matureCount: 5,
+      mushroomCount: 12,
+    };
+    const late = {
+      ...harvestItem,
+      id: 'rec-s02',
+      shedCode: 'S02',
+      cameraCode: 'CAM-HF-S02',
+      matureCount: 9,
+      mushroomCount: 17,
+      recognizedAt: '2026-10-14T04:00:00.000Z',
+    };
+    routeGets([
+      daily({ matureCount: 14, mushroomCount: 29, harvestableCameras: 2 }, [early, late]),
+    ]);
+    const wrapper = await mountView({
+      from: '2026-10-14T00:00:00.000Z',
+      to: '2026-10-14T05:00:00.000Z',
+    });
+
+    expect(httpGet).toHaveBeenCalledWith('/harvest/daily', {
+      params: {
+        from: '2026-10-14T00:00:00.000Z',
+        to: '2026-10-14T05:00:00.000Z',
+      },
+    });
+    const scope = wrapper.get('[data-testid="harvest-filter-scope"]');
+    expect(scope.text()).toContain('棚区 全部');
+    expect(scope.text()).toContain('时间');
+    expect(scope.text()).toContain('共 2 条');
+    expect(wrapper.get('[data-testid="harvest-list"]').findAll('tbody tr')).toHaveLength(2);
+    expect(wrapper.text()).toContain('CAM-HF-S01');
+    expect(wrapper.text()).toContain('S02');
+    expect(wrapper.text()).toContain('CAM-HF-S02');
+    wrapper.unmount();
+  });
+
+  it('requests one shed and keeps that shed on the open link', async () => {
+    asUser('viewer');
+    const early = {
+      ...harvestItem,
+      id: 'rec-s01',
+      shedCode: 'S01',
+      cameraCode: 'CAM-HF-S01',
+      matureCount: 5,
+      mushroomCount: 12,
+    };
+    routeGets([
+      daily({ matureCount: 5, mushroomCount: 12, harvestableCameras: 1 }, [early]),
+    ]);
+    const wrapper = await mountView({
+      shedCode: 'S01',
+      from: '2026-10-14T00:00:00.000Z',
+      to: '2026-10-14T05:00:00.000Z',
+    });
+
+    expect(httpGet).toHaveBeenCalledWith('/harvest/daily', {
+      params: {
+        shedCode: 'S01',
+        from: '2026-10-14T00:00:00.000Z',
+        to: '2026-10-14T05:00:00.000Z',
+      },
+    });
+    const scope = wrapper.get('[data-testid="harvest-filter-scope"]');
+    expect(scope.text()).toContain('棚区 S01');
+    expect(scope.text()).toContain('共 1 条');
+    expect(wrapper.get('[data-testid="harvest-list"]').findAll('tbody tr')).toHaveLength(1);
+    expect(wrapper.text()).toContain('CAM-HF-S01');
+    expect(wrapper.text()).not.toContain('CAM-HF-S02');
+    expect(wrapper.get('[data-testid="harvest-open"]').attributes('href')).toBe(
+      '/harvest/rec-s01?shedCode=S01&from=2026-10-14T00:00:00.000Z&to=2026-10-14T05:00:00.000Z',
+    );
+    wrapper.unmount();
+  });
+
+  it('says there is no matching row when the shed filter is empty', async () => {
+    asUser('viewer');
+    routeGets([daily({ matureCount: 0, mushroomCount: 0, harvestableCameras: 0 }, [])]);
+    const wrapper = await mountView({ date: '2026-09-23', shedCode: 'S09' });
+
+    expect(httpGet).toHaveBeenCalledWith('/harvest/daily', {
+      params: { date: '2026-09-23', shedCode: 'S09' },
+    });
+    expect(wrapper.get('[data-testid="harvest-filter-scope"]').text()).toContain('棚区 S09');
+    expect(wrapper.get('[data-testid="harvest-filter-scope"]').text()).toContain('共 0 条');
+    expect(wrapper.get('[data-testid="harvest-empty"]').text()).toBe('没有符合条件的采摘记录。');
+    expect(wrapper.find('[data-testid="harvest-list"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('drops the previous rows when the time window is incomplete', async () => {
+    asUser('viewer');
+    routeGets([daily()]);
+    const wrapper = await mountView();
+
+    expect(wrapper.find('[data-testid="harvest-list"]').exists()).toBe(true);
+    await wrapper.get('[data-testid="harvest-from"]').setValue('2026-10-14T10:00');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="harvest-time-error"]').text()).toBe('时间筛选无效');
+    expect(wrapper.find('[data-testid="harvest-list"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('没有符合条件的采摘记录');
+    expect(wrapper.text()).not.toContain('当日无识别记录');
+    wrapper.unmount();
+  });
+
+  it('does not request the daily list when the address time window is invalid', async () => {
+    asUser('viewer');
+    routeGets([daily()]);
+    const wrapper = await mountView({
+      from: 'not-a-time',
+      to: '2026-10-14T00:00:00.000Z',
+    });
+
+    expect(wrapper.get('[data-testid="harvest-time-error"]').text()).toBe('时间筛选无效');
+    expect(httpGet.mock.calls.filter((call) => call[0] === '/harvest/daily')).toHaveLength(0);
+    expect(wrapper.find('[data-testid="harvest-list"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('writes the shed into the address when querying', async () => {
+    asUser('viewer');
+    routeGets([
+      daily(),
+      daily({ matureCount: 5, mushroomCount: 12, harvestableCameras: 1 }, [
+        { ...harvestItem, cameraCode: 'CAM-HF-S01' },
+      ]),
+    ]);
+    const wrapper = await mountView({ date: '2026-09-23' });
+    await wrapper.get('[data-testid="harvest-shed"]').setValue('S01');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+
+    expect(httpGet).toHaveBeenCalledWith('/harvest/daily', {
+      params: { date: '2026-09-23', shedCode: 'S01' },
+    });
+    expect(wrapper.get('[data-testid="harvest-filter-scope"]').text()).toContain('棚区 S01');
     wrapper.unmount();
   });
 });

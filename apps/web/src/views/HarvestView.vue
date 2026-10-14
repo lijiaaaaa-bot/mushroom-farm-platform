@@ -88,9 +88,48 @@ function validDay(value: string) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
 
+function invalidBound(value: string) {
+  return value !== '' && Number.isNaN(new Date(value).getTime());
+}
+
+function pad(value: number) {
+  return String(value).padStart(2, '0');
+}
+
+function toLocalInput(value: string) {
+  if (!value || invalidBound(value)) return '';
+  const date = new Date(value);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function timeQuery(fromRaw: string, toRaw: string) {
+  const fromBad = invalidBound(fromRaw);
+  const toBad = invalidBound(toRaw);
+  const half = Boolean(fromRaw) !== Boolean(toRaw);
+  const orderBad =
+    !fromBad &&
+    !toBad &&
+    Boolean(fromRaw) &&
+    Boolean(toRaw) &&
+    new Date(fromRaw).getTime() > new Date(toRaw).getTime();
+  if (fromBad || toBad || half || orderBad) {
+    return { invalid: true, from: '', to: '' };
+  }
+  return {
+    invalid: false,
+    from: fromRaw ? new Date(fromRaw).toISOString() : '',
+    to: toRaw ? new Date(toRaw).toISOString() : '',
+  };
+}
+
+const initialTime = timeQuery(queryValue('from'), queryValue('to'));
 const date = ref(validDay(queryValue('date')) ? queryValue('date') : todayShanghai());
 const cameraDraft = ref(queryValue('cameraCode'));
+const shedDraft = ref(queryValue('shedCode'));
+const fromDraft = ref(initialTime.invalid ? queryValue('from') : toLocalInput(queryValue('from')));
+const toDraft = ref(initialTime.invalid ? queryValue('to') : toLocalInput(queryValue('to')));
 const dateError = ref('');
+const timeError = ref(initialTime.invalid ? '时间筛选无效' : '');
 const data = ref<Daily | null>(null);
 const error = ref('');
 const loading = ref(false);
@@ -104,23 +143,40 @@ const tasks = ref<TaskList | null>(null);
 const taskError = ref('');
 const canCorrect = computed(() => canCorrectHarvest(currentUser.value?.role));
 const cameraFilter = computed(() => queryValue('cameraCode'));
+const shedFilter = computed(() => queryValue('shedCode'));
+const appliedTime = computed(() => timeQuery(queryValue('from'), queryValue('to')));
+const fromFilter = computed(() => (appliedTime.value.invalid ? '' : appliedTime.value.from));
+const toFilter = computed(() => (appliedTime.value.invalid ? '' : appliedTime.value.to));
+const timeWindow = computed(() => Boolean(fromFilter.value && toFilter.value));
+const listFiltered = computed(() => Boolean(cameraFilter.value || shedFilter.value || timeWindow.value));
 
 function detailTo(item: { id: string }) {
   const query: Record<string, string> = {};
-  if (validDay(date.value)) query.date = date.value;
+  const day = queryValue('date');
+  if (validDay(day)) query.date = day;
   if (cameraFilter.value) query.cameraCode = cameraFilter.value;
+  if (shedFilter.value) query.shedCode = shedFilter.value;
+  if (fromFilter.value) query.from = fromFilter.value;
+  if (toFilter.value) query.to = toFilter.value;
   return { path: `/harvest/${item.id}`, query };
 }
 
 function syncDrafts() {
   const nextDate = queryValue('date');
   dateError.value = '';
-  if (nextDate && !validDay(nextDate)) {
-    dateError.value = '日期无效';
-    return;
-  }
-  if (nextDate) date.value = nextDate;
+  if (nextDate && !validDay(nextDate)) dateError.value = '日期无效';
+  else if (nextDate) date.value = nextDate;
   cameraDraft.value = queryValue('cameraCode');
+  shedDraft.value = queryValue('shedCode');
+  const parsed = timeQuery(queryValue('from'), queryValue('to'));
+  timeError.value = parsed.invalid ? '时间筛选无效' : '';
+  if (parsed.invalid) {
+    fromDraft.value = queryValue('from');
+    toDraft.value = queryValue('to');
+  } else {
+    fromDraft.value = toLocalInput(queryValue('from'));
+    toDraft.value = toLocalInput(queryValue('to'));
+  }
 }
 
 const STATUS_LABEL: Record<string, string> = {
@@ -232,10 +288,52 @@ async function applyFilters() {
     tasks.value = null;
     return;
   }
+  dateError.value = '';
+  const parsed = timeQuery(fromDraft.value.trim(), toDraft.value.trim());
+  if (parsed.invalid) {
+    timeError.value = '时间筛选无效';
+    data.value = null;
+    return;
+  }
+  timeError.value = '';
   const query: Record<string, string> = { date: date.value };
   const camera = cameraDraft.value.trim();
   if (camera) query.cameraCode = camera;
-  const same = queryValue('date') === query.date && queryValue('cameraCode') === (query.cameraCode ?? '');
+  const shed = shedDraft.value.trim();
+  if (shed) query.shedCode = shed;
+  if (parsed.from && parsed.to) {
+    query.from = parsed.from;
+    query.to = parsed.to;
+  }
+  const current = timeQuery(queryValue('from'), queryValue('to'));
+  const same =
+    queryValue('date') === query.date &&
+    queryValue('cameraCode') === (query.cameraCode ?? '') &&
+    queryValue('shedCode') === (query.shedCode ?? '') &&
+    (current.invalid ? '' : current.from) === (query.from ?? '') &&
+    (current.invalid ? '' : current.to) === (query.to ?? '');
+  if (same) {
+    await reloadDay();
+    return;
+  }
+  await router.replace({ path: '/harvest', query });
+}
+
+async function clearShedAndTime() {
+  shedDraft.value = '';
+  fromDraft.value = '';
+  toDraft.value = '';
+  timeError.value = '';
+  const query: Record<string, string> = {};
+  if (validDay(date.value)) query.date = date.value;
+  const camera = cameraDraft.value.trim();
+  if (camera) query.cameraCode = camera;
+  const same =
+    queryValue('date') === (query.date ?? '') &&
+    queryValue('cameraCode') === (query.cameraCode ?? '') &&
+    queryValue('shedCode') === '' &&
+    queryValue('from') === '' &&
+    queryValue('to') === '';
   if (same) {
     await reloadDay();
     return;
@@ -244,7 +342,7 @@ async function applyFilters() {
 }
 
 async function load() {
-  if (dateError.value) {
+  if (dateError.value || timeError.value) {
     data.value = null;
     loading.value = false;
     return;
@@ -252,8 +350,15 @@ async function load() {
   loading.value = true;
   error.value = '';
   try {
-    const params: Record<string, string> = { date: date.value };
+    const params: Record<string, string> = {};
+    if (timeWindow.value) {
+      params.from = fromFilter.value;
+      params.to = toFilter.value;
+    } else {
+      params.date = date.value;
+    }
     if (cameraFilter.value) params.cameraCode = cameraFilter.value;
+    if (shedFilter.value) params.shedCode = shedFilter.value;
     const response = await http.get<{
       date: string;
       summary: Daily['summary'];
@@ -297,12 +402,16 @@ async function saveRow(item: EditableItem) {
 }
 
 watch(
-  () => [route.query.date, route.query.cameraCode],
+  () => [route.query.date, route.query.cameraCode, route.query.shedCode, route.query.from, route.query.to],
   () => {
     syncDrafts();
     if (dateError.value) {
       data.value = null;
       tasks.value = null;
+      return;
+    }
+    if (timeError.value) {
+      data.value = null;
       return;
     }
     void reloadDay();
@@ -420,12 +529,23 @@ onMounted(() => {
       <label class="text-sm">日期
         <input v-model="date" class="field mt-1" type="date" data-testid="harvest-date" />
       </label>
+      <label class="text-sm">棚区
+        <input v-model="shedDraft" class="field mt-1" placeholder="全部" aria-label="棚区" data-testid="harvest-shed" />
+      </label>
       <label class="text-sm">摄像头
         <input v-model="cameraDraft" class="field mt-1" aria-label="摄像头" data-testid="harvest-camera" />
       </label>
+      <label class="text-sm">开始时间
+        <input v-model="fromDraft" class="field mt-1" type="datetime-local" aria-label="开始时间" data-testid="harvest-from" />
+      </label>
+      <label class="text-sm">结束时间
+        <input v-model="toDraft" class="field mt-1" type="datetime-local" aria-label="结束时间" data-testid="harvest-to" />
+      </label>
       <button class="btn-primary" type="submit" data-testid="harvest-apply">查询</button>
+      <button class="btn-ghost" type="button" data-testid="harvest-filter-clear" @click="clearShedAndTime">清除棚区与时间</button>
     </form>
     <p v-if="dateError" class="text-danger" data-testid="harvest-date-error">{{ dateError }}</p>
+    <p v-else-if="timeError" class="text-danger" data-testid="harvest-time-error">{{ timeError }}</p>
     <p v-else-if="loading" class="text-mist">加载中…</p>
     <p v-else-if="error && !data" class="text-danger">{{ error }}</p>
     <template v-else-if="data">
@@ -438,8 +558,12 @@ onMounted(() => {
       </div>
       <div class="panel overflow-x-auto">
         <h2 class="mb-2 text-lg">当日采摘记录</h2>
+        <p class="mb-2 text-sm text-mist" data-testid="harvest-filter-scope">
+          棚区 {{ shedFilter || '全部' }}<template v-if="timeWindow"> · 时间 {{ shanghaiStamp(fromFilter) }} 至 {{ shanghaiStamp(toFilter) }}</template>
+          · 共 {{ data.items.length }} 条
+        </p>
         <p v-if="!data.items.length" class="text-mist" data-testid="harvest-empty">
-          {{ cameraFilter ? '没有符合条件的采摘记录。' : '当日无识别记录。' }}
+          {{ listFiltered ? '没有符合条件的采摘记录。' : '当日无识别记录。' }}
         </p>
         <table v-else class="data-table" data-testid="harvest-list">
           <thead>
