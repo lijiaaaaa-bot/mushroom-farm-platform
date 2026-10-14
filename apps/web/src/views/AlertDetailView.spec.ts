@@ -222,6 +222,15 @@ describe('AlertDetailView', () => {
     );
     timed.unmount();
 
+    const byDevice = await mountDetail(
+      'alert-1',
+      '?deviceId=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb&status=open',
+    );
+    expect(byDevice.get('[data-testid="alert-back"]').attributes('href')).toBe(
+      '/alerts?status=open&deviceId=bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+    );
+    byDevice.unmount();
+
     const invalid = await mountDetail('alert-1', '?status=nope&cameraCode=%20CAM-FILTER-02%20');
     expect(invalid.get('[data-testid="alert-back"]').attributes('href')).toBe(
       '/alerts?cameraCode=CAM-FILTER-02',

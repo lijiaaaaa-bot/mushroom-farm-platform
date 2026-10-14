@@ -81,6 +81,7 @@ const listReturn = computed(() => {
   const level = allowedQuery('level', alertLevelSchema.options);
   const shed = plainQuery('shedCode');
   const camera = plainQuery('cameraCode');
+  const deviceId = plainQuery('deviceId');
   const keyword = plainQuery('q');
   const from = instantQuery('from');
   const to = instantQuery('to');
@@ -88,6 +89,7 @@ const listReturn = computed(() => {
   if (level) query.level = level;
   if (shed) query.shedCode = shed;
   if (camera) query.cameraCode = camera;
+  if (deviceId) query.deviceId = deviceId;
   if (keyword) query.q = keyword;
   if (from) query.from = from;
   if (to) query.to = to;

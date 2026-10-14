@@ -16,6 +16,8 @@ export interface ListQuery {
   pageSize?: string;
   shedCode?: string;
   cameraCode?: string;
+  /** 设备主键。列表按该设备的编号匹配告警的摄像头或传感器。 */
+  deviceId?: string;
   sensorCode?: string;
   /** 与 sensorCode 相同，按环境读数上的设备编号精确匹配。 */
   deviceCode?: string;

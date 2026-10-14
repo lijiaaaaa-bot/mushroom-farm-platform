@@ -21,6 +21,7 @@ import {
 import { AlertRule } from '../entities/alert-rule.entity';
 import { AlertRead } from '../entities/alert-read.entity';
 import { Alert } from '../entities/alert.entity';
+import { Device } from '../entities/device.entity';
 import { MinioStorageService } from '../storage';
 import {
   deliverSevereAlert,
@@ -37,12 +38,19 @@ export class AlertsService {
     @Optional()
     @Inject(MinioStorageService)
     private readonly storage?: MinioStorageService,
+    @Optional()
+    @InjectRepository(Device)
+    private readonly devices?: Repository<Device>,
   ) {}
 
   async list(user: AuthUser, query: ListQuery) {
     const scope = ShedScope.fromUser(user);
     if (query.shedCode) scope.assert(query.shedCode);
     const page = parsePage(query);
+    const deviceCode = await this.deviceCodeFor(scope, query.deviceId);
+    if (deviceCode === '') {
+      return { items: [], total: 0, page: page.page, pageSize: page.pageSize };
+    }
     const qb = this.alerts
       .createQueryBuilder('a')
       .orderBy('a.createdAt', 'DESC');
@@ -54,6 +62,12 @@ export class AlertsService {
     if (query.level) qb.andWhere('a.level = :level', { level: query.level });
     const cameraCode = query.cameraCode?.trim();
     if (cameraCode) qb.andWhere('a.cameraCode = :cameraCode', { cameraCode });
+    if (deviceCode) {
+      qb.andWhere(
+        '(a.cameraCode = :deviceCode OR a.sensorCode = :deviceCode)',
+        { deviceCode },
+      );
+    }
     const titleKeyword = query.q?.trim();
     if (titleKeyword) {
       qb.andWhere('POSITION(LOWER(:titleKeyword) IN LOWER(a.title)) > 0', {
@@ -358,6 +372,26 @@ export class AlertsService {
     if (!alert) throw new NotFoundException('告警不存在');
     ShedScope.fromUser(user).assert(alert.shedCode);
     return alert;
+  }
+
+  private async deviceCodeFor(
+    scope: ShedScope,
+    deviceId?: string,
+  ): Promise<string | null> {
+    const id = deviceId?.trim();
+    if (!id) return null;
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        id,
+      )
+    ) {
+      throw new BadRequestException('设备筛选无效');
+    }
+    const device = this.devices
+      ? await this.devices.findOne({ where: { id } })
+      : null;
+    if (!device || !scope.allows(device.shedCode)) return '';
+    return device.code;
   }
 
   private applyScope(

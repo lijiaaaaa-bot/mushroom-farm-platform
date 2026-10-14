@@ -32,7 +32,15 @@ interface AlertRow {
   snapshotObjectKey?: string | null;
 }
 
+interface DeviceOption {
+  id: string;
+  code: string;
+  name: string;
+}
+
 const rows = ref<AlertRow[]>([]);
+const devices = ref<DeviceOption[]>([]);
+let devicesRequested = false;
 const loading = ref(true);
 const error = ref('');
 const note = ref('已确认');
@@ -61,6 +69,7 @@ function allowedQuery(key: string, options: readonly string[]): string {
 
 const statusFilter = ref(allowedQuery('status', statuses));
 const levelFilter = ref(allowedQuery('level', levels));
+const deviceFilter = ref(plainQuery('deviceId').trim());
 const shedCodeFilter = ref(plainQuery('shedCode'));
 const cameraDraft = ref(plainQuery('cameraCode').trim());
 const cameraCodeFilter = ref(cameraDraft.value);
@@ -107,7 +116,7 @@ const fromFilter = ref(initialTime.from);
 const toFilter = ref(initialTime.to);
 const timeInvalid = ref(initialTime.invalid);
 
-const addressKeys = ['status', 'level', 'shedCode', 'cameraCode', 'q', 'from', 'to', 'alertId'] as const;
+const addressKeys = ['status', 'level', 'shedCode', 'cameraCode', 'deviceId', 'q', 'from', 'to', 'alertId'] as const;
 
 function listParams() {
   return {
@@ -116,6 +125,7 @@ function listParams() {
     level: levelFilter.value || undefined,
     ...(shedCodeFilter.value ? { shedCode: shedCodeFilter.value } : {}),
     ...(cameraCodeFilter.value ? { cameraCode: cameraCodeFilter.value } : {}),
+    ...(deviceFilter.value ? { deviceId: deviceFilter.value } : {}),
     ...(titleFilter.value ? { q: titleFilter.value } : {}),
     ...(fromFilter.value ? { from: fromFilter.value } : {}),
     ...(toFilter.value ? { to: toFilter.value } : {}),
@@ -129,6 +139,7 @@ function addressQuery(cameraCode: string, titleKeyword: string) {
   if (shedCodeFilter.value) query.shedCode = shedCodeFilter.value;
   if (highlightId.value) query.alertId = highlightId.value;
   if (cameraCode) query.cameraCode = cameraCode;
+  if (deviceFilter.value) query.deviceId = deviceFilter.value;
   if (titleKeyword) query.q = titleKeyword;
   if (fromFilter.value) query.from = fromFilter.value;
   if (toFilter.value) query.to = toFilter.value;
@@ -140,7 +151,7 @@ function currentAddressQuery() {
   for (const key of addressKeys) {
     const value = route.query[key];
     if (typeof value !== 'string' || !value) continue;
-    query[key] = key === 'cameraCode' || key === 'q' ? value.trim() : value;
+    query[key] = key === 'cameraCode' || key === 'q' || key === 'deviceId' ? value.trim() : value;
   }
   return query;
 }
@@ -155,6 +166,7 @@ function detailTo(row: AlertRow) {
   if (levelFilter.value) query.level = levelFilter.value;
   if (shedCodeFilter.value) query.shedCode = shedCodeFilter.value;
   if (cameraCodeFilter.value) query.cameraCode = cameraCodeFilter.value;
+  if (deviceFilter.value) query.deviceId = deviceFilter.value;
   if (titleFilter.value) query.q = titleFilter.value;
   if (fromFilter.value) query.from = fromFilter.value;
   if (toFilter.value) query.to = toFilter.value;
@@ -253,10 +265,42 @@ async function scrollHighlight() {
   }
 }
 
+function deviceScopeLabel() {
+  const found = devices.value.find((row) => row.id === deviceFilter.value);
+  if (!found) return deviceFilter.value;
+  return `${found.name}（${found.code}）`;
+}
+
+async function loadDevices() {
+  if (devicesRequested) return;
+  devicesRequested = true;
+  const collected: DeviceOption[] = [];
+  try {
+    for (let page = 1; page <= 5; page += 1) {
+      const response = await http.get<{ items?: DeviceOption[]; total?: number }>('/devices', {
+        params: { pageSize: 100, page },
+      });
+      const batch = Array.isArray(response.data?.items) ? response.data.items : [];
+      const total = Number(response.data?.total);
+      for (const row of batch) {
+        if (row?.id && row?.code) collected.push({ id: row.id, code: row.code, name: row.name || row.code });
+      }
+      const seen = page * 100;
+      if (batch.length < 100 || (Number.isFinite(total) && seen >= total)) break;
+    }
+  } catch {
+    devices.value = collected;
+    return;
+  }
+  devices.value = collected;
+}
+
 function applyRouteQuery() {
   statusFilter.value = allowedQuery('status', statuses);
   levelFilter.value = allowedQuery('level', levels);
   shedCodeFilter.value = plainQuery('shedCode');
+  const deviceId = plainQuery('deviceId').trim();
+  if (deviceId !== deviceFilter.value) deviceFilter.value = deviceId;
   const camera = plainQuery('cameraCode').trim();
   if (camera !== cameraCodeFilter.value) {
     cameraDraft.value = camera;
@@ -334,11 +378,11 @@ async function act(id: string, action: 'ack' | 'close' | 'claim' | 'false-positi
   }
 }
 
-watch([statusFilter, levelFilter, shedCodeFilter, cameraCodeFilter, titleFilter, fromFilter, toFilter], () => {
+watch([statusFilter, levelFilter, shedCodeFilter, cameraCodeFilter, titleFilter, fromFilter, toFilter, deviceFilter], () => {
   void load();
 });
 
-watch([statusFilter, levelFilter], () => {
+watch([statusFilter, levelFilter, deviceFilter], () => {
   const next = addressQuery(cameraCodeFilter.value, titleFilter.value);
   if (sameAddress(next, currentAddressQuery())) return;
   void router.replace({ path: route.path, query: next });
@@ -346,13 +390,18 @@ watch([statusFilter, levelFilter], () => {
 
 watch(() => route.fullPath, () => {
   applyRouteQuery();
+  if (!timeInvalid.value) void loadDevices();
 });
 
 watch(highlightId, () => {
   void scrollHighlight();
 });
 
-onMounted(load);
+onMounted(async () => {
+  if (timeInvalid.value) return;
+  await load();
+  await loadDevices();
+});
 </script>
 
 <template>
@@ -392,6 +441,12 @@ onMounted(load);
           <select v-model="levelFilter" class="field mt-1" data-testid="alert-level-filter">
             <option value="">全部</option>
             <option v-for="level in levels" :key="level" :value="level">{{ ALERT_LEVEL_LABEL[level] }}</option>
+          </select>
+        </label>
+        <label class="text-sm">设备
+          <select v-model="deviceFilter" class="field mt-1" data-testid="alert-device-filter">
+            <option value="">全部</option>
+            <option v-for="device in devices" :key="device.id" :value="device.id">{{ device.name }}（{{ device.code }}）</option>
           </select>
         </label>
         <label class="text-sm">摄像头
@@ -438,6 +493,7 @@ onMounted(load);
         <button class="btn-ghost self-end" type="button" data-testid="alert-time-clear" @click="clearTime">清除时间</button>
         <p v-if="shedCodeFilter" class="self-end text-sm text-mist" data-testid="alert-shed-scope">棚 {{ shedCodeFilter }}</p>
         <p v-if="cameraCodeFilter" class="self-end text-sm text-mist" data-testid="alert-camera-scope">摄像头 {{ cameraCodeFilter }}</p>
+        <p v-if="deviceFilter" class="self-end text-sm text-mist" data-testid="alert-device-scope">设备 {{ deviceScopeLabel() }}</p>
         <p v-if="titleFilter" class="self-end text-sm text-mist" data-testid="alert-title-scope">标题 {{ titleFilter }}</p>
         <p v-if="timeActive() && !timeInvalid" class="self-end text-sm text-mist" data-testid="alert-time-scope">时间 {{ timeScopeLabel() }}</p>
       </div>
