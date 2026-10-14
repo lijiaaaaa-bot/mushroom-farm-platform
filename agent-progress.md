@@ -3,6 +3,7 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
+- 2026-10-14：新增一台镜头后，设备列表和镜头详情都能看到。`make demo-camera-create` 登记 `CAM-NEW-01`（棚区 S01，名称新增镜头，备注新增可演示）。已存在则不改档案。再读 `GET /api/v1/devices?pageSize=100` 与 `GET /api/v1/devices/:id`，字段一致。`/devices` 登记成功后列出这一行，并给出详情链接。不发识别，不发心跳，不新建告警，不改 `CAM-ALERT-01`、`CAM-REG-02` 与已有演示命令。步骤 `docs/DEMO_CAMERA_CREATE.md`。分支 `cursor/camera-create-demo-4ec6`。
 - 2026-10-14：镜头详情可从设备列表点进。`make demo-camera-detail` 保证 `CAM-ALERT-01` 后读 `GET /api/v1/devices/:id`，字段与列表这一行一致，并在 `GET /api/v1/alerts?cameraCode=CAM-ALERT-01` 里看到「镜头详情告警」。已有档案和已有同标题告警不改。不发识别，不发心跳。步骤 `docs/DEMO_CAMERA_DETAIL.md`。分支 `cursor/camera-detail-demo-8ba1`。
 - 2026-10-14：设备列表显示镜头码。`make demo-camera-list` 保证 `CAM-ALERT-01` 在设备页同一份 `GET /api/v1/devices?pageSize=100`。已存在则不改档案。`/devices` 摄像头行列出镜头码、编号、名称、类型、棚区、状态，并链到告警筛选和识别记录。传感器与 AI 盒的镜头码是「—」。不发识别，不发心跳，不改 `CAM-REG-02` 与已有演示命令。步骤 `docs/DEMO_CAMERA_LIST.md`。分支 `cursor/demo-camera-list-2cd3`。
 - 2026-10-14：环境温度阈值可改，并决定遥测是否告警。`make demo-alert-rule-config` 维护规则「演示环境温度过高」（一般，棚区 S03）。温度 26℃ 在阈值 30 时不告警，改成 24 后告警，改回 30 后不再告警，最后写回 24 并留下待确认告警。当前值 26，阈值 24，传感器 `SENSOR-RULE-01`。种子规则「温度过高」仍是 28。不改已有演示命令。步骤 `docs/DEMO_ALERT_RULE_CONFIG.md`。分支 `cursor/alert-rule-config-demo-efe4`。
@@ -31,6 +32,7 @@
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
+| 2026-10-14 | `make demo-camera-create`：`POST /api/v1/devices` 新增 `CAM-NEW-01`（棚区 S01，名称新增镜头，备注新增可演示）。409 时不改档案。再读 `GET /api/v1/devices?pageSize=100` 与 `GET /api/v1/devices/:id`，字段一致。`/devices` 登记后列表有这一行，并可打开详情。不发识别，不发心跳，不新建告警，不改已有演示命令 | 待本轮 `make test` 与 `make gates` | 不合并 |
 | 2026-10-14 | `make demo-camera-detail`：设备列表镜头码进入 `/devices/:id`。详情读 `GET /api/v1/devices/:id`（编号、名称、棚区、状态、备注、心跳）。相关告警读 `GET /api/v1/alerts?cameraCode=`。没有「镜头详情告警」时 POST 一条一般、待确认告警。不发识别，不发心跳，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 132，API jest 148，web vitest 172）；`make gates` 退出码 0 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。不合并 |
 | 2026-10-14 | `make demo-camera-list`：`POST /api/v1/devices` 保证镜头码 `CAM-ALERT-01`（棚区 S01）。409 时不改档案。再读 `GET /api/v1/devices?pageSize=100`。`/devices` 摄像头显示镜头码，并链到 `/alerts?cameraCode=` 与 `/recognitions?cameraCode=`。不发识别，不发心跳，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 125，API jest 147，web vitest 167）；`make gates` 退出码 0。PR #111 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。不合并 |
 | 2026-10-14 | `make demo-alert-rule-config`：规则「演示环境温度过高」限定棚区 S03、级别一般。温度 26℃ 在阈值 30 时不告警，改成 24 后告警（当前值 26、阈值 24、传感器 SENSOR-RULE-01），改回 30 后不再告警，最后写回 24 并留下待确认告警。种子规则「温度过高」仍是 28。不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 118，API jest 147，web vitest 167）；`make gates` 退出码 0 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/alerts`。不合并 |

@@ -271,6 +271,15 @@ describe('DevicesView batch import', () => {
       'value',
       '靠门',
     );
+    const created = wrapper.get('[data-testid="camera-created"]');
+    expect(created.text()).toContain('已登记');
+    expect(created.get('[data-testid="camera-created-detail"]').attributes('href')).toBe(
+      '/devices/device-reg',
+    );
+    const row = wrapper.get('tr[data-code="CAM-REG-01"]');
+    expect(row.get('[data-field="detail-link"]').attributes('href')).toBe('/devices/device-reg');
+    expect(row.get('[data-field="detail-entry"]').attributes('href')).toBe('/devices/device-reg');
+    expect(row.get('[data-field="lens-code"]').text()).toBe('CAM-REG-01');
     wrapper.unmount();
   });
 

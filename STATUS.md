@@ -71,6 +71,7 @@
 - 环境遥测超阈自动告警：`make demo-telemetry-threshold-alert` POST 一条传感器 `SENSOR-TELEM-01`、温度 32℃ 的环境读数。种子规则「温度过高」（阈值 28，严重）留下未闭合告警。告警列表标题下有传感器和说明，详情有标题、当前值 32℃、阈值 28℃、状态待确认。湿度 88%、CO₂ 900、基质含水率 70% 不超过其余种子规则。不改 `make demo-one-alert`、`make demo-threshold-alert`、`make demo-telemetry-latest`。步骤见 `docs/DEMO_TELEMETRY_THRESHOLD_ALERT.md`。PR #109。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/109
 - 环境温度阈值可改，并决定遥测是否告警：`make demo-alert-rule-config` 维护规则「演示环境温度过高」（一般，棚区 S03）。温度 26℃ 在阈值 30 时不告警，改成 24 后告警，改回 30 后不再告警，最后写回 24 并留下待确认告警。当前值 26，阈值 24，传感器 `SENSOR-RULE-01`。种子规则「温度过高」仍是 28。不改 `make demo-telemetry-threshold-alert` 与其他已有演示。步骤见 `docs/DEMO_ALERT_RULE_CONFIG.md`。
 - 设备列表显示镜头码：`make demo-camera-list` 保证 `CAM-ALERT-01` 在 `GET /api/v1/devices?pageSize=100` 里。编码已存在则不改档案。`/devices` 摄像头行有镜头码、编号、名称、类型、棚区、状态、备注、最近心跳，并链到 `/alerts?cameraCode=CAM-ALERT-01` 与 `/recognitions?cameraCode=CAM-ALERT-01`。新建时名称「温度告警镜头」、棚区 S01、离线、备注「镜头码对照告警」。不发识别，不发心跳，不改已有演示命令。步骤见 `docs/DEMO_CAMERA_LIST.md`。
+- 新增一台镜头：`make demo-camera-create` 登记 `CAM-NEW-01`（棚区 S01，名称新增镜头，备注新增可演示）。编码已存在则不改档案。`GET /api/v1/devices?pageSize=100` 与 `GET /api/v1/devices/:id` 字段一致。`/devices` 登记后列表有这一行，并可打开详情。不发识别，不发心跳，不新建告警，不改已有演示命令。步骤见 `docs/DEMO_CAMERA_CREATE.md`。
 - 镜头详情：`/devices` 点镜头码进入 `/devices/:id`。`GET /api/v1/devices/:id` 返回编号、名称、类型、棚区、状态、备注、最近心跳。相关告警来自 `GET /api/v1/alerts?cameraCode=`。`make demo-camera-detail` 保证 `CAM-ALERT-01` 并留下或沿用「镜头详情告警」。不发识别，不发心跳，不改已有演示命令。步骤见 `docs/DEMO_CAMERA_DETAIL.md`。PR #112。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/112
 
 ## 进行中

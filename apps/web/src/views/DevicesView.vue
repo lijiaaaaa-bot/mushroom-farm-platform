@@ -47,6 +47,7 @@ const cameraNote = ref('');
 const registering = ref(false);
 const savingId = ref('');
 const formError = ref('');
+const createdCamera = ref<{ id: string; code: string } | null>(null);
 
 async function load() {
   loading.value = true;
@@ -102,14 +103,16 @@ async function submitImport() {
 async function registerCamera() {
   formError.value = '';
   registering.value = true;
+  const code = cameraCode.value.trim();
   try {
-    await http.post('/devices', {
-      code: cameraCode.value.trim(),
+    const response = await http.post<{ id: string }>('/devices', {
+      code,
       name: cameraName.value.trim(),
       type: 'camera',
       shedCode: shedCode.value.trim(),
       note: cameraNote.value.trim() || undefined,
     });
+    createdCamera.value = response.data?.id ? { id: response.data.id, code } : null;
     cameraCode.value = '';
     cameraName.value = '';
     cameraNote.value = '';
@@ -222,7 +225,7 @@ onMounted(load);
     <section class="panel space-y-3">
       <h2 class="text-lg">登记摄像头</h2>
       <p v-if="canRegister" class="text-sm text-mist">
-        编号、棚区、名称必填。备注可空。在线或离线仍由心跳决定，这里不改。
+        编号、棚区、名称必填。备注可空。登记后出现在下方列表，镜头码进入详情。在线或离线仍由心跳决定，这里不改。
       </p>
       <p v-else class="text-sm text-mist">当前角色不能登记摄像头。</p>
       <form
@@ -247,6 +250,14 @@ onMounted(load);
           {{ registering ? '登记中…' : '登记' }}
         </button>
       </form>
+      <p v-if="createdCamera" class="text-sm" data-testid="camera-created">
+        已登记 <span class="font-mono">{{ createdCamera.code }}</span>。下方列表有这一行。
+        <a
+          class="text-accent"
+          :href="detailHref(createdCamera.id)"
+          data-testid="camera-created-detail"
+        >打开详情</a>
+      </p>
       <p v-if="formError" class="text-sm text-danger">{{ formError }}</p>
     </section>
     <section class="panel overflow-x-auto">
