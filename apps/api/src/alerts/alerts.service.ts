@@ -316,6 +316,13 @@ export class AlertsService {
     );
   }
 
+  async getRule(user: AuthUser, id: string) {
+    const rule = await this.rules.findOne({ where: { id } });
+    if (!rule) throw new NotFoundException('规则不存在');
+    if (rule.shedCode) ShedScope.fromUser(user).assert(rule.shedCode);
+    return rule;
+  }
+
   async updateRule(
     user: AuthUser,
     id: string,
@@ -327,9 +334,7 @@ export class AlertsService {
       windowMinutes?: number;
     },
   ) {
-    const rule = await this.rules.findOne({ where: { id } });
-    if (!rule) throw new NotFoundException('规则不存在');
-    if (rule.shedCode) ShedScope.fromUser(user).assert(rule.shedCode);
+    const rule = await this.getRule(user, id);
     if (patch.name !== undefined) rule.name = patch.name;
     if (patch.enabled !== undefined) rule.enabled = patch.enabled;
     if (patch.threshold !== undefined) rule.threshold = Number(patch.threshold);

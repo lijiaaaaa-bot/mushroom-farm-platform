@@ -22,6 +22,7 @@ import LoginView from './views/LoginView.vue';
 import WecomPushView from './views/WecomPushView.vue';
 import RecognitionsView from './views/RecognitionsView.vue';
 import ReportsView from './views/ReportsView.vue';
+import RuleDetailView from './views/RuleDetailView.vue';
 import RulesView from './views/RulesView.vue';
 import ShedsView from './views/ShedsView.vue';
 import UsersView from './views/UsersView.vue';
@@ -66,6 +67,7 @@ const router = createRouter({
         { path: 'alerts/:id', component: AlertDetailView, meta: { title: '告警详情' } },
         { path: 'phase2/wecom', component: WecomPushView, meta: { title: '企微/钉钉' } },
         { path: 'alert-rules', component: RulesView, meta: { title: '阈值规则' } },
+        { path: 'alert-rules/:id', component: RuleDetailView, meta: { title: '阈值规则详情' } },
         { path: 'harvest', component: HarvestView, meta: { title: '采摘' } },
         { path: 'harvest/:id', component: HarvestDetailView, meta: { title: '采摘详情' } },
         { path: 'growth-trends', component: GrowthTrendsView, meta: { title: '生长趋势' } },

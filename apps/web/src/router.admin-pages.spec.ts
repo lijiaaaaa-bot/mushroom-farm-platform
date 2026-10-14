@@ -24,6 +24,7 @@ import GrowthTrendsView from './views/GrowthTrendsView.vue';
 import HarvestDetailView from './views/HarvestDetailView.vue';
 import HarvestView from './views/HarvestView.vue';
 import ReportsView from './views/ReportsView.vue';
+import RuleDetailView from './views/RuleDetailView.vue';
 import RulesView from './views/RulesView.vue';
 
 const pages = [
@@ -119,6 +120,19 @@ describe('admin list routes', () => {
     const matched = router.currentRoute.value.matched.map((record) => record.path);
     expect(matched).toContain('/');
     expect(matched).toContain('/diseases/:id');
+  });
+
+  it('opens a threshold rule detail page inside the admin shell', async () => {
+    localStorage.setItem('token', 'test-token');
+    const route = router.getRoutes().find((record) => record.path === '/alert-rules/:id');
+    expect(route?.components?.default).toBe(RuleDetailView);
+    expect(route?.meta.title).toBe('阈值规则详情');
+    await router.push('/alert-rules/rule-1');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/alert-rules/rule-1');
+    const matched = router.currentRoute.value.matched.map((record) => record.path);
+    expect(matched).toContain('/');
+    expect(matched).toContain('/alert-rules/:id');
   });
 
   it('opens an alert detail page inside the admin shell', async () => {
