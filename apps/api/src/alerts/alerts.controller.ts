@@ -102,6 +102,11 @@ export class AlertsController {
     );
   }
 
+  @Get('alerts/:id')
+  getOne(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.alerts.get(user, id);
+  }
+
   @Post('alerts/read-all')
   @HttpCode(200)
   markAllRead(@CurrentUser() user: AuthUser) {

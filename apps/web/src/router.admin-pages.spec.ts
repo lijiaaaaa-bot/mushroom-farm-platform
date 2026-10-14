@@ -10,6 +10,7 @@ vi.mock('./api', () => ({
 }));
 import AdminLayout from './layouts/AdminLayout.vue';
 import router from './router';
+import AlertDetailView from './views/AlertDetailView.vue';
 import AlertsView from './views/AlertsView.vue';
 import DevicesView from './views/DevicesView.vue';
 import EnvironmentView from './views/EnvironmentView.vue';
@@ -62,6 +63,19 @@ describe('admin list routes', () => {
       const record = router.currentRoute.value.matched.find((item) => item.path === page.path);
       expect(record?.components?.default).toBe(page.component);
     }
+  });
+
+  it('opens an alert detail page inside the admin shell', async () => {
+    localStorage.setItem('token', 'test-token');
+    const route = router.getRoutes().find((record) => record.path === '/alerts/:id');
+    expect(route?.components?.default).toBe(AlertDetailView);
+    expect(route?.meta.title).toBe('告警详情');
+    await router.push('/alerts/alert-1');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/alerts/alert-1');
+    const matched = router.currentRoute.value.matched.map((record) => record.path);
+    expect(matched).toContain('/');
+    expect(matched).toContain('/alerts/:id');
   });
 
   it('links the admin list pages from the admin nav', async () => {

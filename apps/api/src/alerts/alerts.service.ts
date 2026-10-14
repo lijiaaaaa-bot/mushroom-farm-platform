@@ -54,6 +54,10 @@ export class AlertsService {
     return { items, total, page: page.page, pageSize: page.pageSize };
   }
 
+  get(user: AuthUser, id: string) {
+    return this.require(user, id);
+  }
+
   async listUnread(user: AuthUser) {
     const limit = 20;
     const unreadCount = await this.unreadQuery(user).getCount();

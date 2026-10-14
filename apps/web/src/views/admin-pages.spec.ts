@@ -139,6 +139,7 @@ describe('AlertsView', () => {
     });
     expect(wrapper.get('a[href="/phase2/wecom"]').text()).toBe('企微/钉钉推送');
     expect(wrapper.text()).toContain('高温');
+    expect(wrapper.get('[data-testid="alert-detail-link"]').attributes('href')).toBe('/alerts/alert-1');
     expect(wrapper.text()).toContain('严重');
     expect(wrapper.text()).toContain('待确认');
     expect(wrapper.text()).not.toContain('暂无告警');
