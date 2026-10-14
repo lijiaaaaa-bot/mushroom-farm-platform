@@ -44,7 +44,7 @@ async function mountView(query: Record<string, string> = {}) {
   await router.push({ path: '/recognitions', query });
   const wrapper = mount(RecognitionsView, { global: { plugins: [router] } });
   await flushPromises();
-  return wrapper;
+  return { wrapper, router };
 }
 
 describe('RecognitionsView snapshots', () => {
@@ -65,7 +65,7 @@ describe('RecognitionsView snapshots', () => {
       }
       return Promise.resolve({ data: { items: [withSnapshot, withoutSnapshot] } });
     });
-    const wrapper = await mountView();
+    const { wrapper } = await mountView();
     const cards = wrapper.findAll('.result-card');
 
     expect(httpGet).toHaveBeenCalledWith('/ingest/recognitions', { params: { pageSize: '50' } });
@@ -89,7 +89,7 @@ describe('RecognitionsView snapshots', () => {
 
   it('passes a valid time window to the recognition list', async () => {
     httpGet.mockResolvedValue({ data: { items: [] } });
-    const wrapper = await mountView({
+    const { wrapper } = await mountView({
       from: '2026-09-22T16:00:00.000Z',
       to: '2026-09-23T15:59:59.999Z',
       shedCode: 'S01',
@@ -107,24 +107,65 @@ describe('RecognitionsView snapshots', () => {
     });
     expect(wrapper.text()).toContain('筛选');
     expect(wrapper.text()).toContain('S01');
-    expect(wrapper.text()).toContain('该时段没有识别记录。');
+    expect(wrapper.get('[data-testid="recog-history-camera"]').element).toHaveProperty('value', 'CAM-S01-01');
+    expect(wrapper.text()).toContain('没有符合条件的识别记录。');
     expect(wrapper.text()).not.toContain('暂无记录。');
+    expect(wrapper.find('[data-testid="recog-history"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('queries history by the camera and the typed time range', async () => {
+    httpGet.mockResolvedValue({ data: { items: [] } });
+    const { wrapper, router } = await mountView({ shedCode: 'S01' });
+    await wrapper.get('[data-testid="recog-history-camera"]').setValue('CAM-HIST-01');
+    await wrapper.get('[data-testid="recog-history-from"]').setValue('2026-10-14T09:00');
+    await wrapper.get('[data-testid="recog-history-to"]').setValue('2026-10-14T10:00');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+
+    expect(router.currentRoute.value.query.shedCode).toBe('S01');
+    expect(router.currentRoute.value.query.cameraCode).toBe('CAM-HIST-01');
+    expect(router.currentRoute.value.query.from).toBe(new Date('2026-10-14T09:00').toISOString());
+    expect(router.currentRoute.value.query.to).toBe(new Date('2026-10-14T10:00').toISOString());
+    expect(httpGet).toHaveBeenCalledWith('/ingest/recognitions', {
+      params: {
+        pageSize: '50',
+        shedCode: 'S01',
+        cameraCode: 'CAM-HIST-01',
+        from: new Date('2026-10-14T09:00').toISOString(),
+        to: new Date('2026-10-14T10:00').toISOString(),
+      },
+    });
+    wrapper.unmount();
+  });
+
+  it('clears the history filter and loads the recent list again', async () => {
+    httpGet.mockResolvedValue({ data: { items: [] } });
+    const { wrapper, router } = await mountView({ cameraCode: 'CAM-HIST-01', shedCode: 'S01' });
+    await wrapper.get('[data-testid="recog-history-clear"]').trigger('click');
+    await flushPromises();
+
+    expect(router.currentRoute.value.query.cameraCode).toBeUndefined();
+    expect(router.currentRoute.value.query.shedCode).toBeUndefined();
+    const calls = httpGet.mock.calls.filter((call) => call[0] === '/ingest/recognitions');
+    expect(calls[calls.length - 1]?.[1]).toEqual({ params: { pageSize: '50' } });
     wrapper.unmount();
   });
 
   it('rejects an invalid time filter without showing an empty list', async () => {
-    const wrapper = await mountView({ from: 'not-a-time' });
+    const { wrapper } = await mountView({ from: 'not-a-time' });
 
     expect(httpGet).not.toHaveBeenCalled();
     expect(wrapper.text()).toContain('时间筛选无效');
     expect(wrapper.text()).not.toContain('暂无记录。');
-    expect(wrapper.text()).not.toContain('该时段没有识别记录。');
+    expect(wrapper.text()).not.toContain('没有符合条件的识别记录。');
+    expect(wrapper.find('[data-testid="recog-history"]').exists()).toBe(false);
     wrapper.unmount();
   });
 
   it('shows a load error instead of an empty list', async () => {
     httpGet.mockRejectedValue(new Error('down'));
-    const wrapper = await mountView();
+    const { wrapper } = await mountView();
 
     expect(wrapper.text()).toContain('请求失败');
     expect(wrapper.text()).not.toContain('暂无记录。');

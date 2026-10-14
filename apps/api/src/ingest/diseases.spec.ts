@@ -227,6 +227,48 @@ describe('disease list and snapshot access', () => {
     expect(all.body.total).toBe(3);
   });
 
+  it('lists one camera inside an ISO window and keeps the Shanghai-day rows', async () => {
+    const windowed = await request(app.getHttpServer())
+      .get('/api/v1/ingest/recognitions')
+      .query({
+        cameraCode: 'CAM-1',
+        from: '2026-09-23T01:30:00.000Z',
+        to: '2026-09-23T02:30:00.000Z',
+        pageSize: '50',
+      })
+      .set('x-test-role', 'super_admin');
+    const day = await request(app.getHttpServer())
+      .get('/api/v1/ingest/recognitions')
+      .query({
+        cameraCode: ' CAM-1 ',
+        from: '2026-09-22T16:00:00.000Z',
+        to: '2026-09-23T15:59:59.999Z',
+        pageSize: '50',
+      })
+      .set('x-test-role', 'super_admin');
+    const blank = await request(app.getHttpServer())
+      .get('/api/v1/ingest/recognitions')
+      .query({ cameraCode: '   ', pageSize: '50' })
+      .set('x-test-role', 'super_admin');
+
+    expect(windowed.status).toBe(200);
+    expect(windowed.body.items.map((item: { id: string }) => item.id)).toEqual([
+      'd-s01',
+    ]);
+    expect(windowed.body.total).toBe(1);
+    expect(JSON.stringify(windowed.body.items)).not.toContain('CAM-2');
+    expect(day.body.items.map((item: { id: string }) => item.id)).toEqual([
+      'healthy',
+      'd-s01',
+    ]);
+    expect(
+      day.body.items.every(
+        (item: { cameraCode: string }) => item.cameraCode === 'CAM-1',
+      ),
+    ).toBe(true);
+    expect(blank.body.total).toBe(3);
+  });
+
   it('lists diseased rows from GET /diseases for a super admin', async () => {
     const response = await request(app.getHttpServer())
       .get('/api/v1/diseases')
