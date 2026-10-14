@@ -6,6 +6,7 @@
 进度只认：已合并 PR + 已关闭 Issue + 本文件一行。聊天文字不算交付。
 
 ## 已完成
+- 产量预估可查可见：`/harvest` 页顶写出未来 2–3 日成熟数，标签是「估计」。`make demo-yield-forecast` 写入 `CAM-YF-01`（棚区 S01）三天，成熟数 4、8、12。日桶增速外推未来 3 日。不满连续 30 天时 30 日线性只写说明。步骤见 `docs/DEMO_YIELD_FORECAST.md`。不改 `make demo-harvest-list`、`make demo-harvest-filter`、`make demo-harvest-task`、`make demo-fruiting-batch`、`make demo-growth-trend`。不改接入观测。草稿不合并。PR #142。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/142
 - 采摘任务可查可排：`/harvest`「每日采摘任务清单」可生成，并排人员和班次。`make demo-harvest-task` 写入 `CAM-HT-01`（棚区 S01，成熟数 5）排给王早、上午，`CAM-HT-02`（棚区 S01，成熟数 9）排给李午、下午。终端打印日期、生成行数、上午/下午/未排。干净库是生成行数 2，排班后上午 1 条、下午 1 条、未排 0 条。步骤见 `docs/DEMO_HARVEST_TASK.md`。不改 `make demo-harvest-list`、`make demo-harvest-filter`。不改接入观测。草稿不合并。PR #140。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/140
 - 出菇批次可查可见：`/batches` 列出批次和当前阶段。`/batches?batchCode=` 打开阶段和棚级日桶回放。`make demo-fruiting-batch` 写入 `CAM-FB-01`（棚区 S01）三天，蘑菇 11、18、27，成熟 2、6、11，批次 `FB-DEMO-01` 记下出菇、快速生长、成熟。列表当前阶段是成熟。回放至少两天有蘑菇、成熟和菌盖。不从识别自动推进阶段。不改 `make demo-harvest-task`、`make demo-harvest-list`、`make demo-harvest-filter`。不改接入观测。不估计产量。步骤见 `docs/DEMO_FRUITING_BATCH.md`。草稿不合并。PR #141。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/141
 - 阈值规则可新建、可编辑：`/alert-rules` 超管与生产管理员可新建规则，行内改阈值、等级、窗口分钟和启用。保存后列表重新读取并描出这一行，详情打开后是同一组数。`make demo-alert-rule-edit` 保证「演示规则新建」（湿度过低，全场）：改前阈值 40、提示、窗口 180 分钟、启用；改后阈值 55、一般、窗口 90 分钟、停用。种子规则「温度过高」仍是 28。不发识别，不发环境。步骤见 `docs/DEMO_ALERT_RULE_EDIT.md`。草稿不合并。PR #139。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/139
