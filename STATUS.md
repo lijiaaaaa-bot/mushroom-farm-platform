@@ -6,6 +6,7 @@
 进度只认：已合并 PR + 已关闭 Issue + 本文件一行。聊天文字不算交付。
 
 ## 已完成
+- 阈值规则可新建、可编辑：`/alert-rules` 超管与生产管理员可新建规则，行内改阈值、等级、窗口分钟和启用。保存后列表重新读取并描出这一行，详情打开后是同一组数。`make demo-alert-rule-edit` 保证「演示规则新建」（湿度过低，全场）：改前阈值 40、提示、窗口 180 分钟、启用；改后阈值 55、一般、窗口 90 分钟、停用。种子规则「温度过高」仍是 28。不发识别，不发环境。步骤见 `docs/DEMO_ALERT_RULE_EDIT.md`。草稿不合并。PR #139。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/139
 - harness 已抽出为 project-harness-day0（https://github.com/lijiaaaaa-bot/project-harness-day0）
 - Day-1 硬墙 + HTTP 接入 + 告警确认（smoke）
 - 公开 GitHub main；`bid-sample/`、`docs/` 在仓内
