@@ -56,7 +56,7 @@
 - 一条识别样例：`make demo-one-ingest` 读取 `packages/contracts/fixtures/recognition.demo-one.json`，把识别时间改成当前时刻，POST 一次 `POST /api/v1/ingest/recognition`，终端打印 id。登录 `admin` / `Admin@123456` 后打开 `/recognitions?cameraCode=CAM-DEMO-01`。步骤见 `docs/DEMO_ONE_INGEST.md`。PR #94。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/94
 - 样例抓拍写入对象存储：`make up` 构建 `mushroom-object-store:20260916`（`infra/object-store`，GitHub Release `RELEASE.2026-09-16T00-00-00Z` 的 linux 包，校验 sha256），不拉取 `pgsty/silo` 或 `quay.io/minio/minio`。`make demo-one-ingest` 成功时打印抓拍对象键，并且 `GET /api/v1/ingest/recognitions/<id>/snapshot` 读回样例 JPEG。识别列表截图 `docs/evidence/demo-one-ingest/recognitions-cam-demo-01.png`。
 - 设备页可登记一台摄像头（编号、棚区、名称、备注）。保存备注后刷新仍在。`POST/PATCH /api/v1/devices` 的 `note` 可空。在线状态仍由心跳决定。步骤见 `docs/CURRENT_CAPABILITIES.md` 的「登记一台摄像头」。PR #96。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/96
-- 登记 `CAM-REG-02` 再发一条识别：`make demo-register-and-ingest` 先 `POST /api/v1/devices`（已存在则不改档案），再把样例识别的摄像头编号改成 `CAM-REG-02` 并 POST 一次。样例文件里的 `CAM-DEMO-01` 不改。登录后打开 `/recognitions?cameraCode=CAM-REG-02`。步骤见 `docs/DEMO_REGISTER_AND_INGEST.md`。
+- 登记 `CAM-REG-02` 再发一条识别：`make demo-register-and-ingest` 先 `POST /api/v1/devices`（已存在则不改档案），再把样例识别的摄像头编号改成 `CAM-REG-02` 并 POST 一次。样例文件里的 `CAM-DEMO-01` 不改。登录后打开 `/recognitions?cameraCode=CAM-REG-02`。步骤见 `docs/DEMO_REGISTER_AND_INGEST.md`。PR #97。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/97
 
 ## 进行中
 - 无
