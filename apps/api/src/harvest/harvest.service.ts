@@ -97,9 +97,11 @@ export class HarvestService {
     }
   }
 
-  async daily(user: AuthUser, date?: string) {
+  async daily(user: AuthUser, date?: string, cameraCode?: string) {
     const day = date || todayShanghai();
-    const items = await this.latestPerCamera(user, day);
+    const camera = cameraCode?.trim() || '';
+    let items = await this.latestPerCamera(user, day);
+    if (camera) items = items.filter((item) => item.cameraCode === camera);
     const summary = {
       date: day,
       cameraCount: items.length,
@@ -108,6 +110,13 @@ export class HarvestService {
       matureCount: items.reduce((sum, item) => sum + item.matureCount, 0),
     };
     return { date: day, summary, items };
+  }
+
+  async getOne(user: AuthUser, id: string): Promise<HarvestItem> {
+    const record = await this.records.findOne({ where: { id } });
+    if (!record) throw new NotFoundException('采摘记录不存在');
+    ShedScope.fromUser(user).assert(record.shedCode);
+    return toHarvestItem(record);
   }
 
   async latestPerCamera(user: AuthUser, date: string): Promise<HarvestItem[]> {

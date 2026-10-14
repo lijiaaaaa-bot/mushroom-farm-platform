@@ -21,6 +21,7 @@ import DiseaseDetailView from './views/DiseaseDetailView.vue';
 import DiseasesView from './views/DiseasesView.vue';
 import BatchesView from './views/BatchesView.vue';
 import GrowthTrendsView from './views/GrowthTrendsView.vue';
+import HarvestDetailView from './views/HarvestDetailView.vue';
 import HarvestView from './views/HarvestView.vue';
 import ReportsView from './views/ReportsView.vue';
 import RulesView from './views/RulesView.vue';
@@ -92,6 +93,19 @@ describe('admin list routes', () => {
     const matched = router.currentRoute.value.matched.map((record) => record.path);
     expect(matched).toContain('/');
     expect(matched).toContain('/environment/:id');
+  });
+
+  it('opens a harvest detail page inside the admin shell', async () => {
+    localStorage.setItem('token', 'test-token');
+    const route = router.getRoutes().find((record) => record.path === '/harvest/:id');
+    expect(route?.components?.default).toBe(HarvestDetailView);
+    expect(route?.meta.title).toBe('采摘详情');
+    await router.push('/harvest/rec-1');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/harvest/rec-1');
+    const matched = router.currentRoute.value.matched.map((record) => record.path);
+    expect(matched).toContain('/');
+    expect(matched).toContain('/harvest/:id');
   });
 
   it('opens a disease detail page inside the admin shell', async () => {

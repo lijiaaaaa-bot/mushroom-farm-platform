@@ -15,6 +15,7 @@ import DevicesView from './views/DevicesView.vue';
 import EnvironmentView from './views/EnvironmentView.vue';
 import EnvironmentReadingView from './views/EnvironmentReadingView.vue';
 import GrowthTrendsView from './views/GrowthTrendsView.vue';
+import HarvestDetailView from './views/HarvestDetailView.vue';
 import HarvestView from './views/HarvestView.vue';
 import IngestObservabilityView from './views/IngestObservabilityView.vue';
 import LoginView from './views/LoginView.vue';
@@ -66,6 +67,7 @@ const router = createRouter({
         { path: 'phase2/wecom', component: WecomPushView, meta: { title: '企微/钉钉' } },
         { path: 'alert-rules', component: RulesView, meta: { title: '阈值规则' } },
         { path: 'harvest', component: HarvestView, meta: { title: '采摘' } },
+        { path: 'harvest/:id', component: HarvestDetailView, meta: { title: '采摘详情' } },
         { path: 'growth-trends', component: GrowthTrendsView, meta: { title: '生长趋势' } },
         { path: 'batches', component: BatchesView, meta: { title: '出菇批次' } },
         { path: 'reports', component: ReportsView, meta: { title: '报表' } },
