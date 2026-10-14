@@ -16,6 +16,7 @@ export interface ListQuery {
   pageSize?: string;
   shedCode?: string;
   cameraCode?: string;
+  sensorCode?: string;
   status?: string;
   level?: string;
   type?: string;
