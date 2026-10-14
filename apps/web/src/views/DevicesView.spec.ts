@@ -174,11 +174,28 @@ describe('DevicesView batch import', () => {
     });
     const wrapper = await mountView();
 
+    expect(wrapper.text()).toContain('镜头码');
     expect(wrapper.text()).toContain('在线');
     expect(wrapper.text()).toContain('离线');
     expect(wrapper.text()).toContain('09:02');
     expect(wrapper.text()).toContain('—');
     expect(wrapper.text()).toContain('最近心跳');
+    const listed = wrapper.findAll('tbody tr');
+    expect(listed[0].get('[data-field="lens-code"]').text()).toBe('CAM-S01');
+    expect(listed[0].get('[data-field="code"]').text()).toBe('CAM-S01');
+    expect(listed[0].get('[data-field="name"]').text()).toBe('东摄像头');
+    expect(listed[0].get('[data-field="type"]').text()).toBe('摄像头');
+    expect(listed[0].get('[data-field="shed"]').text()).toBe('S01');
+    expect(listed[0].get('[data-field="status"]').text()).toBe('在线');
+    expect(listed[0].get('[data-field="alert-link"]').attributes('href')).toBe(
+      '/alerts?cameraCode=CAM-S01',
+    );
+    expect(listed[0].get('[data-field="recognition-link"]').attributes('href')).toBe(
+      '/recognitions?cameraCode=CAM-S01',
+    );
+    expect(listed[1].get('[data-field="lens-code"]').text()).toBe('—');
+    expect(listed[1].get('[data-field="code"]').text()).toBe('BOX-S02');
+    expect(listed[1].find('[data-field="alert-link"]').exists()).toBe(false);
     expect(wrapper.html()).toContain('text-accent');
     expect(wrapper.html()).toContain('bg-canvas');
     wrapper.unmount();

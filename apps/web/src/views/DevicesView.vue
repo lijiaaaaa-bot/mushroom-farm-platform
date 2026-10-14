@@ -154,6 +154,18 @@ function heartbeatText(row: DeviceRow): string {
   }).format(new Date(value));
 }
 
+function lensCode(row: DeviceRow): string {
+  return row.type === 'camera' ? row.code : '—';
+}
+
+function alertHref(code: string): string {
+  return `/alerts?cameraCode=${encodeURIComponent(code)}`;
+}
+
+function recognitionHref(code: string): string {
+  return `/recognitions?cameraCode=${encodeURIComponent(code)}`;
+}
+
 onMounted(load);
 </script>
 
@@ -235,22 +247,26 @@ onMounted(load);
     </section>
     <section class="panel overflow-x-auto">
       <h2 class="mb-3 text-lg">摄像头 / AI 盒 / 传感器</h2>
+      <p class="mb-3 text-sm text-mist">
+        摄像头这一行的镜头码与编号相同。告警列表按这个镜头码筛选，识别记录也按它打开。传感器和 AI 盒的镜头码是「—」。
+      </p>
       <p v-if="loading" class="text-mist">加载中…</p>
       <p v-else-if="error" class="text-danger">{{ error }}</p>
       <p v-else-if="!rows.length" class="text-mist">暂无设备。识别上报会自动建档。</p>
       <table v-else class="data-table">
         <thead>
           <tr>
-            <th>编号</th><th>名称</th><th>类型</th><th>棚区</th><th>状态</th><th>备注</th><th>最近心跳</th>
+            <th>镜头码</th><th>编号</th><th>名称</th><th>类型</th><th>棚区</th><th>状态</th><th>备注</th><th>最近心跳</th><th>相关</th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in rows" :key="row.id">
-            <td class="font-mono">{{ row.code }}</td>
-            <td>{{ row.name }}</td>
-            <td>{{ DEVICE_TYPE_LABEL[row.type] }}</td>
-            <td>{{ row.shedCode }}</td>
-            <td>
+          <tr v-for="row in rows" :key="row.id" :data-code="row.code">
+            <td class="font-mono" data-field="lens-code">{{ lensCode(row) }}</td>
+            <td class="font-mono" data-field="code">{{ row.code }}</td>
+            <td data-field="name">{{ row.name }}</td>
+            <td data-field="type">{{ DEVICE_TYPE_LABEL[row.type] }}</td>
+            <td data-field="shed">{{ row.shedCode }}</td>
+            <td data-field="status">
               <span
                 class="inline-flex rounded-lg bg-canvas px-2 py-0.5"
                 :class="row.onlineStatus === 'online' ? 'text-accent' : 'text-mist'"
@@ -275,7 +291,14 @@ onMounted(load);
               </form>
               <span v-else>{{ row.note || '—' }}</span>
             </td>
-            <td class="font-mono text-xs">{{ heartbeatText(row) }}</td>
+            <td class="font-mono text-xs" data-field="heartbeat">{{ heartbeatText(row) }}</td>
+            <td data-field="correlate">
+              <template v-if="row.type === 'camera'">
+                <a class="text-accent" :href="alertHref(row.code)" data-field="alert-link">告警</a>
+                <a class="ml-2 text-accent" :href="recognitionHref(row.code)" data-field="recognition-link">识别</a>
+              </template>
+              <span v-else>—</span>
+            </td>
           </tr>
         </tbody>
       </table>
