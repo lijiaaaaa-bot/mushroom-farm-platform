@@ -133,12 +133,13 @@ describe('users rbac', () => {
       .set('x-test-role', 'super_admin');
 
     expect(response.status).toBe(200);
-    expect(response.body.map((row: { username: string }) => row.username)).toEqual([
-      'admin',
-      'viewer',
-    ]);
+    expect(
+      response.body.map((row: { username: string }) => row.username),
+    ).toEqual(['admin', 'viewer']);
     expect(JSON.stringify(response.body)).not.toContain('password');
-    expect(JSON.stringify(response.body)).not.toContain(users.rows[0].passwordHash);
+    expect(JSON.stringify(response.body)).not.toContain(
+      users.rows[0].passwordHash,
+    );
   });
 
   it.each(['production_admin', 'shed_manager', 'viewer'] as const)(
@@ -160,7 +161,10 @@ describe('users rbac', () => {
           shedCodes: ['S01'],
         });
       expect(created.status).toBe(403);
-      expect(users.rows.map((row) => row.username)).toEqual(['admin', 'viewer']);
+      expect(users.rows.map((row) => row.username)).toEqual([
+        'admin',
+        'viewer',
+      ]);
     },
   );
 
@@ -202,7 +206,9 @@ describe('users rbac', () => {
     const viewer = users.rows.find((row) => row.username === 'viewer');
     expect(viewer?.enabled).toBe(true);
     expect(viewer?.shedCodes).toEqual(['S01']);
-    expect(await bcrypt.compare('Viewer@123456', viewer!.passwordHash)).toBe(true);
+    expect(await bcrypt.compare('Viewer@123456', viewer!.passwordHash)).toBe(
+      true,
+    );
     expect(users.rows).toHaveLength(2);
     expect(audit.rows.map((row) => row.action)).toEqual(['user.update']);
 
@@ -219,6 +225,9 @@ describe('users rbac', () => {
     expect(created.status).toBe(201);
     expect(created.body.username).toBe('night');
     expect(users.rows).toHaveLength(3);
-    expect(audit.rows.map((row) => row.action)).toEqual(['user.update', 'user.create']);
+    expect(audit.rows.map((row) => row.action)).toEqual([
+      'user.update',
+      'user.create',
+    ]);
   });
 });
