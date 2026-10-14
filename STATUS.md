@@ -98,6 +98,8 @@
 
 - 报表预览有行并可下载 xlsx：`make demo-report-xlsx` 把样例识别改成棚区 S02、摄像头 `CAM-RPT-01`、蘑菇数量 17、成熟数量 9，只 POST 一次。样例文件里的 `CAM-DEMO-01` 不改。上海当天 `kind=growth` 且 `shedCode=S02` 的预览至少一行，没有其他棚；不带棚区时行数不少于这一份。`GET /api/v1/reports/export.xlsx` 返回工作簿，表名「园区生长」，里面有 S02。`/reports?kind=growth` 打开后自己出预览表。点「导出」后页面写「已开始下载 growth.xlsx」。不确认、不关闭告警。步骤见 `docs/DEMO_REPORT_XLSX.md`。PR #132。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/132
 
+- 病害记录可查可见：`/diseases` 按时间、棚区、位置（摄像头编号）和病害等级列出 `diseaseCount>0` 的识别。点「打开」进入 `/diseases/:id`，读出时间、棚区、位置、病害等级、病害数量；有抓拍时显示图片。`GET /api/v1/diseases/:id` 与列表同一条；没有这条或病害数量为 0 是 404，棚外是 403。`make demo-disease-list` 写入 `CAM-DIS-01`（棚区 S01，病害数量 2，病害等级 1）并打印列表、详情和等级 3 的空对照。样例文件不改。不导出报表。步骤见 `docs/DEMO_DISEASE_LIST.md`。
+
 ## 进行中
 - 无
 

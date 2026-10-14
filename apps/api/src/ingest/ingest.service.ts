@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Inject,
   Injectable,
   Logger,
@@ -481,6 +482,10 @@ export class IngestService {
     if (query.to)
       qb.andWhere('r.recognizedAt <= :to', { to: new Date(query.to) });
     if (isDiseasedQuery(query.diseased)) qb.andWhere('r.diseaseCount > 0');
+    const diseaseLevel = diseaseLevelFilter(query.diseaseLevel);
+    if (diseaseLevel !== undefined) {
+      qb.andWhere('r.diseaseLevel = :diseaseLevel', { diseaseLevel });
+    }
     const [items, total] = await qb
       .skip(page.skip)
       .take(page.pageSize)
@@ -548,6 +553,15 @@ export class IngestService {
       qb.andWhere('e.observedAt >= :from', { from: new Date(query.from) });
     if (query.to)
       qb.andWhere('e.observedAt <= :to', { to: new Date(query.to) });
+  }
+
+  async getDisease(user: AuthUser, id: string) {
+    const record = await this.records.findOne({ where: { id } });
+    if (!record || record.diseaseCount <= 0) {
+      throw new NotFoundException('病害记录不存在');
+    }
+    ShedScope.fromUser(user).assert(record.shedCode);
+    return record;
   }
 
   async diseaseEnvironment(
@@ -749,6 +763,16 @@ function shedFromPayload(raw: unknown): string | null {
 
 function isDiseasedQuery(value: string | undefined): boolean {
   return value === '1' || value === 'true';
+}
+
+function diseaseLevelFilter(
+  value: string | number | undefined,
+): number | undefined {
+  if (value === undefined || value === null) return undefined;
+  const text = String(value).trim();
+  if (!text) return undefined;
+  if (!/^[0-3]$/.test(text)) throw new BadRequestException('病害等级无效');
+  return Number(text);
 }
 
 function isHttpUrl(value: string): boolean {

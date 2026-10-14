@@ -1,5 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
+import { createMemoryHistory, createRouter } from 'vue-router';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { shanghaiStamp } from '../disease-level';
 import DiseasesView from './DiseasesView.vue';
 
 const httpGet = vi.hoisted(() => vi.fn());
@@ -31,87 +33,24 @@ const withoutSnapshot = {
   snapshotUrl: null,
 };
 
-const emptyEnvironment = {
-  recognition: {
-    id: 'd-1',
-    shedCode: 'S01',
-    cameraCode: 'CAM-S01-01',
-    recognizedAt: '2026-09-23T01:02:00.000Z',
-    diseaseLevel: 2,
-    diseaseCount: 3,
-  },
-  window: {
-    start: '2026-09-23T00:32:00.000Z',
-    end: '2026-09-23T01:32:00.000Z',
-    beforeMinutes: 30,
-    afterMinutes: 30,
-  },
-  alignment: { shedCode: 'S01', sensorCode: null },
-  readings: [],
-  empty: true,
-  emptyReason: '该时间窗内无环境读数',
-};
-
-const s01Reading = {
-  id: 'env-1',
-  shedCode: 'S01',
-  sensorCode: 'SEN-1',
-  observedAt: '2026-09-23T01:00:00.000Z',
-  temperature: 22.5,
-  humidity: 88,
-  co2: null,
-  substrateMoisture: 70,
-};
-
-const s01OtherSensor = {
-  ...s01Reading,
-  id: 'env-2',
-  sensorCode: 'SEN-2',
-  temperature: 21,
-  humidity: 80,
-  co2: 900,
-  substrateMoisture: 65,
-};
-
-function environmentFor(url: string, sensorCode?: string) {
-  const id = String(url).includes('/d-2/') ? 'd-2' : 'd-1';
-  const filtered = Boolean(sensorCode);
-  const sensor = sensorCode === 'SEN-2' ? 'SEN-2' : 'SEN-1';
-  if (id === 'd-2') {
-    return {
-      ...emptyEnvironment,
-      recognition: {
-        ...emptyEnvironment.recognition,
-        id: 'd-2',
-        shedCode: 'S02',
-        cameraCode: 'CAM-S02-01',
-      },
-      alignment: { shedCode: 'S02', sensorCode: null },
-    };
-  }
-  const readings = filtered
-    ? [sensor === 'SEN-2' ? s01OtherSensor : s01Reading]
-    : [s01Reading, s01OtherSensor];
-  return {
-    ...emptyEnvironment,
-    alignment: { shedCode: 'S01', sensorCode: filtered ? sensor : null },
-    readings,
-    empty: false,
-    emptyReason: null,
-  };
-}
-
-async function mountView() {
-  const wrapper = mount(DiseasesView);
+async function mountView(query: Record<string, string> = {}) {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/diseases', component: DiseasesView },
+      { path: '/diseases/:id', component: { template: '<div />' } },
+    ],
+  });
+  await router.push({ path: '/diseases', query });
+  await router.isReady();
+  const wrapper = mount(DiseasesView, { global: { plugins: [router] } });
   await flushPromises();
-  return wrapper;
+  return { wrapper, router };
 }
 
 describe('DiseasesView', () => {
   beforeEach(() => {
     httpGet.mockReset();
-    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:snapshot');
-    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -120,14 +59,13 @@ describe('DiseasesView', () => {
 
   it('shows error text without the empty copy when the disease list fails', async () => {
     httpGet.mockRejectedValue(new Error('down'));
-    const wrapper = await mountView();
+    const { wrapper } = await mountView();
 
-    expect(httpGet).toHaveBeenCalledWith('/diseases?pageSize=50');
+    expect(httpGet).toHaveBeenCalledWith('/diseases', { params: { pageSize: '50' } });
     expect(wrapper.text()).toContain('请求失败');
     expect(wrapper.text()).not.toContain('暂无病害记录');
-    expect(wrapper.find('table').exists()).toBe(false);
-    expect(wrapper.find('.result-card').exists()).toBe(false);
-    expect(wrapper.find('img').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('没有符合条件的病害记录');
+    expect(wrapper.find('[data-testid="disease-list"]').exists()).toBe(false);
     wrapper.unmount();
   });
 
@@ -143,131 +81,110 @@ describe('DiseasesView', () => {
           },
         });
       }
-      if (String(url).includes('/snapshot')) {
-        return Promise.resolve({ data: new Blob(['jpeg'], { type: 'image/jpeg' }) });
-      }
-      if (String(url).includes('/environment')) {
-        return Promise.resolve({ data: emptyEnvironment });
-      }
       return Promise.resolve({ data: { items: [withSnapshot], total: 1 } });
     });
-    const wrapper = await mountView();
+    const { wrapper } = await mountView();
     expect(httpGet).toHaveBeenCalledWith('/diseases/peaks');
     expect(wrapper.get('[data-testid="disease-peaks"]').text()).toContain('S01');
     expect(wrapper.get('[data-testid="disease-peaks"]').text()).toContain('4');
-    expect(wrapper.text()).toContain('病害 3');
+    expect(wrapper.get('[data-field="count"]').text()).toBe('3');
     wrapper.unmount();
   });
 
   it('shows empty copy when the disease list has no rows', async () => {
     httpGet.mockResolvedValue({ data: { items: [], total: 0 } });
-    const wrapper = await mountView();
+    const { wrapper } = await mountView();
 
-    expect(wrapper.text()).toContain('暂无病害记录。');
-    expect(wrapper.find('table').exists()).toBe(false);
-    expect(wrapper.find('.result-card').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="disease-empty"]').text()).toBe('暂无病害记录。');
+    expect(wrapper.find('[data-testid="disease-list"]').exists()).toBe(false);
     wrapper.unmount();
   });
 
-  it('renders an image caption card for a stored snapshot and plain text when there is none', async () => {
+  it('lists time, shed, location and level, and opens the detail path', async () => {
     httpGet.mockImplementation((url: string) => {
-      if (String(url).includes('/snapshot')) {
-        return Promise.resolve({ data: new Blob(['jpeg'], { type: 'image/jpeg' }) });
-      }
-      if (String(url).includes('/environment')) {
-        return Promise.resolve({ data: emptyEnvironment });
+      if (url === '/diseases/peaks') {
+        return Promise.resolve({ data: { byTime: [], byShed: [], peak: null, grain: 'hour' } });
       }
       return Promise.resolve({ data: { items: [withSnapshot, withoutSnapshot] } });
     });
-    const wrapper = await mountView();
-    const cards = wrapper.findAll('.result-card');
+    const { wrapper } = await mountView();
+    const table = wrapper.get('[data-testid="disease-list"]');
+    const rows = table.findAll('tbody tr');
 
-    expect(wrapper.find('.result-grid').exists()).toBe(true);
-    expect(wrapper.find('table').exists()).toBe(false);
-    expect(wrapper.text()).toContain('S01');
-    expect(wrapper.text()).toContain('CAM-S01-01');
-    expect(wrapper.text()).toContain('病害 3');
-    expect(wrapper.text()).toContain('等级 2');
-    expect(cards[0].text()).toContain('详情');
-    expect(cards[0].get('img').attributes('src')).toBe('blob:snapshot');
-    expect(cards[1].text()).toContain('无抓拍');
-    expect(cards[1].find('img').exists()).toBe(false);
-    expect(cards[1].find('button').exists()).toBe(false);
-    expect(httpGet).toHaveBeenCalledWith('/ingest/recognitions/d-1/snapshot', {
-      responseType: 'blob',
-    });
-
-    await cards[0].get('button').trigger('click');
-    expect(wrapper.findAll('img').length).toBeGreaterThan(1);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].get('[data-field="time"]').text()).toBe(shanghaiStamp(withSnapshot.recognizedAt));
+    expect(rows[0].get('[data-field="shed"]').text()).toBe('S01');
+    expect(rows[0].get('[data-field="location"]').text()).toBe('CAM-S01-01');
+    expect(rows[0].get('[data-field="level"]').text()).toBe('中度（2）');
+    expect(rows[0].get('[data-field="count"]').text()).toBe('3');
+    expect(rows[0].text()).toContain('有图');
+    expect(rows[1].get('[data-field="level"]').text()).toBe('轻度（1）');
+    expect(rows[1].text()).toContain('无图');
+    expect(rows[0].get('[data-testid="disease-open"]').attributes('href')).toBe('/diseases/d-1');
+    expect(rows[1].get('[data-testid="disease-open"]').attributes('href')).toBe('/diseases/d-2');
     wrapper.unmount();
   });
 
-  it('shows an error instead of an image when the snapshot request fails', async () => {
-    httpGet.mockImplementation((url: string) => {
-      if (String(url).includes('/snapshot')) return Promise.reject(new Error('down'));
-      if (String(url).includes('/environment')) {
-        return Promise.resolve({ data: emptyEnvironment });
-      }
-      return Promise.resolve({ data: { items: [withSnapshot] } });
-    });
-    const wrapper = await mountView();
-
-    expect(wrapper.text()).toContain('请求失败');
-    expect(wrapper.find('img').exists()).toBe(false);
-    wrapper.unmount();
-  });
-
-  it('shows same-screen env readings for the selected disease and an empty state without numbers', async () => {
-    httpGet.mockImplementation((url: string, config?: { params?: { sensorCode?: string } }) => {
-      if (String(url).includes('/environment')) {
-        return Promise.resolve({
-          data: environmentFor(String(url), config?.params?.sensorCode),
-        });
-      }
-      return Promise.resolve({ data: { items: [withSnapshot, withoutSnapshot] } });
-    });
-    const wrapper = await mountView();
-    const panel = wrapper.get('[data-testid="env-panel"]');
-
-    expect(httpGet).toHaveBeenCalledWith('/diseases/d-1/environment', { params: {} });
-    expect(panel.text()).toContain('棚 S01');
-    expect(panel.text()).toContain('SEN-1');
-    expect(panel.text()).toContain('22.5');
-    expect(panel.text()).toContain('88');
-    expect(panel.text()).toContain('—');
-    expect(panel.text()).toContain('70');
-    expect(panel.get('[data-testid="env-readings"]').text()).not.toContain('S02');
-
-    await wrapper.findAll('.result-card')[1].trigger('click');
+  it('queries by shed, location, time and disease level', async () => {
+    httpGet.mockResolvedValue({ data: { items: [] } });
+    const { wrapper, router } = await mountView({ shedCode: 'S01' });
+    await wrapper.get('[data-testid="disease-camera"]').setValue('CAM-DIS-01');
+    await wrapper.get('[data-testid="disease-from"]').setValue('2026-10-14T09:00');
+    await wrapper.get('[data-testid="disease-to"]').setValue('2026-10-14T10:00');
+    await wrapper.get('[data-testid="disease-level"]').setValue('1');
+    await wrapper.get('form').trigger('submit');
     await flushPromises();
 
-    expect(httpGet).toHaveBeenCalledWith('/diseases/d-2/environment', { params: {} });
-    expect(wrapper.get('[data-testid="env-empty"]').text()).toBe('该时间窗内无环境读数');
-    expect(wrapper.find('[data-testid="env-readings"]').exists()).toBe(false);
-    expect(wrapper.get('[data-testid="env-panel"]').text()).toContain('棚 S02');
+    expect(router.currentRoute.value.query.shedCode).toBe('S01');
+    expect(router.currentRoute.value.query.cameraCode).toBe('CAM-DIS-01');
+    expect(router.currentRoute.value.query.diseaseLevel).toBe('1');
+    expect(httpGet).toHaveBeenCalledWith('/diseases', {
+      params: {
+        pageSize: '50',
+        shedCode: 'S01',
+        cameraCode: 'CAM-DIS-01',
+        from: new Date('2026-10-14T09:00').toISOString(),
+        to: new Date('2026-10-14T10:00').toISOString(),
+        diseaseLevel: '1',
+      },
+    });
+    expect(wrapper.get('[data-testid="disease-empty"]').text()).toBe('没有符合条件的病害记录。');
+    expect(wrapper.text()).not.toContain('暂无病害记录。');
     wrapper.unmount();
   });
 
-  it('refetches the window when a sensor is chosen', async () => {
-    httpGet.mockImplementation((url: string, config?: { params?: { sensorCode?: string } }) => {
-      if (String(url).includes('/environment')) {
-        return Promise.resolve({
-          data: environmentFor(String(url), config?.params?.sensorCode),
-        });
-      }
-      return Promise.resolve({ data: { items: [withSnapshot] } });
-    });
-    const wrapper = await mountView();
+  it('keeps the detail link on the active filter', async () => {
+    httpGet.mockResolvedValue({ data: { items: [withSnapshot] } });
+    const { wrapper } = await mountView({ cameraCode: 'CAM-S01-01', diseaseLevel: '2' });
 
-    await wrapper.get('select[aria-label="传感器"]').setValue('SEN-1');
+    expect(wrapper.get('[data-testid="disease-open"]').attributes('href')).toBe(
+      '/diseases/d-1?cameraCode=CAM-S01-01&diseaseLevel=2',
+    );
+    wrapper.unmount();
+  });
+
+  it('clears the filter and loads the recent list again', async () => {
+    httpGet.mockResolvedValue({ data: { items: [] } });
+    const { wrapper, router } = await mountView({ cameraCode: 'CAM-DIS-01', diseaseLevel: '3' });
+    await wrapper.get('[data-testid="disease-clear"]').trigger('click');
     await flushPromises();
 
-    expect(httpGet).toHaveBeenCalledWith('/diseases/d-1/environment', {
-      params: { sensorCode: 'SEN-1' },
-    });
-    const readings = wrapper.get('[data-testid="env-readings"]').text();
-    expect(readings).toContain('SEN-1');
-    expect(readings).not.toContain('SEN-2');
+    expect(router.currentRoute.value.query.cameraCode).toBeUndefined();
+    expect(router.currentRoute.value.query.diseaseLevel).toBeUndefined();
+    const calls = httpGet.mock.calls.filter((call) => call[0] === '/diseases');
+    expect(calls[calls.length - 1]?.[1]).toEqual({ params: { pageSize: '50' } });
+    wrapper.unmount();
+  });
+
+  it('rejects an invalid time filter without showing an empty list', async () => {
+    httpGet.mockResolvedValue({ data: { items: [], byTime: [] } });
+    const { wrapper } = await mountView({ from: 'not-a-time' });
+
+    expect(httpGet.mock.calls.some((call) => call[0] === '/diseases')).toBe(false);
+    expect(wrapper.get('[data-testid="disease-filter-error"]').text()).toBe('时间筛选无效');
+    expect(wrapper.text()).not.toContain('暂无病害记录。');
+    expect(wrapper.text()).not.toContain('没有符合条件的病害记录。');
+    expect(wrapper.find('[data-testid="disease-list"]').exists()).toBe(false);
     wrapper.unmount();
   });
 });

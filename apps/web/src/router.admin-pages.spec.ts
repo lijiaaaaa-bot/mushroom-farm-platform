@@ -17,6 +17,7 @@ import DevicesView from './views/DevicesView.vue';
 import EnvironmentView from './views/EnvironmentView.vue';
 import EnvironmentReadingView from './views/EnvironmentReadingView.vue';
 import IngestObservabilityView from './views/IngestObservabilityView.vue';
+import DiseaseDetailView from './views/DiseaseDetailView.vue';
 import DiseasesView from './views/DiseasesView.vue';
 import BatchesView from './views/BatchesView.vue';
 import GrowthTrendsView from './views/GrowthTrendsView.vue';
@@ -91,6 +92,19 @@ describe('admin list routes', () => {
     const matched = router.currentRoute.value.matched.map((record) => record.path);
     expect(matched).toContain('/');
     expect(matched).toContain('/environment/:id');
+  });
+
+  it('opens a disease detail page inside the admin shell', async () => {
+    localStorage.setItem('token', 'test-token');
+    const route = router.getRoutes().find((record) => record.path === '/diseases/:id');
+    expect(route?.components?.default).toBe(DiseaseDetailView);
+    expect(route?.meta.title).toBe('病害详情');
+    await router.push('/diseases/d-1');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/diseases/d-1');
+    const matched = router.currentRoute.value.matched.map((record) => record.path);
+    expect(matched).toContain('/');
+    expect(matched).toContain('/diseases/:id');
   });
 
   it('opens an alert detail page inside the admin shell', async () => {

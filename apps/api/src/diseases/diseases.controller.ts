@@ -53,6 +53,11 @@ export class DiseasesController {
     return this.ingest.list(user, { ...query, diseased: '1' });
   }
 
+  @Get(':id')
+  get(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.ingest.getDisease(user, id);
+  }
+
   @Get(':id/environment')
   environment(
     @CurrentUser() user: AuthUser,
