@@ -144,6 +144,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 `make demo-ack-one-alert` 确认这条待确认的温度过高告警，再读详情和 `status=acked` 的列表。已经是已确认、没有待确认时命令失败，不改这条告警。`make demo-close-one-alert` 关闭这条未闭合告警（待确认或已确认），再读详情和 `status=closed` 的列表。没有未闭合告警时，先按 `make demo-one-alert` 的方式补一条识别再关闭。两个命令都不改样例文件，也不改 `make demo-one-alert`。步骤见 [`DEMO_ACK_CLOSE_ALERT.md`](DEMO_ACK_CLOSE_ALERT.md)。
 
+`make demo-threshold-alert` 用 `PATCH /api/v1/alert-rules/:id` 把规则「演示二氧化碳过高」的阈值从 1500 改成 1000（没有这条规则时先 `POST` 一条，级别一般，棚区 S01）。再把样例识别的摄像头改成 `CAM-THRESH-01`、CO₂ 改成 1200，POST 一次。`GET /api/v1/alerts` 的待确认列表里有标题「CO₂过高告警」，说明里写着 1200 和阈值 1000。种子规则「二氧化碳过高」仍是 2000。样例文件里的 CO₂ 900 不改，已有演示报文不超过 1000。这台摄像头上同规则的未闭合告警会先关闭，其他摄像头的告警不动。步骤见 [`DEMO_THRESHOLD_ALERT.md`](DEMO_THRESHOLD_ALERT.md)。
+
 | 动作 | 接口 | 结果 |
 |------|------|------|
 | 确认 | `POST /api/v1/alerts/:id/ack` | 状态 `acked` |
