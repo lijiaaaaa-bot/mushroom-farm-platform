@@ -495,10 +495,11 @@ export class IngestService {
 
   async listEnvironment(user: AuthUser, query: ListQuery) {
     const page = parsePage(query);
+    const window = environmentWindow(query.from, query.to);
     const qb = this.readings
       .createQueryBuilder('e')
       .orderBy('e.observedAt', 'DESC');
-    this.scopeEnvironmentQuery(qb, user, query);
+    this.scopeEnvironmentQuery(qb, user, query, window);
     const [items, total] = await qb
       .skip(page.skip)
       .take(page.pageSize)
@@ -536,6 +537,7 @@ export class IngestService {
     qb: SelectQueryBuilder<EnvironmentReading>,
     user: AuthUser,
     query: ListQuery,
+    window?: { from: Date | null; to: Date | null },
   ) {
     const scope = ShedScope.fromUser(user);
     if (query.shedCode) scope.assert(query.shedCode);
@@ -549,10 +551,14 @@ export class IngestService {
     if (sensorCode) {
       qb.andWhere('e.sensorCode = :sensorCode', { sensorCode });
     }
-    if (query.from)
-      qb.andWhere('e.observedAt >= :from', { from: new Date(query.from) });
-    if (query.to)
-      qb.andWhere('e.observedAt <= :to', { to: new Date(query.to) });
+    const from = window
+      ? window.from
+      : query.from
+        ? new Date(query.from)
+        : null;
+    const to = window ? window.to : query.to ? new Date(query.to) : null;
+    if (from) qb.andWhere('e.observedAt >= :from', { from });
+    if (to) qb.andWhere('e.observedAt <= :to', { to });
   }
 
   async getDisease(user: AuthUser, id: string) {
@@ -759,6 +765,29 @@ function shedFromPayload(raw: unknown): string | null {
   if (typeof value !== 'string') return null;
   const trimmed = value.trim();
   return trimmed || null;
+}
+
+/** 两端都有时按观测时间比较，含两端。无效时间或开始晚于结束是 400。只传一端仍过滤那一端。 */
+function environmentWindow(
+  fromRaw?: string,
+  toRaw?: string,
+): { from: Date | null; to: Date | null } {
+  const from = readingInstant(fromRaw);
+  const to = readingInstant(toRaw);
+  if (from && to && from.getTime() > to.getTime()) {
+    throw new BadRequestException('时间筛选无效');
+  }
+  return { from, to };
+}
+
+function readingInstant(value?: string): Date | null {
+  const text = value?.trim() ?? '';
+  if (!text) return null;
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) {
+    throw new BadRequestException('时间筛选无效');
+  }
+  return date;
 }
 
 function isDiseasedQuery(value: string | undefined): boolean {

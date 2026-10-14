@@ -657,4 +657,85 @@ describe('environment ingest', () => {
     expect(missing.status).toBe(404);
     expect(emptyScope.body).toMatchObject({ items: [], total: 0 });
   });
+
+  it('includes both ends of from and to and rejects an invalid window', async () => {
+    const from = '2026-10-14T01:00:00.000Z';
+    const to = '2026-10-14T02:00:00.000Z';
+    await post({
+      ...golden.body,
+      idempotencyKey: 'envf-from',
+      sensorCode: 'SENSOR-ENVF-01',
+      observedAt: from,
+      temperature: 15.2,
+      humidity: 82,
+      co2: 910,
+      substrateMoisture: 66,
+    });
+    await post({
+      ...golden.body,
+      idempotencyKey: 'envf-mid',
+      sensorCode: 'SENSOR-ENVF-01',
+      observedAt: '2026-10-14T01:30:00.000Z',
+      temperature: 19.7,
+      humidity: 86,
+      co2: 820,
+      substrateMoisture: 68,
+    });
+    await post({
+      ...golden.body,
+      idempotencyKey: 'envf-to',
+      sensorCode: 'SENSOR-ENVF-01',
+      observedAt: to,
+      temperature: 26.4,
+      humidity: 80,
+      co2: 740,
+      substrateMoisture: 71,
+    });
+    await post({
+      ...golden.body,
+      idempotencyKey: 'envf-before',
+      sensorCode: 'SENSOR-ENVF-01',
+      observedAt: '2026-10-14T00:59:59.000Z',
+      temperature: 14.1,
+      humidity: 82,
+      co2: 900,
+      substrateMoisture: 66,
+    });
+
+    const windowed = await request(app.getHttpServer())
+      .get('/api/v1/ingest/environment-readings')
+      .query({ sensorCode: 'SENSOR-ENVF-01', from, to, pageSize: '50' })
+      .set('x-test-role', 'super_admin');
+    const reversed = await request(app.getHttpServer())
+      .get('/api/v1/ingest/environment-readings')
+      .query({
+        sensorCode: 'SENSOR-ENVF-01',
+        from: to,
+        to: from,
+        pageSize: '50',
+      })
+      .set('x-test-role', 'super_admin');
+    const bogus = await request(app.getHttpServer())
+      .get('/api/v1/ingest/environment-readings')
+      .query({
+        sensorCode: 'SENSOR-ENVF-01',
+        from: 'not-a-date',
+        to,
+        pageSize: '50',
+      })
+      .set('x-test-role', 'super_admin');
+
+    expect(windowed.status).toBe(200);
+    expect(windowed.body.total).toBe(3);
+    expect(
+      windowed.body.items.map(
+        (item: { temperature: number }) => item.temperature,
+      ),
+    ).toEqual([26.4, 19.7, 15.2]);
+    expect(JSON.stringify(windowed.body.items)).not.toContain('14.1');
+    expect(reversed.status).toBe(400);
+    expect(JSON.stringify(reversed.body)).toContain('时间筛选无效');
+    expect(bogus.status).toBe(400);
+    expect(JSON.stringify(bogus.body)).toContain('时间筛选无效');
+  });
 });

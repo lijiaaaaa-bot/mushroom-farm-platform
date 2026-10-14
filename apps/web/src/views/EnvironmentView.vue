@@ -20,6 +20,7 @@ const route = useRoute();
 const router = useRouter();
 const latestRows = ref<Row[]>([]);
 const rows = ref<Row[]>([]);
+const historyTotal = ref(0);
 const loading = ref(true);
 const error = ref('');
 const filterError = ref('');
@@ -59,17 +60,22 @@ const bounds = computed(() => ({
   to: queryValue('to'),
 }));
 
-const filterLabel = computed(() => {
-  const parts: string[] = [];
-  if (bounds.value.sensorCode) parts.push(bounds.value.sensorCode);
-  if (bounds.value.from && !invalidBound(bounds.value.from)) {
-    parts.push(new Date(bounds.value.from).toLocaleString('zh-CN'));
-  }
-  if (bounds.value.to && !invalidBound(bounds.value.to)) {
-    parts.push(new Date(bounds.value.to).toLocaleString('zh-CN'));
-  }
-  return parts.join(' · ');
+function timeRejected(from: string, to: string) {
+  if (invalidBound(from) || invalidBound(to)) return true;
+  return Boolean(from && to && new Date(from).getTime() > new Date(to).getTime());
+}
+
+const sensorLabel = computed(() => bounds.value.sensorCode);
+
+const timeScopeLabel = computed(() => {
+  const { from, to } = bounds.value;
+  if (!from || !to || timeRejected(from, to)) return '';
+  return `${new Date(from).toLocaleString('zh-CN')} 至 ${new Date(to).toLocaleString('zh-CN')}`;
 });
+
+const historyFiltered = computed(
+  () => Boolean(sensorLabel.value || bounds.value.from || bounds.value.to),
+);
 
 function reading(value: number | null | undefined, unit: string) {
   return value === null || value === undefined ? '—' : `${value}${unit}`;
@@ -80,9 +86,10 @@ async function load() {
   error.value = '';
   filterError.value = '';
   const filter = bounds.value;
-  const badTime = invalidBound(filter.from) || invalidBound(filter.to);
+  const badTime = timeRejected(filter.from, filter.to);
   if (badTime) {
     rows.value = [];
+    historyTotal.value = 0;
     filterError.value = '时间筛选无效';
   }
   try {
@@ -93,12 +100,25 @@ async function load() {
       if (filter.sensorCode) params.sensorCode = filter.sensorCode;
       if (filter.from) params.from = new Date(filter.from).toISOString();
       if (filter.to) params.to = new Date(filter.to).toISOString();
-      const response = await http.get<{ items: Row[] }>('/ingest/environment-readings', { params });
+      const response = await http.get<{ items: Row[]; total?: number }>('/ingest/environment-readings', { params });
       rows.value = Array.isArray(response.data.items) ? response.data.items : [];
+      historyTotal.value = Number.isFinite(Number(response.data.total))
+        ? Number(response.data.total)
+        : rows.value.length;
     }
   } catch (cause) {
-    error.value = errorText(cause);
-    if (!badTime) rows.value = [];
+    const text = errorText(cause);
+    if (text === '时间筛选无效') {
+      rows.value = [];
+      historyTotal.value = 0;
+      filterError.value = text;
+    } else {
+      error.value = text;
+      if (!badTime) {
+        rows.value = [];
+        historyTotal.value = 0;
+      }
+    }
   } finally {
     loading.value = false;
   }
@@ -116,7 +136,9 @@ async function applyHistory() {
   const sensorCode = sensorDraft.value.trim();
   const from = fromDraft.value.trim();
   const to = toDraft.value.trim();
-  if ((from && invalidBound(from)) || (to && invalidBound(to))) {
+  if (timeRejected(from, to)) {
+    rows.value = [];
+    historyTotal.value = 0;
     filterError.value = '时间筛选无效';
     return;
   }
@@ -159,26 +181,35 @@ watch(
           data-testid="env-history-sensor"
         />
       </label>
-      <label class="text-sm">开始
+      <label class="text-sm">开始时间
         <input
           v-model="fromDraft"
           class="field mt-1"
           type="datetime-local"
+          aria-label="开始时间"
           data-testid="env-history-from"
         />
       </label>
-      <label class="text-sm">结束
+      <label class="text-sm">结束时间
         <input
           v-model="toDraft"
           class="field mt-1"
           type="datetime-local"
+          aria-label="结束时间"
           data-testid="env-history-to"
         />
       </label>
       <button class="btn-ghost" type="submit" data-testid="env-history-apply">查询</button>
       <button class="btn-ghost" type="button" data-testid="env-history-clear" @click="clearHistory">清除</button>
     </form>
-    <p v-if="filterLabel" class="mb-3 text-sm text-mist" data-testid="env-history-scope">筛选 {{ filterLabel }}</p>
+    <p
+      v-if="historyFiltered && !filterError"
+      class="mb-3 text-sm text-mist"
+      data-testid="env-history-scope"
+    >
+      筛选 {{ sensorLabel || '全部传感器' }}<template v-if="timeScopeLabel"> · 时间 {{ timeScopeLabel }}</template>
+      · 共 <span data-testid="env-history-count">{{ historyTotal }}</span> 条
+    </p>
     <ul v-if="hourPoints.length" class="mb-3 text-sm" data-testid="env-hours">
       <li v-for="point in hourPoints" :key="point.hour" class="font-mono">
         {{ point.hour }} · {{ reading(point.temperature, '℃') }} · {{ reading(point.humidity, '%') }}
@@ -186,8 +217,8 @@ watch(
     </ul>
     <p v-if="loading" class="text-mist">加载中…</p>
     <p v-else-if="error" class="text-danger">{{ error }}</p>
-    <p v-else-if="filterError" class="text-danger">{{ filterError }}</p>
-    <p v-else-if="!filterLabel && !latestRows.length && !rows.length" class="text-mist">暂无环境读数。</p>
+    <p v-else-if="filterError" class="text-danger" data-testid="env-history-time-error">{{ filterError }}</p>
+    <p v-else-if="!historyFiltered && !latestRows.length && !rows.length" class="text-mist">暂无环境读数。</p>
     <template v-else>
       <h3 v-if="latestRows.length" class="mb-2 text-sm">最新值</h3>
       <table v-if="latestRows.length" class="data-table mb-4" data-testid="env-latest">
@@ -222,8 +253,8 @@ watch(
           </tr>
         </tbody>
       </table>
-      <h3 v-if="rows.length || filterLabel" class="mb-2 text-sm">历史读数</h3>
-      <p v-if="filterLabel && !rows.length" class="text-mist">没有符合条件的环境读数。</p>
+      <h3 v-if="rows.length || historyFiltered" class="mb-2 text-sm">历史读数</h3>
+      <p v-if="historyFiltered && !rows.length" class="text-mist" data-testid="env-history-empty">没有符合条件的环境读数。</p>
       <table v-if="rows.length" class="data-table" data-testid="env-history">
         <thead>
           <tr>

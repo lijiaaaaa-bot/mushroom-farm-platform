@@ -7,7 +7,8 @@ const httpGet = vi.hoisted(() => vi.fn());
 
 vi.mock('../api', () => ({
   http: { get: httpGet },
-  errorText: () => '请求失败',
+  errorText: (error: unknown) =>
+    error instanceof Error && error.message === '时间筛选无效' ? error.message : '请求失败',
 }));
 
 const reading = {
@@ -194,6 +195,11 @@ describe('EnvironmentView', () => {
     expect(history.text()).toContain('18.4℃');
     expect(history.text()).toContain('SENSOR-HIST-01');
     expect(wrapper.get('[data-testid="env-history-scope"]').text()).toContain('SENSOR-HIST-01');
+    expect(wrapper.get('[data-testid="env-history-scope"]').text()).toContain('至');
+    expect(wrapper.get('[data-testid="env-history-count"]').text()).toBe('2');
+    expect(wrapper.text()).toContain('开始时间');
+    expect(wrapper.text()).toContain('结束时间');
+    expect(wrapper.text()).toContain('共');
     expect(wrapper.get('[data-testid="env-latest"]').text()).not.toContain('18.4℃');
     wrapper.unmount();
   });
@@ -237,13 +243,79 @@ describe('EnvironmentView', () => {
     httpGet.mockResolvedValue({ data: { items: [reading], total: 1 } });
     const { wrapper } = await mountView({ from: 'not-a-date' });
 
-    expect(wrapper.text()).toContain('时间筛选无效');
+    expect(wrapper.get('[data-testid="env-history-time-error"]').text()).toBe('时间筛选无效');
+    expect(wrapper.text()).not.toContain('没有符合条件的环境读数');
+    expect(wrapper.text()).not.toContain('暂无环境读数');
     expect(wrapper.find('[data-testid="env-history"]').exists()).toBe(false);
     expect(httpGet).toHaveBeenCalledWith('/ingest/environment-readings/latest');
     expect(httpGet).not.toHaveBeenCalledWith(
       '/ingest/environment-readings',
       expect.anything(),
     );
+    wrapper.unmount();
+  });
+
+  it('shows invalid time when the start is after the end', async () => {
+    httpGet.mockResolvedValue({ data: { items: [reading], total: 1 } });
+    const { wrapper } = await mountView({
+      sensorCode: 'SENSOR-ENVF-01',
+      from: '2026-10-14T02:00:00.000Z',
+      to: '2026-10-14T01:00:00.000Z',
+    });
+
+    expect(wrapper.get('[data-testid="env-history-time-error"]').text()).toBe('时间筛选无效');
+    expect(wrapper.text()).not.toContain('没有符合条件的环境读数');
+    expect(wrapper.find('[data-testid="env-history"]').exists()).toBe(false);
+    expect(httpGet).not.toHaveBeenCalledWith(
+      '/ingest/environment-readings',
+      expect.anything(),
+    );
+    wrapper.unmount();
+  });
+
+  it('shows the filtered empty copy and a zero count', async () => {
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/ingest/environment-readings/latest') {
+        return Promise.resolve({ data: { items: [], total: 0 } });
+      }
+      if (url === '/growth-trends/environment') {
+        return Promise.resolve({ data: { points: [] } });
+      }
+      return Promise.resolve({ data: { items: [], total: 0 } });
+    });
+    const { wrapper } = await mountView({
+      sensorCode: 'SENSOR-ENVF-01',
+      from: '2000-01-01T00:00:00.000Z',
+      to: '2000-01-01T00:01:00.000Z',
+    });
+
+    expect(wrapper.get('[data-testid="env-history-empty"]').text()).toBe('没有符合条件的环境读数。');
+    expect(wrapper.get('[data-testid="env-history-count"]').text()).toBe('0');
+    expect(wrapper.get('[data-testid="env-history-scope"]').text()).toContain('时间');
+    expect(wrapper.get('[data-testid="env-history-scope"]').text()).toContain('至');
+    expect(wrapper.text()).not.toContain('暂无环境读数');
+    wrapper.unmount();
+  });
+
+  it('shows the api time error instead of the empty history table', async () => {
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/ingest/environment-readings/latest') {
+        return Promise.resolve({ data: { items: [reading], total: 1 } });
+      }
+      if (url === '/growth-trends/environment') {
+        return Promise.resolve({ data: { points: [] } });
+      }
+      return Promise.reject(new Error('时间筛选无效'));
+    });
+    const { wrapper } = await mountView({
+      from: '2026-10-14T01:00:00.000Z',
+      to: '2026-10-14T02:00:00.000Z',
+    });
+
+    expect(wrapper.get('[data-testid="env-history-time-error"]').text()).toBe('时间筛选无效');
+    expect(wrapper.find('[data-testid="env-history"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('没有符合条件的环境读数');
+    expect(wrapper.text()).not.toContain('暂无环境读数');
     wrapper.unmount();
   });
 });
