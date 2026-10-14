@@ -10,6 +10,7 @@ import {
   Post,
   Query,
   Req,
+  StreamableFile,
 } from '@nestjs/common';
 import {
   ALERT_LEVELS,
@@ -105,6 +106,15 @@ export class AlertsController {
   @Get('alerts/:id')
   getOne(@Param('id') id: string, @CurrentUser() user: AuthUser) {
     return this.alerts.get(user, id);
+  }
+
+  @Get('alerts/:id/snapshot')
+  async snapshot(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    const file = await this.alerts.readSnapshot(user, id);
+    return new StreamableFile(file.body, {
+      type: file.contentType,
+      disposition: 'inline; filename="snapshot"',
+    });
   }
 
   @Post('alerts/read-all')

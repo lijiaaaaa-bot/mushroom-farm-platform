@@ -399,6 +399,8 @@ export class DevicesService {
         claimedBy: null,
         claimedAt: null,
         claimNote: null,
+        recognitionId: null,
+        snapshotObjectKey: null,
       }),
     );
     await deliverSevereAlert(this.push, saved);

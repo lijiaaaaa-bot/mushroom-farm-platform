@@ -28,6 +28,7 @@ interface AlertRow {
   claimNote: string | null;
   closeReason: AlertCloseReason | null;
   closeNote: string | null;
+  snapshotObjectKey?: string | null;
 }
 
 const rows = ref<AlertRow[]>([]);
@@ -332,6 +333,12 @@ onMounted(load);
                 :to="detailTo(row)"
                 data-testid="alert-detail-link"
               >{{ row.title }}</router-link>
+              <router-link
+                v-if="row.snapshotObjectKey"
+                class="ml-2 text-xs text-accent"
+                :to="detailTo(row)"
+                data-testid="alert-snapshot-link"
+              >抓拍</router-link>
               <p class="text-xs text-mist">{{ row.message }}</p>
               <p v-if="row.claimNote" class="text-xs text-mist">认领备注 {{ row.claimNote }}</p>
               <p v-if="row.closeNote" class="text-xs text-mist">关闭备注 {{ row.closeNote }}</p>

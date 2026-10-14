@@ -48,7 +48,7 @@
 
 自动建档：识别入库调用 `touchCamera`，未知棚调用 `ensureShed`，未知摄像头按编号建档（`meta.autoRegistered`）。环境与心跳走 `devices.heartbeat`，同样会建棚，并把未知设备登记为传感器或报文里的设备类型。新棚没有平面坐标。
 
-抓拍：识别报文里的图尽量写入 MinIO，PostgreSQL 只存对象键和 URL。MinIO 不可用时识别记录仍入库，抓拍跳过。读取：`GET /api/v1/ingest/recognitions/:id/snapshot`。
+抓拍：识别报文里的图尽量写入 MinIO，PostgreSQL 只存对象键和 URL。MinIO 不可用时识别记录仍入库，抓拍跳过。读取：`GET /api/v1/ingest/recognitions/:id/snapshot`。识别触发的告警记下同一对象键。告警详情带 `snapshotObjectKey`。读取：`GET /api/v1/alerts/:id/snapshot`。未闭合告警还没有对象键时，下一次同规则、同摄像头的识别若写入了抓拍，把键补到这条告警上，不改状态和标题。
 
 已知限制：本仓不拉流、不识别画面。接入观测是汇总接口，不是客户现场链路监控。
 
@@ -153,6 +153,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 `make demo-alert-title-search` 用 `POST /api/v1/alerts` 留下两条未闭合告警：棚区 S01 的 `CAM-TITLE-01`（标题「东侧标题搜索告警」）和 `CAM-TITLE-02`（标题「西侧过道对照告警」）。同摄像头、同标题已有未闭合告警则沿用，不新建。然后 `GET /api/v1/alerts?q=东侧标题` 只含标题里有这段文字的告警，`GET /api/v1/alerts/:id` 仍能打开匹配的那条；不带 `q`，或 `q` 只有空白时，两条都在。匹配不区分大小写，按标题子串，不看说明。不发识别，不改阈值规则，不确认或关闭其他告警。登录后在 `/alerts` 填写标题关键词并点「搜索」，点标题进详情，点「清除搜索」回到两条都在的列表。步骤见 [`DEMO_ALERT_TITLE_SEARCH.md`](DEMO_ALERT_TITLE_SEARCH.md)。
 
 `make demo-alert-handle-note` 从棚区 S01、摄像头 `CAM-NOTE-01`、标题「处理说明告警」的待确认告警开始。没有则 `POST /api/v1/alerts` 新建一条。然后 `POST /api/v1/alerts/:id/ack`，处理说明是「现场已开窗通风」。连续两次 `GET /api/v1/alerts/:id`，状态都是已确认，`ackNote` 都是这一句。不发识别，不改阈值规则，不确认或关闭其他告警。登录后打开打印的详情地址，能看到处理说明；刷新后仍在。页面上也可以对别的待确认告警填写处理说明后点「关闭」，关闭备注同样留在详情里。步骤见 [`DEMO_ALERT_HANDLE_NOTE.md`](DEMO_ALERT_HANDLE_NOTE.md)。
+
+`make demo-alert-snapshot-minio` 读取 `recognition.demo-one.json`，把本次请求的摄像头改成 `CAM-SNAP-01`、温度改成 30，只 POST 一次。样例 JPEG 写入 MinIO。告警记下对象键。`GET /api/v1/alerts/:id` 带 `snapshotObjectKey`。`GET /api/v1/alerts/:id/snapshot` 读回的字节与样例 JPEG 一致。详情页显示这张图、对象键和「打开抓拍」。列表标题旁在有对象键时显示「抓拍」，链到同一详情。同一条未闭合告警已有对象键则沿用。样例文件里的 `CAM-DEMO-01` 不改。步骤见 [`DEMO_ALERT_SNAPSHOT_MINIO.md`](DEMO_ALERT_SNAPSHOT_MINIO.md)。
 
 | 动作 | 接口 | 结果 |
 |------|------|------|

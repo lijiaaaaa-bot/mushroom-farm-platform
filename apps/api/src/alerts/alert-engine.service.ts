@@ -45,7 +45,10 @@ export class AlertEngineService {
           status: In(['open', 'acked']),
         },
       });
-      if (open) continue;
+      if (open) {
+        await this.attachSnapshot(open, record);
+        continue;
+      }
       const label = ALERT_METRIC_LABEL[rule.metric];
       const saved = await this.alerts.save(
         this.alerts.create({
@@ -75,6 +78,8 @@ export class AlertEngineService {
           claimedBy: null,
           claimedAt: null,
           claimNote: null,
+          recognitionId: record.id,
+          snapshotObjectKey: snapshotKeyOf(record),
         }),
       );
       this.logger.log(
@@ -82,6 +87,14 @@ export class AlertEngineService {
       );
       await deliverSevereAlert(this.push, saved);
     }
+  }
+
+  private async attachSnapshot(alert: Alert, record: RecognitionRecord) {
+    const key = snapshotKeyOf(record);
+    if (!key || alert.snapshotObjectKey) return;
+    alert.snapshotObjectKey = key;
+    alert.recognitionId = record.id;
+    await this.alerts.save(alert);
   }
 
   private async previous(record: RecognitionRecord, windowMinutes: number) {
@@ -162,4 +175,12 @@ export class AlertEngineService {
         : `${threshold}`;
     return `棚区 ${record.shedCode} 摄像头 ${record.cameraCode} ${label} ${shown}，阈值 ${limit}`;
   }
+}
+
+function snapshotKeyOf(record: RecognitionRecord): string | null {
+  const key = record.snapshotObjectKey?.trim();
+  if (!key || key.startsWith('/') || key.includes('\\') || key.includes('..')) {
+    return null;
+  }
+  return key;
 }

@@ -321,6 +321,8 @@ function alert(
     claimedBy: 'admin',
     claimedAt: new Date(createdAt),
     claimNote: null,
+    recognitionId: null,
+    snapshotObjectKey: null,
     createdAt: new Date(createdAt),
   };
 }

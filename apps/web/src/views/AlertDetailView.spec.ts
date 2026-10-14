@@ -64,6 +64,51 @@ describe('AlertDetailView', () => {
     currentUser.value = null;
   });
 
+  it('shows the stored snapshot image and a link to open it', async () => {
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:alert-snapshot');
+    const blob = new Blob([Uint8Array.from([0xff, 0xd8, 0xff, 0xd9])], { type: 'image/jpeg' });
+    const key = 'snapshots/S01/2026-10-14/CAM-SNAP-01/1.jpg';
+    httpGet.mockImplementation((url: string) => {
+      if (String(url).endsWith('/snapshot')) return Promise.resolve({ data: blob });
+      return Promise.resolve({
+        data: { ...alert, snapshotObjectKey: key, recognitionId: 'rec-1' },
+      });
+    });
+    const wrapper = await mountDetail();
+
+    expect(httpGet).toHaveBeenCalledWith('/alerts/alert-1/snapshot', { responseType: 'blob' });
+    expect(wrapper.get('[data-testid="alert-snapshot-image"]').attributes('src')).toBe('blob:alert-snapshot');
+    expect(wrapper.get('[data-testid="alert-snapshot-link"]').attributes('href')).toBe('blob:alert-snapshot');
+    expect(wrapper.get('[data-testid="alert-snapshot-link"]').text()).toBe('打开抓拍');
+    expect(wrapper.get('[data-testid="alert-snapshot-key"]').text()).toBe(key);
+    wrapper.unmount();
+    createObjectURL.mockRestore();
+  });
+
+  it('shows an error instead of an image when the snapshot request fails', async () => {
+    httpGet.mockImplementation((url: string) => {
+      if (String(url).endsWith('/snapshot')) return Promise.reject(new Error('down'));
+      return Promise.resolve({
+        data: { ...alert, snapshotObjectKey: 'snapshots/S01/2026-10-14/CAM-SNAP-01/1.jpg' },
+      });
+    });
+    const wrapper = await mountDetail();
+
+    expect(wrapper.get('[data-testid="alert-snapshot-error"]').text()).toBe('请求失败');
+    expect(wrapper.find('[data-testid="alert-snapshot-image"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="alert-snapshot-link"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('does not request a snapshot when the alert has no object key', async () => {
+    httpGet.mockResolvedValue({ data: alert });
+    const wrapper = await mountDetail();
+
+    expect(httpGet).toHaveBeenCalledTimes(1);
+    expect(wrapper.find('[data-testid="alert-snapshot"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
   it('shows the fields a duty person reads from GET /alerts/:id', async () => {
     httpGet.mockResolvedValue({ data: alert });
     const wrapper = await mountDetail();

@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  Inject,
   Injectable,
   NotFoundException,
   Optional,
@@ -20,6 +21,7 @@ import {
 import { AlertRule } from '../entities/alert-rule.entity';
 import { AlertRead } from '../entities/alert-read.entity';
 import { Alert } from '../entities/alert.entity';
+import { MinioStorageService } from '../storage';
 import {
   deliverSevereAlert,
   SevereAlertPushService,
@@ -32,6 +34,9 @@ export class AlertsService {
     @InjectRepository(AlertRule) private readonly rules: Repository<AlertRule>,
     @InjectRepository(AlertRead) private readonly reads: Repository<AlertRead>,
     @Optional() private readonly push?: SevereAlertPushService,
+    @Optional()
+    @Inject(MinioStorageService)
+    private readonly storage?: MinioStorageService,
   ) {}
 
   async list(user: AuthUser, query: ListQuery) {
@@ -64,6 +69,18 @@ export class AlertsService {
 
   get(user: AuthUser, id: string) {
     return this.require(user, id);
+  }
+
+  async readSnapshot(
+    user: AuthUser,
+    id: string,
+  ): Promise<{ body: Buffer; contentType: string }> {
+    const alert = await this.require(user, id);
+    const key = alert.snapshotObjectKey?.trim();
+    if (!key) throw new NotFoundException('无抓拍');
+    const bytes = this.storage ? await this.storage.readObject(key) : null;
+    if (!bytes?.length) throw new NotFoundException('抓拍不可用');
+    return { body: bytes, contentType: snapshotContentType(key) };
   }
 
   async listUnread(user: AuthUser) {
@@ -135,6 +152,8 @@ export class AlertsService {
         claimedBy: null,
         claimedAt: null,
         claimNote: null,
+        recognitionId: null,
+        snapshotObjectKey: null,
       }),
     );
     await deliverSevereAlert(this.push, saved);
@@ -323,4 +342,12 @@ export class AlertsService {
 function storedNote(note?: string | null): string | null {
   const text = typeof note === 'string' ? note.trim() : '';
   return text || null;
+}
+
+function snapshotContentType(key: string): string {
+  const name = key.toLowerCase();
+  if (name.includes('.png')) return 'image/png';
+  if (name.includes('.webp')) return 'image/webp';
+  if (name.includes('.gif')) return 'image/gif';
+  return 'image/jpeg';
 }

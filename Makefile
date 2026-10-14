@@ -1,4 +1,4 @@
-.PHONY: up api web test smoke smoke-evidence migrate contracts lint gates gates-selftest backup object-tier demo-one-ingest demo-register-and-ingest demo-register-and-heartbeat demo-one-alert demo-ack-one-alert demo-close-one-alert demo-threshold-alert demo-alert-camera-filter demo-alert-status-filter demo-alert-title-search demo-alert-handle-note
+.PHONY: up api web test smoke smoke-evidence migrate contracts lint gates gates-selftest backup object-tier demo-one-ingest demo-register-and-ingest demo-register-and-heartbeat demo-one-alert demo-ack-one-alert demo-close-one-alert demo-threshold-alert demo-alert-camera-filter demo-alert-status-filter demo-alert-title-search demo-alert-handle-note demo-alert-snapshot-minio
 
 contracts:
 	npm --prefix packages/contracts install
@@ -27,7 +27,7 @@ lint:
 
 test: contracts lint
 	npm --prefix packages/contracts test
-	node --test scripts/boundaries.spec.mjs scripts/evidence.spec.mjs scripts/edge-simulator.spec.mjs scripts/demo-one-http-recognition.spec.mjs scripts/demo-register-and-ingest.spec.mjs scripts/demo-register-and-heartbeat.spec.mjs scripts/demo-one-alert.spec.mjs scripts/demo-ack-close-alert.spec.mjs scripts/demo-threshold-alert.spec.mjs scripts/demo-alert-camera-filter.spec.mjs scripts/demo-alert-status-filter.spec.mjs scripts/demo-alert-title-search.spec.mjs scripts/demo-alert-handle-note.spec.mjs scripts/object-lifecycle.spec.mjs scripts/object-tier.spec.mjs scripts/backup-postgres.spec.mjs scripts/compose-minio-image.spec.mjs
+	node --test scripts/boundaries.spec.mjs scripts/evidence.spec.mjs scripts/edge-simulator.spec.mjs scripts/demo-one-http-recognition.spec.mjs scripts/demo-register-and-ingest.spec.mjs scripts/demo-register-and-heartbeat.spec.mjs scripts/demo-one-alert.spec.mjs scripts/demo-ack-close-alert.spec.mjs scripts/demo-threshold-alert.spec.mjs scripts/demo-alert-camera-filter.spec.mjs scripts/demo-alert-status-filter.spec.mjs scripts/demo-alert-title-search.spec.mjs scripts/demo-alert-handle-note.spec.mjs scripts/demo-alert-snapshot-minio.spec.mjs scripts/object-lifecycle.spec.mjs scripts/object-tier.spec.mjs scripts/backup-postgres.spec.mjs scripts/compose-minio-image.spec.mjs
 	npm --prefix apps/api test
 	npm --prefix apps/web run typecheck
 	npm --prefix apps/web test
@@ -92,6 +92,10 @@ demo-alert-title-search: contracts
 # 确认一条待确认告警并写入处理说明，再读两次详情。步骤见 docs/DEMO_ALERT_HANDLE_NOTE.md。
 demo-alert-handle-note: contracts
 	node scripts/demo-alert-handle-note.mjs
+
+# 发一条带样例 JPEG 的温度过高告警，详情能打开对象存储里的抓拍。步骤见 docs/DEMO_ALERT_SNAPSHOT_MINIO.md。
+demo-alert-snapshot-minio: contracts
+	node scripts/demo-alert-snapshot-minio.mjs
 
 backup:
 	node scripts/backup-postgres.mjs

@@ -73,6 +73,12 @@ export class Alert {
   @Column({ type: 'text', nullable: true })
   claimNote: string | null;
 
+  @Column({ type: 'uuid', nullable: true })
+  recognitionId: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  snapshotObjectKey: string | null;
+
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }
