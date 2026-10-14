@@ -16,7 +16,7 @@ API 监听 http://127.0.0.1:41821 。页面是 http://127.0.0.1:43123 。
 make demo-one-ingest
 ```
 
-终端打印 `id:`。这是 `recognition_records.id`。
+终端打印 `id:`。这是 `recognition_records.id`。同一段还打印 `抓拍对象键:`。命令会再读 `GET /api/v1/ingest/recognitions/<id>/snapshot`，字节必须和样例里的 AI抓拍图 JPEG 一致。对象存储没写入或读不回时，命令失败。
 
 浏览器打开 http://127.0.0.1:43123/login ，账号 `admin`，密码 `Admin@123456`。然后打开：
 

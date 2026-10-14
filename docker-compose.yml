@@ -22,8 +22,10 @@ services:
       timeout: 3s
       retries: 30
   minio:
-    # pgsty/silo：匿名可拉取，入口把 `server` 交给 silo。端口、MINIO_ROOT_* 与数据卷格式沿用。
-    image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
+    # 本地镜像 mushroom-object-store:20260916，由 infra/object-store 构建。
+    image: mushroom-object-store:20260916
+    build:
+      context: ./infra/object-store
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: minioadmin
@@ -33,6 +35,11 @@ services:
       - "9001:9001"
     volumes:
       - ${MINIO_HOT_DATA:-minio-hot}:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/minio/health/ready"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
   mosquitto:
     image: eclipse-mosquitto:2
     ports:

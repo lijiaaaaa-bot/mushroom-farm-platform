@@ -165,6 +165,32 @@ async function login() {
   return { authorization: `Bearer ${session.accessToken}`, 'content-type': 'application/json' };
 }
 
+function runDemoOne() {
+  return new Promise((resolve, reject) => {
+    const demo = spawn(process.execPath, [join(root, 'scripts/demo-one-http-recognition.mjs')], {
+      cwd: root,
+      env: process.env,
+    });
+    let stdout = '';
+    let stderr = '';
+    demo.stdout.on('data', (chunk) => {
+      stdout += chunk;
+    });
+    demo.stderr.on('data', (chunk) => {
+      stderr += chunk;
+      process.stderr.write(chunk);
+    });
+    demo.on('error', reject);
+    demo.on('exit', (code) => {
+      if (code !== 0) {
+        reject(new Error(`demo-one-ingest 退出 ${code}: ${stderr.trim() || stdout.trim()}`));
+        return;
+      }
+      resolve(stdout);
+    });
+  });
+}
+
 function wire(sent, extra) {
   return {
     timestamp: sent.timestamp,
@@ -484,6 +510,30 @@ try {
     proof: ackedOk ? { alertId: ackedBody.id, status: ackedBody.status } : undefined,
   });
   if (!ackedOk) throw new Error(`确认告警失败 ${acked.status} ${JSON.stringify(ackedBody)}`);
+
+  const demoStdout = await runDemoOne();
+  const snapshotKey = demoStdout.match(/抓拍对象键: (\S+)/)?.[1];
+  const snapshotRead = demoStdout.match(/抓拍读取: (\S+)/)?.[1];
+  const demoId = demoStdout.match(/^id: (\S+)/m)?.[1];
+  const demoFixture = readFixture('recognition.demo-one.json');
+  const demoOk = Boolean(snapshotKey && snapshotRead && demoId);
+  record({
+    id: 'demo-one-snapshot',
+    timestamp: new Date().toISOString(),
+    channel: 'http',
+    method: 'POST',
+    path: '/api/v1/ingest/recognition',
+    fixture: 'recognition.demo-one.json',
+    fixtureLabel: '一条识别样例',
+    rawBody: demoFixture.body,
+    actor: 'demo-one-ingest',
+    pass: demoOk,
+    error: demoOk ? undefined : '样例抓拍未写入对象存储或读不回',
+    proof: demoOk
+      ? { recognitionId: demoId, snapshotObjectKey: snapshotKey, snapshotRead }
+      : { stdout: demoStdout },
+  });
+  if (!demoOk) throw new Error(`样例抓拍未写入对象存储\n${demoStdout}`);
 
   console.log('smoke ok', {
     recognitionId: httpHit.id,

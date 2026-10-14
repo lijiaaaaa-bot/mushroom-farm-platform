@@ -3,6 +3,7 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
+- 2026-10-14：样例抓拍写入对象存储。`make up` 构建 `mushroom-object-store:20260916`（`infra/object-store`），不拉取 `pgsty/silo`。`make demo-one-ingest` 打印抓拍对象键并读回样例 JPEG。识别列表截图 `docs/evidence/demo-one-ingest/recognitions-cam-demo-01.png`。分支 `cursor/demo-one-snapshot-3215`。
 - 2026-10-14：一条识别样例 `make demo-one-ingest`。样例 `recognition.demo-one.json`，识别时间改为当前时刻，终端打印 id，页面 `/recognitions?cameraCode=CAM-DEMO-01`。步骤 `docs/DEMO_ONE_INGEST.md`。分支 `cursor/demo-one-ingest-6864`。
 - 2026-10-13：值班棚详情未闭合告警点进 `/alerts?shedCode=&status=&alertId=`，告警页按棚和状态筛选并高亮。分支 `cursor/duty-alert-link-827a`。
 - 2026-10-13：值班看板棚卡进入 `/duty-screen/:shedCode`，列出该棚摄像头和未闭合告警。分支 `cursor/duty-shed-detail-e28b`。
@@ -13,7 +14,7 @@
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
-| 2026-10-14 | `make demo-one-ingest` 用 `recognition.demo-one.json` POST 一条识别。识别时间改为当前时刻，幂等键 `demo-one-<毫秒>`。终端打印 id 与 `/recognitions?cameraCode=CAM-DEMO-01`。契约测试断言样例字段；脚本测试在样例缺字段时失败 | `make test` 退出码 0（contracts 10，脚本 node:test 42，API jest 119，web vitest 127）；`make gates` 退出码 0。PR #94 | 本机无 Docker，未对运行中的 API 点页面。CI 待看 |
+| 2026-10-14 | `make up` 改为构建 `mushroom-object-store:20260916`。`make demo-one-ingest` 在识别入库后要求抓拍对象键，并 `GET /ingest/recognitions/:id/snapshot` 读回样例 JPEG。`make smoke` 增加 `demo-one-snapshot`。识别列表截图入库 | 云端 `docker compose up -d --wait` 后对象存储健康；`make demo-one-ingest` 退出码 0，对象键 `snapshots/S01/2026-10-14/CAM-DEMO-01/1791945123898.jpg`。Chrome 打开已登录的 `/recognitions?cameraCode=CAM-DEMO-01`，画面含 S01 · CAM-DEMO-01、成熟 5、总数 12。`make test` 退出码 0（contracts 10，脚本 node:test 43，API jest 119，web vitest 127）；`make gates` 退出码 0。PR #95 | CI ingest-smoke 待看 |
 | 2026-10-13 | 值班棚详情未闭合告警进入 `/alerts`，查询 `shedCode`、`status`、`alertId`。告警页把棚号和合法状态传给已有列表接口，高亮并滚到该条。不改接口，不改 `/big-screen` | `make test` 退出码 0（contracts 9，脚本 node:test 38，API jest 119，web vitest 127）；`make gates` 退出码 0。PR #93 | 未做登录后浏览器走查。CI 待看 |
 | 2026-10-13 | 值班看板棚卡进入 `/duty-screen/:shedCode`。详情用已有 `devices?type=camera&shedCode=`、`alerts?status=open|acked&shedCode=`、`GET /sheds`。摄像头名称在详情，不在棚卡。返回 `/duty-screen`。不改 `/big-screen`，不加接口 | `make test` 退出码 0（contracts 9，脚本 node:test 38，API jest 119，web vitest 124）；`make gates` 退出码 0。PR #92 | 不合并。未做登录后浏览器走查 |
 | 2026-10-13 | PR #92 的 test、gates、ingest-smoke 均为 success | `gh pr checks 92` | 不合并。未做登录后浏览器走查 |

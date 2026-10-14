@@ -84,13 +84,24 @@ export function webOriginFromEnv() {
   return process.env.WEB_ORIGIN || 'http://127.0.0.1:43123';
 }
 
-export function formatDemoProof({ id, duplicate, body, webOrigin = webOriginFromEnv() }) {
+export function snapshotReadUrl(id) {
+  return `${apiBase()}/ingest/recognitions/${encodeURIComponent(id)}/snapshot`;
+}
+
+export function formatDemoProof({
+  id,
+  duplicate,
+  body,
+  webOrigin = webOriginFromEnv(),
+  snapshotObjectKey,
+  snapshotReadUrl: snapshotUrl,
+}) {
   const ui = recognitionUiUrl(body.cameraCode, webOrigin);
   const origin = String(webOrigin).replace(/\/$/, '');
   const sql =
     `psql postgres://mushroom:mushroom@127.0.0.1:5432/mushroom -c ` +
     `"SELECT id, shed_code, camera_code, recognized_at, mushroom_count, mature_count, disease_count FROM recognition_records WHERE id = '${id}';"`;
-  return [
+  const lines = [
     '发了 1 条识别',
     `id: ${id}`,
     `重复: ${duplicate ? '是' : '否'}`,
@@ -103,7 +114,10 @@ export function formatDemoProof({ id, duplicate, body, webOrigin = webOriginFrom
     `打开: ${ui}`,
     `大屏抓拍墙: ${origin}/big-screen`,
     `库里核对: ${sql}`,
-  ].join('\n');
+  ];
+  if (snapshotObjectKey) lines.push(`抓拍对象键: ${snapshotObjectKey}`);
+  if (snapshotUrl) lines.push(`抓拍读取: ${snapshotUrl}`);
+  return lines.join('\n');
 }
 
 function sleep(ms) {
@@ -165,7 +179,7 @@ async function findListed(body, { id, timeoutMs }) {
       if (!sameInstant(found, body)) {
         throw new Error(`列表里的识别时间 ${found.recognizedAt} 不是这次发送的 ${body.recognizedAt}`);
       }
-      return found;
+      return { row: found, token };
     }
     if (Date.now() + 400 > deadline) break;
     await sleep(400);
@@ -173,6 +187,32 @@ async function findListed(body, { id, timeoutMs }) {
   throw new Error(
     `识别列表里没有这次的记录（cameraCode=${body.cameraCode}）。页面 ${recognitionUiUrl(body.cameraCode)} 也看不到。`,
   );
+}
+
+function nestedFlag(payload, key) {
+  return payload?.[key] === true || payload?.message?.[key] === true;
+}
+
+async function assertStoredSnapshot(id, body, listed) {
+  const key = listed?.row?.snapshotObjectKey;
+  if (!key || typeof key !== 'string') {
+    throw new Error('识别记录没有抓拍对象键。对象存储没有留下这张 AI抓拍图。');
+  }
+  const url = snapshotReadUrl(id);
+  const response = await fetch(url, { headers: { authorization: `Bearer ${listed.token}` } });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`抓拍读取失败 ${response.status} ${text}`);
+  }
+  const bytes = Buffer.from(await response.arrayBuffer());
+  if (bytes.length < 4 || bytes[0] !== 0xff || bytes[1] !== 0xd8) {
+    throw new Error('对象存储里的抓拍不是 JPEG');
+  }
+  if (body.snapshotBase64) {
+    const expected = Buffer.from(body.snapshotBase64, 'base64');
+    if (!bytes.equals(expected)) throw new Error('对象存储里的抓拍与样例 JPEG 不一致');
+  }
+  return { snapshotObjectKey: key, snapshotReadUrl: url };
 }
 
 export async function sendDemo({ channel = 'http', now = new Date() } = {}) {
@@ -186,7 +226,8 @@ export async function sendDemo({ channel = 'http', now = new Date() } = {}) {
     const topic = recognitionTopic(body.shedCode, body.cameraCode);
     await publishMqtt(topic, rawUtf8);
     const found = await findListed(body, { timeoutMs: 15_000 });
-    return { id: found.id, duplicate: false, body, channel, topic };
+    const snapshot = await assertStoredSnapshot(found.row.id, body, found);
+    return { id: found.row.id, duplicate: false, body, channel, topic, ...snapshot };
   }
   let posted;
   try {
@@ -204,8 +245,14 @@ export async function sendDemo({ channel = 'http', now = new Date() } = {}) {
   if (posted.responseStatus < 200 || posted.responseStatus >= 300 || !accepted || !id) {
     throw new Error(`接入拒绝 ${posted.responseStatus} ${rejectText(payload)}`);
   }
+  if (!nestedFlag(payload, 'snapshotStored')) {
+    throw new Error(
+      '识别已入库，但 AI抓拍图没有写入对象存储。先执行 make up，确认对象存储在 127.0.0.1:9000，然后重新 make api。',
+    );
+  }
   const found = await findListed(body, { id, timeoutMs: 3_000 });
-  return { id: found.id, duplicate, body, channel };
+  const snapshot = await assertStoredSnapshot(id, body, found);
+  return { id: found.row.id, duplicate, body, channel, ...snapshot };
 }
 
 function usage() {

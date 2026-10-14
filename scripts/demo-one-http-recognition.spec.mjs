@@ -10,6 +10,7 @@ import {
   formatDemoProof,
   recognitionUiUrl,
   sendDemo,
+  snapshotReadUrl,
   validateDemoPayload,
 } from './demo-one-http-recognition.mjs';
 import { readFixture, repoRoot } from './lib/ingest-wire.mjs';
@@ -43,13 +44,22 @@ test('checked-in sample covers section 一 and the make target posts that sample
   assert.equal(canonical.co2, 900);
   assert.equal(canonical.substrateMoisture, 70);
   assert.ok(canonical.snapshotBase64);
-  const proof = formatDemoProof({ id: 'rec-1', duplicate: false, body, webOrigin: 'http://127.0.0.1:43123' });
+  const proof = formatDemoProof({
+    id: 'rec-1',
+    duplicate: false,
+    body,
+    webOrigin: 'http://127.0.0.1:43123',
+    snapshotObjectKey: 'snapshots/S01/2026-10-14/CAM-DEMO-01/010203.jpg',
+    snapshotReadUrl: snapshotReadUrl('rec-1'),
+  });
   assert.match(proof, /发了 1 条识别/);
   assert.match(proof, /id: rec-1/);
   assert.match(proof, /登录: admin \/ Admin@123456/);
   assert.match(proof, new RegExp(recognitionUiUrl('CAM-DEMO-01').replace(/[?]/g, '\\?')));
   assert.match(proof, /\/big-screen/);
   assert.match(proof, /recognition_records WHERE id = 'rec-1'/);
+  assert.match(proof, /抓拍对象键: snapshots\/S01\/2026-10-14\/CAM-DEMO-01\/010203\.jpg/);
+  assert.match(proof, /抓拍读取: .*\/ingest\/recognitions\/rec-1\/snapshot/);
 });
 
 test('a sample missing a section 一 field fails before any request', () => {
@@ -70,6 +80,25 @@ function jsonResponse(status, body) {
     },
     async text() {
       return JSON.stringify(body);
+    },
+    async arrayBuffer() {
+      return new TextEncoder().encode(JSON.stringify(body)).buffer;
+    },
+  };
+}
+
+function jpegResponse(bytes) {
+  return {
+    ok: true,
+    status: 200,
+    async json() {
+      throw new Error('snapshot is bytes');
+    },
+    async text() {
+      return '';
+    },
+    async arrayBuffer() {
+      return Uint8Array.from(bytes).buffer;
     },
   };
 }
@@ -93,6 +122,7 @@ test('http send posts one sample and only succeeds when that id is listed', asyn
         accepted: true,
         duplicate: false,
         id: '22222222-2222-2222-2222-222222222222',
+        snapshotStored: true,
       });
     }
     if (target.endsWith('/auth/login')) return jsonResponse(200, { accessToken: 'tok' });
@@ -106,9 +136,13 @@ test('http send posts one sample and only succeeds when that id is listed', asyn
             cameraCode: posted.cameraCode,
             recognizedAt: posted.recognizedAt,
             idempotencyKey: posted.idempotencyKey,
+            snapshotObjectKey: 'snapshots/S01/2026-10-14/CAM-DEMO-01/010203.jpg',
           },
         ],
       });
+    }
+    if (target.endsWith('/snapshot')) {
+      return jpegResponse(Buffer.from(buildDemoPayload(now).snapshotBase64, 'base64'));
     }
     throw new Error(`unexpected ${target}`);
   };
@@ -121,6 +155,54 @@ test('http send posts one sample and only succeeds when that id is listed', asyn
     assert.equal(calls.filter((url) => url.endsWith('/ingest/recognition')).length, 2);
     assert.match(formatDemoProof(sent), /id: 22222222-2222-2222-2222-222222222222/);
     assert.match(formatDemoProof(sent), /\/recognitions\?cameraCode=CAM-DEMO-01/);
+    assert.match(formatDemoProof(sent), /抓拍对象键: snapshots\/S01\/2026-10-14\/CAM-DEMO-01\/010203\.jpg/);
+    assert.equal(calls.filter((url) => url.endsWith('/snapshot')).length, 1);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test('http send fails when the snapshot was not stored or cannot be read back', async () => {
+  const original = globalThis.fetch;
+  const id = '33333333-3333-3333-3333-333333333333';
+  globalThis.fetch = async (url) => {
+    const target = String(url);
+    if (target.endsWith('/ingest/recognition')) {
+      return jsonResponse(200, { accepted: true, duplicate: false, id, snapshotStored: false });
+    }
+    throw new Error(`unexpected ${target}`);
+  };
+  try {
+    await assert.rejects(() => sendDemo({ channel: 'http', now }), /没有写入对象存储/);
+  } finally {
+    globalThis.fetch = original;
+  }
+
+  globalThis.fetch = async (url) => {
+    const target = String(url);
+    if (target.endsWith('/ingest/recognition')) {
+      return jsonResponse(200, { accepted: true, duplicate: false, id, snapshotStored: true });
+    }
+    if (target.endsWith('/auth/login')) return jsonResponse(200, { accessToken: 'tok' });
+    if (target.includes('/ingest/recognitions?')) {
+      const posted = buildDemoPayload(now);
+      return jsonResponse(200, {
+        items: [
+          {
+            id,
+            cameraCode: posted.cameraCode,
+            recognizedAt: posted.recognizedAt,
+            idempotencyKey: posted.idempotencyKey,
+            snapshotObjectKey: 'snapshots/S01/2026-10-14/CAM-DEMO-01/010203.jpg',
+          },
+        ],
+      });
+    }
+    if (target.endsWith('/snapshot')) return jpegResponse(Buffer.from('not-the-sample'));
+    throw new Error(`unexpected ${target}`);
+  };
+  try {
+    await assert.rejects(() => sendDemo({ channel: 'http', now }), /不是 JPEG|不一致/);
   } finally {
     globalThis.fetch = original;
   }

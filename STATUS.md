@@ -54,6 +54,7 @@
 - 值班看板棚卡进入 `/duty-screen/:shedCode`：该棚摄像头（名称、编码、在线或离线、最近心跳）和未闭合告警（标题、级别、状态、时间）。返回 `/duty-screen`。沿用 `GET /api/v1/devices?type=camera&shedCode=`、`GET /api/v1/alerts` 的 `status` 与 `shedCode`、`GET /api/v1/sheds`。`/big-screen` 不变。PR #92。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/92
 - 值班棚详情的未闭合告警可点进 `/alerts`，查询带棚号、状态和告警 id；告警页按棚和状态筛选并高亮该条。不改告警接口，不改 `/big-screen`。
 - 一条识别样例：`make demo-one-ingest` 读取 `packages/contracts/fixtures/recognition.demo-one.json`，把识别时间改成当前时刻，POST 一次 `POST /api/v1/ingest/recognition`，终端打印 id。登录 `admin` / `Admin@123456` 后打开 `/recognitions?cameraCode=CAM-DEMO-01`。步骤见 `docs/DEMO_ONE_INGEST.md`。PR #94。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/94
+- 样例抓拍写入对象存储：`make up` 构建 `mushroom-object-store:20260916`（`infra/object-store`，GitHub Release `RELEASE.2026-09-16T00-00-00Z` 的 linux 包，校验 sha256），不拉取 `pgsty/silo` 或 `quay.io/minio/minio`。`make demo-one-ingest` 成功时打印抓拍对象键，并且 `GET /api/v1/ingest/recognitions/<id>/snapshot` 读回样例 JPEG。识别列表截图 `docs/evidence/demo-one-ingest/recognitions-cam-demo-01.png`。
 
 ## 进行中
 - 无
