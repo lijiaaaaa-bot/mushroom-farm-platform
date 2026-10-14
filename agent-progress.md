@@ -3,6 +3,7 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
+- 2026-10-14：设备列表显示镜头码。`make demo-camera-list` 保证 `CAM-ALERT-01` 在设备页同一份 `GET /api/v1/devices?pageSize=100`。已存在则不改档案。`/devices` 摄像头行列出镜头码、编号、名称、类型、棚区、状态，并链到告警筛选和识别记录。传感器与 AI 盒的镜头码是「—」。不发识别，不发心跳，不改 `CAM-REG-02` 与已有演示命令。步骤 `docs/DEMO_CAMERA_LIST.md`。分支 `cursor/demo-camera-list-2cd3`。
 - 2026-10-14：环境温度阈值可改，并决定遥测是否告警。`make demo-alert-rule-config` 维护规则「演示环境温度过高」（一般，棚区 S03）。温度 26℃ 在阈值 30 时不告警，改成 24 后告警，改回 30 后不再告警，最后写回 24 并留下待确认告警。当前值 26，阈值 24，传感器 `SENSOR-RULE-01`。种子规则「温度过高」仍是 28。不改已有演示命令。步骤 `docs/DEMO_ALERT_RULE_CONFIG.md`。分支 `cursor/alert-rule-config-demo-efe4`。
 - 2026-10-14：环境遥测超阈自动告警。`make demo-telemetry-threshold-alert` POST 传感器 `SENSOR-TELEM-01`、温度 32℃。种子规则「温度过高」阈值仍是 28。告警列表与详情可读标题、32℃、阈值 28℃、待确认、传感器。湿度 88、CO₂ 900、基质含水率 70 不触发其余种子规则。不改 `make demo-one-alert`、`make demo-threshold-alert`、`make demo-telemetry-latest`。步骤 `docs/DEMO_TELEMETRY_THRESHOLD_ALERT.md`。分支 `cursor/telemetry-threshold-alert-dad3`。
 - 2026-10-14：环境遥测最新值。`make demo-telemetry-latest` 先写入较早一条（19.2℃），再写入当前时刻的一条（传感器 `SENSOR-LATEST-01`，24.6℃ / 85% / CO₂ 760 / 基质含水率 72%）。`GET /api/v1/ingest/environment-readings/latest` 只留后一条。详情 `GET /api/v1/ingest/environment-readings/:id` 是同一条。页面 `/environment` 的「最新值」点进 `/environment/:id`。MQTT：`node scripts/demo-telemetry-latest.mjs --channel mqtt`。步骤 `docs/DEMO_TELEMETRY_LATEST.md`。不改已有演示命令，不改 `environment.golden.json`。分支 `cursor/demo-telemetry-latest-4913`。
@@ -29,6 +30,7 @@
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
+| 2026-10-14 | `make demo-camera-list`：`POST /api/v1/devices` 保证镜头码 `CAM-ALERT-01`（棚区 S01）。409 时不改档案。再读 `GET /api/v1/devices?pageSize=100`。`/devices` 摄像头显示镜头码，并链到 `/alerts?cameraCode=` 与 `/recognitions?cameraCode=`。不发识别，不发心跳，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 125，API jest 147，web vitest 167）；`make gates` 退出码 0。PR #111 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。不合并 |
 | 2026-10-14 | `make demo-alert-rule-config`：规则「演示环境温度过高」限定棚区 S03、级别一般。温度 26℃ 在阈值 30 时不告警，改成 24 后告警（当前值 26、阈值 24、传感器 SENSOR-RULE-01），改回 30 后不再告警，最后写回 24 并留下待确认告警。种子规则「温度过高」仍是 28。不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 118，API jest 147，web vitest 167）；`make gates` 退出码 0 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/alerts`。不合并 |
 | 2026-10-14 | 环境读数入库后按已启用规则判断温度、湿度、CO₂、基质含水率。超阈写入告警，`sensorCode` 为传感器，`cameraCode` 为空。同一规则同一传感器的未闭合告警不另建。`make demo-telemetry-threshold-alert` 发 `SENSOR-TELEM-01` 温度 32℃，对照种子阈值 28。列表与详情可读。不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 113，API jest 146，web vitest 167）；`make gates` 退出码 0 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/alerts`。不合并 |
 | 2026-10-14 | `make demo-telemetry-latest`：HTTP 先 POST 19.2℃，再 POST 24.6℃（`SENSOR-LATEST-01`）。最新值接口只返回后一条；详情同一 id；读数列表第一条是 24.6℃ 且仍留着 19.2℃。页面「最新值」链到 `/environment/:id`。MQTT 同一对报文，主题 `mushroom/S01/SENSOR-LATEST-01/environment`。不改 `environment.golden.json` 与已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 110，API jest 139，web vitest 165）；`make gates` 退出码 0 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/environment`。不合并 |
