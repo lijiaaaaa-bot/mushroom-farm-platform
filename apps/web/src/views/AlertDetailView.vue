@@ -6,6 +6,8 @@ import {
   ALERT_LEVEL_LABEL,
   ALERT_METRIC_LABEL,
   ALERT_STATUS_LABEL,
+  alertLevelSchema,
+  alertStatusSchema,
   isAlertMetric,
   type AlertCloseReason,
   type AlertLevel,
@@ -45,10 +47,28 @@ const alertId = computed(() => {
   return typeof value === 'string' ? value : '';
 });
 
+function plainQuery(key: string) {
+  const value = route.query[key];
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function allowedQuery(key: string, options: readonly string[]) {
+  const value = plainQuery(key);
+  return options.includes(value) ? value : '';
+}
+
 const listReturn = computed(() => {
-  const camera =
-    typeof route.query.cameraCode === 'string' ? route.query.cameraCode.trim() : '';
-  return camera ? { path: '/alerts', query: { cameraCode: camera } } : '/alerts';
+  const query: Record<string, string> = {};
+  const status = allowedQuery('status', alertStatusSchema.options);
+  const level = allowedQuery('level', alertLevelSchema.options);
+  const shed = plainQuery('shedCode');
+  const camera = plainQuery('cameraCode');
+  if (status) query.status = status;
+  if (level) query.level = level;
+  if (shed) query.shedCode = shed;
+  if (camera) query.cameraCode = camera;
+  if (!Object.keys(query).length) return '/alerts';
+  return { path: '/alerts', query };
 });
 
 function metricOf(value: string | null): AlertMetric | null {
