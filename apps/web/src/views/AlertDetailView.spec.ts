@@ -31,7 +31,7 @@ const alert = {
   closeNote: null,
 };
 
-async function mountDetail(id = 'alert-1') {
+async function mountDetail(id = 'alert-1', query = '') {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -39,7 +39,7 @@ async function mountDetail(id = 'alert-1') {
       { path: '/alerts', component: { template: '<div />' } },
     ],
   });
-  await router.push(`/alerts/${id}`);
+  await router.push(`/alerts/${id}${query}`);
   await router.isReady();
   const wrapper = mount(AlertDetailView, { global: { plugins: [router] } });
   await flushPromises();
@@ -83,6 +83,18 @@ describe('AlertDetailView', () => {
     expect(wrapper.get('[data-field="claimedBy"]').text()).toBe('—');
     expect(wrapper.get('[data-field="closeReason"]').text()).toBe('—');
     expect(wrapper.text()).not.toContain('暂无告警');
+    wrapper.unmount();
+  });
+
+  it('returns to the filtered alert list when cameraCode is on the detail address', async () => {
+    httpGet.mockResolvedValue({ data: alert });
+    const wrapper = await mountDetail('alert-1', '?cameraCode=CAM-FILTER-02');
+
+    expect(httpGet).toHaveBeenCalledWith('/alerts/alert-1');
+    expect(wrapper.get('[data-testid="alert-back"]').attributes('href')).toBe(
+      '/alerts?cameraCode=CAM-FILTER-02',
+    );
+    expect(wrapper.get('[data-field="camera"]').text()).toBe('CAM-ALERT-01');
     wrapper.unmount();
   });
 

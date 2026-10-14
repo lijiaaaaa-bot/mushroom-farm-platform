@@ -3,6 +3,7 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
+- 2026-10-14：告警列表按摄像头编号筛选。`make demo-alert-camera-filter` 留下 `CAM-FILTER-01` 与 `CAM-FILTER-02`。筛选后者只剩这一台，详情仍可打开，清除后两台都在。步骤 `docs/DEMO_ALERT_CAMERA_FILTER.md`。不改已有演示命令。分支 `cursor/alert-camera-filter-0f76`。
 - 2026-10-14：改阈值后再发超限识别。`make demo-threshold-alert` 把「演示二氧化碳过高」从 1500 改成 1000，再 POST 一次 CO₂ 1200（摄像头 `CAM-THRESH-01`）。告警列表出现「CO₂过高告警」。种子规则「二氧化碳过高」仍是 2000。步骤 `docs/DEMO_THRESHOLD_ALERT.md`。不改 `make demo-one-alert`、确认/关闭命令和样例文件。分支 `cursor/demo-threshold-alert-05cb`。
 - 2026-10-14：待确认告警可确认或关闭。列表与详情点「确认」或「关闭」后重新读取，刷新后状态仍是已确认或已关闭。`make demo-ack-one-alert`、`make demo-close-one-alert`。步骤 `docs/DEMO_ACK_CLOSE_ALERT.md`。不改 `make demo-one-alert`。分支 `cursor/alert-ack-close-9acd`。
 - 2026-10-14：一条温度过高告警 `make demo-one-alert`。识别摄像头 `CAM-ALERT-01`、温度 30，种子规则阈值 28。列表标题进入 `/alerts/:id`。`GET /api/v1/alerts/:id`。步骤 `docs/DEMO_ONE_ALERT.md`。分支 `cursor/demo-one-alert-6c94`。
@@ -20,6 +21,7 @@
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
+| 2026-10-14 | `make demo-alert-camera-filter`：`POST /api/v1/alerts` 留下 `CAM-FILTER-01` 与 `CAM-FILTER-02`。`cameraCode=CAM-FILTER-02` 只返回这台；详情可打开；不带该参数时两条都在。页面「筛选 / 清除」走同一参数。不发识别，不改已有演示命令。列表测试最后一次请求改用下标，避开 `Array.at` | 本地 `make test` 退出码 0（contracts 10，脚本 node:test 82，API jest 127，web vitest 143）；`make gates` 退出码 0。PR #102 | CI 待绿后再标为可审。不合并 |
 | 2026-10-14 | `make demo-threshold-alert`：规则「演示二氧化碳过高」阈值 1500 → 1000，再 POST 一次 CO₂ 1200（`CAM-THRESH-01`）。待确认列表出现「CO₂过高告警」。种子规则「二氧化碳过高」仍是 2000。不改样例与已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 77，API jest 126，web vitest 140）；`make gates` 退出码 0。PR #101 | 本环境无 Docker 和 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/alerts` |
 | 2026-10-14 | 告警列表与详情：待确认可点「确认」，未关闭可点「关闭」，成功后重新请求列表或详情。`make demo-ack-one-alert` 确认温度过高告警并再读 `status=acked`；`make demo-close-one-alert` 关闭并再读 `status=closed`。步骤 `docs/DEMO_ACK_CLOSE_ALERT.md`。不改 `make demo-one-alert` | `make test` 退出码 0（contracts 10，脚本 node:test 72，API jest 126，web vitest 140）；`make gates` 退出码 0。PR #100 | 本环境无 Docker、无 Postgres，未跑登录后的页面，也未执行 `make demo-ack-one-alert` |
 | 2026-10-14 | `make demo-one-alert`：样例识别改摄像头 `CAM-ALERT-01`、温度 30，POST 一次。未闭合温度过高告警已在则沿用。`GET /api/v1/alerts/:id`。告警列表标题进入 `/alerts/:id`，详情用中文标签 | `make test` 退出码 0（contracts 10，脚本 node:test 64，API jest 123，web vitest 134）；`make gates` 退出码 0。本机 Postgres 16 上 `make migrate`、`MQTT_ENABLED=false` 的 `make api`、`make web` 后 `make demo-one-alert` 退出码 0，第二次打印「沿用未闭合」且 id 不变。Chrome 登录后 `/alerts` 只有「温度过高告警」，点进详情可见严重、待确认、S01、CAM-ALERT-01、30℃、28℃，返回列表仍在。截图 `docs/evidence/demo-one-alert/`。PR #99 | 本环境无 Docker，未跑 `make up` |

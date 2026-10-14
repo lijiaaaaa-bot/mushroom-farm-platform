@@ -47,6 +47,8 @@ export class AlertsService {
     if (query.status)
       qb.andWhere('a.status = :status', { status: query.status });
     if (query.level) qb.andWhere('a.level = :level', { level: query.level });
+    const cameraCode = query.cameraCode?.trim();
+    if (cameraCode) qb.andWhere('a.cameraCode = :cameraCode', { cameraCode });
     const [items, total] = await qb
       .skip(page.skip)
       .take(page.pageSize)

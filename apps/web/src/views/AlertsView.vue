@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import {
   ALERT_CLOSE_REASON_LABEL,
   ALERT_LEVEL_LABEL,
@@ -42,6 +42,7 @@ const form = ref<CreateAlertInput>({
   message: '',
 });
 const route = useRoute();
+const router = useRouter();
 const levels = alertLevelSchema.options;
 const statuses = alertStatusSchema.options;
 const rowEls = new Map<string, HTMLElement>();
@@ -59,6 +60,8 @@ function allowedQuery(key: string, options: readonly string[]): string {
 const statusFilter = ref(allowedQuery('status', statuses));
 const levelFilter = ref(allowedQuery('level', levels));
 const shedCodeFilter = ref(plainQuery('shedCode'));
+const cameraDraft = ref(plainQuery('cameraCode').trim());
+const cameraCodeFilter = ref(cameraDraft.value);
 const highlightId = ref(plainQuery('alertId'));
 
 function listParams() {
@@ -67,7 +70,34 @@ function listParams() {
     status: statusFilter.value || undefined,
     level: levelFilter.value || undefined,
     ...(shedCodeFilter.value ? { shedCode: shedCodeFilter.value } : {}),
+    ...(cameraCodeFilter.value ? { cameraCode: cameraCodeFilter.value } : {}),
   };
+}
+
+function detailTo(row: AlertRow) {
+  if (!cameraCodeFilter.value) return `/alerts/${row.id}`;
+  return {
+    path: `/alerts/${row.id}`,
+    query: { cameraCode: cameraCodeFilter.value },
+  };
+}
+
+async function applyCamera() {
+  const next = cameraDraft.value.trim();
+  cameraDraft.value = next;
+  if (next === cameraCodeFilter.value && next === plainQuery('cameraCode').trim()) return;
+  const query: Record<string, string> = {};
+  if (statusFilter.value) query.status = statusFilter.value;
+  if (levelFilter.value) query.level = levelFilter.value;
+  if (shedCodeFilter.value) query.shedCode = shedCodeFilter.value;
+  if (highlightId.value) query.alertId = highlightId.value;
+  if (next) query.cameraCode = next;
+  await router.replace({ path: route.path, query });
+}
+
+function clearCamera() {
+  cameraDraft.value = '';
+  return applyCamera();
 }
 
 function bindRow(id: string, el: unknown) {
@@ -88,6 +118,8 @@ function applyRouteQuery() {
   statusFilter.value = allowedQuery('status', statuses);
   levelFilter.value = allowedQuery('level', levels);
   shedCodeFilter.value = plainQuery('shedCode');
+  cameraDraft.value = plainQuery('cameraCode').trim();
+  cameraCodeFilter.value = cameraDraft.value;
   highlightId.value = plainQuery('alertId');
 }
 
@@ -135,7 +167,7 @@ async function act(id: string, action: 'ack' | 'close' | 'claim' | 'false-positi
   }
 }
 
-watch([statusFilter, levelFilter, shedCodeFilter], () => {
+watch([statusFilter, levelFilter, shedCodeFilter, cameraCodeFilter], () => {
   void load();
 });
 
@@ -181,13 +213,25 @@ onMounted(load);
             <option v-for="level in levels" :key="level" :value="level">{{ ALERT_LEVEL_LABEL[level] }}</option>
           </select>
         </label>
+        <label class="text-sm">摄像头
+          <input
+            v-model="cameraDraft"
+            class="field mt-1"
+            placeholder="摄像头编号"
+            data-testid="alert-camera-filter"
+            @keydown.enter.prevent="applyCamera"
+          />
+        </label>
+        <button class="btn-ghost self-end" type="button" data-testid="alert-camera-apply" @click="applyCamera">筛选</button>
+        <button class="btn-ghost self-end" type="button" data-testid="alert-camera-clear" @click="clearCamera">清除</button>
         <p v-if="shedCodeFilter" class="self-end text-sm text-mist" data-testid="alert-shed-scope">棚 {{ shedCodeFilter }}</p>
+        <p v-if="cameraCodeFilter" class="self-end text-sm text-mist" data-testid="alert-camera-scope">摄像头 {{ cameraCodeFilter }}</p>
       </div>
       <p v-if="loading" class="text-mist">加载中…</p>
       <p v-else-if="!error && !rows.length" class="text-mist">暂无告警。</p>
       <table v-else-if="rows.length" class="data-table">
         <thead>
-          <tr><th>等级</th><th>状态</th><th>原因</th><th>认领人</th><th>棚区</th><th>标题</th><th>时间</th><th></th></tr>
+          <tr><th>等级</th><th>状态</th><th>原因</th><th>认领人</th><th>棚区</th><th>摄像头</th><th>标题</th><th>时间</th><th></th></tr>
         </thead>
         <tbody>
           <tr
@@ -205,10 +249,11 @@ onMounted(load);
             <td>{{ reasonLabel(row) }}</td>
             <td>{{ row.claimedBy || '—' }}</td>
             <td>{{ row.shedCode }}</td>
+            <td class="font-mono text-xs" data-testid="alert-camera">{{ row.cameraCode || '—' }}</td>
             <td>
               <router-link
                 class="text-accent"
-                :to="`/alerts/${row.id}`"
+                :to="detailTo(row)"
                 data-testid="alert-detail-link"
               >{{ row.title }}</router-link>
               <p class="text-xs text-mist">{{ row.message }}</p>
