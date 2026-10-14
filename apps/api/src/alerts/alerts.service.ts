@@ -60,6 +60,13 @@ export class AlertsService {
         titleKeyword,
       });
     }
+    const from = alertInstant(query.from);
+    const to = alertInstant(query.to);
+    if (from && to && from.getTime() > to.getTime()) {
+      throw new BadRequestException('时间筛选无效');
+    }
+    if (from) qb.andWhere('a.createdAt >= :from', { from });
+    if (to) qb.andWhere('a.createdAt <= :to', { to });
     const [items, total] = await qb
       .skip(page.skip)
       .take(page.pageSize)
@@ -125,11 +132,30 @@ export class AlertsService {
       level: string;
       title: string;
       message: string;
+      createdAt?: string;
     },
   ) {
     ShedScope.fromUser(user).assert(input.shedCode);
     if (!isAlertLevel(input.level))
       throw new BadRequestException('告警等级无效');
+    const createdAt = alertInstant(input.createdAt, '时间无效');
+    if (createdAt && input.cameraCode) {
+      const matches = await this.alerts.find({
+        where: {
+          shedCode: input.shedCode,
+          cameraCode: input.cameraCode,
+          title: input.title,
+        },
+      });
+      if (matches.length) {
+        for (const row of matches) {
+          await this.alerts.update(row.id, { createdAt });
+          row.createdAt = createdAt;
+        }
+        matches.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+        return matches[0];
+      }
+    }
     const saved = await this.alerts.save(
       this.alerts.create({
         ruleId: null,
@@ -154,8 +180,13 @@ export class AlertsService {
         claimNote: null,
         recognitionId: null,
         snapshotObjectKey: null,
+        ...(createdAt ? { createdAt } : {}),
       }),
     );
+    if (createdAt) {
+      await this.alerts.update(saved.id, { createdAt });
+      saved.createdAt = createdAt;
+    }
     await deliverSevereAlert(this.push, saved);
     return saved;
   }
@@ -337,6 +368,19 @@ export class AlertsService {
     if (!scope.codes.length) qb.andWhere('1 = 0');
     else qb.andWhere('a.shedCode IN (:...codes)', { codes: scope.codes });
   }
+}
+
+function alertInstant(
+  value?: string,
+  invalidMessage = '时间筛选无效',
+): Date | null {
+  const text = value?.trim();
+  if (!text) return null;
+  const date = new Date(text);
+  if (Number.isNaN(date.getTime())) {
+    throw new BadRequestException(invalidMessage);
+  }
+  return date;
 }
 
 function storedNote(note?: string | null): string | null {

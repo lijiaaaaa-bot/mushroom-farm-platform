@@ -69,6 +69,12 @@ function allowedQuery(key: string, options: readonly string[]) {
   return options.includes(value) ? value : '';
 }
 
+function instantQuery(key: string) {
+  const value = plainQuery(key);
+  if (!value || Number.isNaN(new Date(value).getTime())) return '';
+  return new Date(value).toISOString();
+}
+
 const listReturn = computed(() => {
   const query: Record<string, string> = {};
   const status = allowedQuery('status', alertStatusSchema.options);
@@ -76,11 +82,15 @@ const listReturn = computed(() => {
   const shed = plainQuery('shedCode');
   const camera = plainQuery('cameraCode');
   const keyword = plainQuery('q');
+  const from = instantQuery('from');
+  const to = instantQuery('to');
   if (status) query.status = status;
   if (level) query.level = level;
   if (shed) query.shedCode = shed;
   if (camera) query.cameraCode = camera;
   if (keyword) query.q = keyword;
+  if (from) query.from = from;
+  if (to) query.to = to;
   if (!Object.keys(query).length) return '/alerts';
   return { path: '/alerts', query };
 });

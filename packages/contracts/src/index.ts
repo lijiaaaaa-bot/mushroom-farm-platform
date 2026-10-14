@@ -286,6 +286,8 @@ export const createAlertSchema = z
     level: alertLevelSchema,
     title: z.string().min(1).max(80),
     message: z.string().min(1),
+    /** 可选。演示把告警列表的「时间」（createdAt）放到指定时刻。 */
+    createdAt: z.string().optional(),
   })
   .strict();
 export type CreateAlertInput = z.infer<typeof createAlertSchema>;

@@ -52,6 +52,12 @@ describe('golden fixtures', () => {
     const created = load('alert.create.json');
     const parsed = parseCreateAlert(created.body);
     assert.equal(parsed.ok, created.expect === 'ok');
+    const timed = parseCreateAlert({
+      ...(created.body as Record<string, unknown>),
+      createdAt: '2026-10-14T01:02:03.000Z',
+    });
+    assert.equal(timed.ok, true);
+    if (timed.ok) assert.equal(timed.value.createdAt, '2026-10-14T01:02:03.000Z');
     const extra = load('alert.unknown-field.json');
     const rejected = parseCreateAlert(extra.body);
     assert.equal(rejected.ok, false);

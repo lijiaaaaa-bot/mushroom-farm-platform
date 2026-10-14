@@ -118,6 +118,12 @@ function asUser(role: SessionUser['role']) {
   };
 }
 
+function localDateTime(iso: string) {
+  const date = new Date(iso);
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
 function buttonText(wrapper: { findAll: (selector: string) => { text: () => string }[] }, label: string) {
   return wrapper.findAll('button').some((button) => button.text() === label);
 }
@@ -926,6 +932,114 @@ describe('AlertsView', () => {
     });
     expect(blank.find('[data-testid="alert-title-scope"]').exists()).toBe(false);
     blank.unmount();
+  });
+
+  it('filters by start and end time and keeps the status filter', async () => {
+    const outside = {
+      ...alert,
+      id: 'alert-out',
+      cameraCode: 'CAM-TIME-01',
+      title: '时间窗外告警',
+      createdAt: '2026-10-14T01:00:00.000Z',
+    };
+    const older = {
+      ...alert,
+      id: 'alert-older',
+      cameraCode: 'CAM-TIME-02',
+      title: '时间窗内较早告警',
+      createdAt: '2026-10-14T03:52:00.000Z',
+    };
+    const current = {
+      ...alert,
+      id: 'alert-now',
+      cameraCode: 'CAM-TIME-03',
+      title: '时间窗内当前告警',
+      createdAt: '2026-10-14T04:00:00.000Z',
+    };
+    const rows = [current, older, outside];
+    httpGet.mockImplementation((_url: string, config?: { params?: { from?: string; to?: string; status?: string } }) => {
+      const from = config?.params?.from ? new Date(config.params.from).getTime() : null;
+      const to = config?.params?.to ? new Date(config.params.to).getTime() : null;
+      const items = rows.filter((row) => {
+        const at = new Date(row.createdAt).getTime();
+        if (from !== null && at < from) return false;
+        if (to !== null && at > to) return false;
+        if (config?.params?.status && row.status !== config.params.status) return false;
+        return true;
+      });
+      return Promise.resolve({ data: { items, total: items.length } });
+    });
+    const wrapper = await mountView(AlertsView);
+
+    expect(wrapper.get('[data-testid="alert-status-filter"]').text()).toContain('待确认');
+    expect(wrapper.findAll('[data-testid="alert-detail-link"]').map((node) => node.text())).toEqual([
+      '时间窗内当前告警',
+      '时间窗内较早告警',
+      '时间窗外告警',
+    ]);
+
+    const fromIso = '2026-10-14T03:00:00.000Z';
+    const toIso = '2026-10-14T05:00:00.000Z';
+    await wrapper.get('[data-testid="alert-status-filter"]').setValue('open');
+    await wrapper.get('[data-testid="alert-time-from"]').setValue(localDateTime(fromIso));
+    await wrapper.get('[data-testid="alert-time-to"]').setValue(localDateTime(toIso));
+    await wrapper.get('[data-testid="alert-time-apply"]').trigger('click');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: 'open', level: undefined, from: fromIso, to: toIso },
+    });
+    expect(memoryRouter.currentRoute.value.query.from).toBe(fromIso);
+    expect(memoryRouter.currentRoute.value.query.to).toBe(toIso);
+    expect(memoryRouter.currentRoute.value.query.status).toBe('open');
+    expect(wrapper.get('[data-testid="alert-time-scope"]').text()).toBe(
+      `时间 ${new Date(fromIso).toLocaleString('zh-CN')} 至 ${new Date(toIso).toLocaleString('zh-CN')}`,
+    );
+    expect(wrapper.findAll('[data-testid="alert-detail-link"]').map((node) => node.text())).toEqual([
+      '时间窗内当前告警',
+      '时间窗内较早告警',
+    ]);
+    expect(wrapper.text()).not.toContain('时间窗外告警');
+    const href = wrapper.get('[data-testid="alert-detail-link"]').attributes('href') || '';
+    expect(decodeURIComponent(href)).toContain('from=');
+    expect(decodeURIComponent(href)).toContain(fromIso);
+    expect(decodeURIComponent(href)).toContain('status=open');
+
+    await wrapper.get('[data-testid="alert-time-clear"]').trigger('click');
+    await flushPromises();
+    const calls = httpGet.mock.calls;
+    const last = calls[calls.length - 1];
+    expect(last?.[1].params.from).toBeUndefined();
+    expect(last?.[1].params.to).toBeUndefined();
+    expect(last?.[1].params.status).toBe('open');
+    expect(wrapper.find('[data-testid="alert-time-scope"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('时间窗外告警');
+    wrapper.unmount();
+  });
+
+  it('reads a time range from the address and says when nothing is inside it', async () => {
+    const from = '2026-10-14T08:00:00.000Z';
+    const to = '2026-10-14T08:30:00.000Z';
+    httpGet.mockResolvedValue({ data: { items: [], total: 0 } });
+    const wrapper = await mountView(AlertsView, { from, to, status: 'open' });
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: 'open', level: undefined, from, to },
+    });
+    expect((wrapper.get('[data-testid="alert-status-filter"]').element as HTMLSelectElement).value).toBe('open');
+    expect(wrapper.get('[data-testid="alert-empty"]').text()).toBe('没有符合条件的告警。');
+    expect(wrapper.text()).not.toContain('暂无告警。');
+    expect(wrapper.get('[data-testid="alert-time-scope"]').text()).toContain('时间');
+    wrapper.unmount();
+  });
+
+  it('does not request alerts when the time range is invalid', async () => {
+    httpGet.mockResolvedValue({ data: { items: [alert], total: 1 } });
+    const wrapper = await mountView(AlertsView, { from: 'not-a-time' });
+    expect(httpGet).not.toHaveBeenCalled();
+    expect(wrapper.get('[data-testid="alert-time-error"]').text()).toBe('时间筛选无效');
+    expect(wrapper.text()).not.toContain('暂无告警。');
+    expect(wrapper.text()).not.toContain('没有符合条件的告警。');
+    expect(wrapper.find('table').exists()).toBe(false);
+    wrapper.unmount();
   });
 });
 
