@@ -28,6 +28,7 @@ make web      # http://127.0.0.1:43123
 设备列表 `/devices` 同一页能看到 `CAM-ON-01` 在线和 `CAM-OFF-01` 离线：[`docs/DEMO_DEVICE_ONLINE.md`](docs/DEMO_DEVICE_ONLINE.md)（`make demo-device-online`）。  
 发一条温度过高告警，在告警列表点进详情：[`docs/DEMO_ONE_ALERT.md`](docs/DEMO_ONE_ALERT.md)（`make demo-one-alert`）。  
 确认或关闭这条待确认告警，刷新后状态仍在：[`docs/DEMO_ACK_CLOSE_ALERT.md`](docs/DEMO_ACK_CLOSE_ALERT.md)（`make demo-ack-one-alert`、`make demo-close-one-alert`）。  
+告警列表上把待确认确认成已确认，再关闭成已关闭：[`docs/DEMO_ALERT_ACK.md`](docs/DEMO_ALERT_ACK.md)（`make demo-alert-ack`）。  
 改二氧化碳阈值后再发一条超限识别，告警列表出现对应告警：[`docs/DEMO_THRESHOLD_ALERT.md`](docs/DEMO_THRESHOLD_ALERT.md)（`make demo-threshold-alert`）。  
 按摄像头编号筛选告警列表，清除后两台摄像头都回来：[`docs/DEMO_ALERT_CAMERA_FILTER.md`](docs/DEMO_ALERT_CAMERA_FILTER.md)（`make demo-alert-camera-filter`）。  
 按状态筛选告警列表，待确认、已确认、已关闭各留一条，改回全部后三条都回来：[`docs/DEMO_ALERT_STATUS_FILTER.md`](docs/DEMO_ALERT_STATUS_FILTER.md)（`make demo-alert-status-filter`）。  

@@ -1,4 +1,4 @@
-.PHONY: up images images-probe api web test smoke smoke-evidence migrate contracts lint gates gates-selftest backup object-tier demo-one-ingest demo-register-and-ingest demo-register-and-heartbeat demo-heartbeat-offline-alert demo-duty-board demo-device-online demo-camera-list demo-camera-detail demo-camera-create demo-camera-edit demo-camera-stop demo-camera-delete demo-one-alert demo-ack-one-alert demo-close-one-alert demo-threshold-alert demo-alert-camera-filter demo-alert-status-filter demo-alert-title-search demo-alert-handle-note demo-telemetry-latest demo-telemetry-history demo-recognition-history demo-telemetry-threshold-alert demo-alert-rule-config demo-alert-snapshot-minio demo-contrast demo-rbac demo-audit-log demo-user-mgmt
+.PHONY: up images images-probe api web test smoke smoke-evidence migrate contracts lint gates gates-selftest backup object-tier demo-one-ingest demo-register-and-ingest demo-register-and-heartbeat demo-heartbeat-offline-alert demo-duty-board demo-device-online demo-camera-list demo-camera-detail demo-camera-create demo-camera-edit demo-camera-stop demo-camera-delete demo-one-alert demo-ack-one-alert demo-close-one-alert demo-alert-ack demo-threshold-alert demo-alert-camera-filter demo-alert-status-filter demo-alert-title-search demo-alert-handle-note demo-telemetry-latest demo-telemetry-history demo-recognition-history demo-telemetry-threshold-alert demo-alert-rule-config demo-alert-snapshot-minio demo-contrast demo-rbac demo-audit-log demo-user-mgmt
 
 contracts:
 	npm --prefix packages/contracts install
@@ -35,7 +35,7 @@ lint:
 
 test: contracts lint
 	npm --prefix packages/contracts test
-	node --test scripts/boundaries.spec.mjs scripts/evidence.spec.mjs scripts/edge-simulator.spec.mjs scripts/demo-one-http-recognition.spec.mjs scripts/demo-register-and-ingest.spec.mjs scripts/demo-register-and-heartbeat.spec.mjs scripts/demo-heartbeat-offline-alert.spec.mjs scripts/demo-duty-board.spec.mjs scripts/demo-device-online.spec.mjs scripts/demo-camera-list.spec.mjs scripts/demo-camera-detail.spec.mjs scripts/demo-camera-create.spec.mjs scripts/demo-camera-edit.spec.mjs scripts/demo-camera-stop.spec.mjs scripts/demo-camera-delete.spec.mjs scripts/demo-one-alert.spec.mjs scripts/demo-ack-close-alert.spec.mjs scripts/demo-threshold-alert.spec.mjs scripts/demo-alert-camera-filter.spec.mjs scripts/demo-alert-status-filter.spec.mjs scripts/demo-alert-title-search.spec.mjs scripts/demo-alert-handle-note.spec.mjs scripts/demo-telemetry-latest.spec.mjs scripts/demo-telemetry-history.spec.mjs scripts/demo-recognition-history.spec.mjs scripts/demo-rbac.spec.mjs scripts/demo-audit-log.spec.mjs scripts/demo-user-mgmt.spec.mjs scripts/demo-telemetry-threshold-alert.spec.mjs scripts/demo-alert-rule-config.spec.mjs scripts/demo-alert-snapshot-minio.spec.mjs scripts/object-lifecycle.spec.mjs scripts/object-tier.spec.mjs scripts/backup-postgres.spec.mjs scripts/compose-minio-image.spec.mjs
+	node --test scripts/boundaries.spec.mjs scripts/evidence.spec.mjs scripts/edge-simulator.spec.mjs scripts/demo-one-http-recognition.spec.mjs scripts/demo-register-and-ingest.spec.mjs scripts/demo-register-and-heartbeat.spec.mjs scripts/demo-heartbeat-offline-alert.spec.mjs scripts/demo-duty-board.spec.mjs scripts/demo-device-online.spec.mjs scripts/demo-camera-list.spec.mjs scripts/demo-camera-detail.spec.mjs scripts/demo-camera-create.spec.mjs scripts/demo-camera-edit.spec.mjs scripts/demo-camera-stop.spec.mjs scripts/demo-camera-delete.spec.mjs scripts/demo-one-alert.spec.mjs scripts/demo-ack-close-alert.spec.mjs scripts/demo-alert-ack.spec.mjs scripts/demo-threshold-alert.spec.mjs scripts/demo-alert-camera-filter.spec.mjs scripts/demo-alert-status-filter.spec.mjs scripts/demo-alert-title-search.spec.mjs scripts/demo-alert-handle-note.spec.mjs scripts/demo-telemetry-latest.spec.mjs scripts/demo-telemetry-history.spec.mjs scripts/demo-recognition-history.spec.mjs scripts/demo-rbac.spec.mjs scripts/demo-audit-log.spec.mjs scripts/demo-user-mgmt.spec.mjs scripts/demo-telemetry-threshold-alert.spec.mjs scripts/demo-alert-rule-config.spec.mjs scripts/demo-alert-snapshot-minio.spec.mjs scripts/object-lifecycle.spec.mjs scripts/object-tier.spec.mjs scripts/backup-postgres.spec.mjs scripts/compose-minio-image.spec.mjs
 	npm --prefix apps/api test
 	npm --prefix apps/web run typecheck
 	npm --prefix apps/web test
@@ -116,6 +116,10 @@ demo-ack-one-alert: contracts
 # 关闭这条未闭合告警，再读一次。步骤见 docs/DEMO_ACK_CLOSE_ALERT.md。
 demo-close-one-alert: contracts
 	node scripts/demo-ack-close-alert.mjs close
+
+# 列表留下待确认、已确认、已关闭。已关闭是先确认再关闭。步骤见 docs/DEMO_ALERT_ACK.md。
+demo-alert-ack: contracts
+	node scripts/demo-alert-ack.mjs
 
 # 把演示规则阈值改低，再发一条超限识别。告警列表出现对应告警。步骤见 docs/DEMO_THRESHOLD_ALERT.md。
 demo-threshold-alert: contracts

@@ -176,6 +176,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 `make demo-ack-one-alert` 确认这条待确认的温度过高告警，再读详情和 `status=acked` 的列表。已经是已确认、没有待确认时命令失败，不改这条告警。`make demo-close-one-alert` 关闭这条未闭合告警（待确认或已确认），再读详情和 `status=closed` 的列表。没有未闭合告警时，先按 `make demo-one-alert` 的方式补一条识别再关闭。两个命令都不改样例文件，也不改 `make demo-one-alert`。步骤见 [`DEMO_ACK_CLOSE_ALERT.md`](DEMO_ACK_CLOSE_ALERT.md)。
 
+`make demo-alert-ack` 在棚区 S01 留下三行，供告警列表点「确认」和「关闭」，不改状态下拉。`CAM-ACK-01` 标题「待确认操作告警」保持待确认。`CAM-ACK-02` 标题「已确认操作告警」用 `POST /api/v1/alerts/:id/ack` 确认，备注「已确认」，不再关闭。`CAM-ACK-03` 标题「已关闭操作告警」先确认再 `POST /api/v1/alerts/:id/close`，关闭备注「已关闭」，关闭原因 `resolved`；详情里的确认备注仍是「已确认」，不是「关闭时自动确认」。同标题同状态且备注相符则沿用。不发识别，不改 `make demo-one-alert`、`make demo-ack-one-alert`、`make demo-close-one-alert` 与 `make demo-alert-status-filter`。登录后打开 `/alerts`（全部）。待确认那一行点「确认」变为已确认，再点「关闭」变为已关闭。步骤见 [`DEMO_ALERT_ACK.md`](DEMO_ALERT_ACK.md)。
+
 `make demo-threshold-alert` 用 `PATCH /api/v1/alert-rules/:id` 把规则「演示二氧化碳过高」的阈值从 1500 改成 1000（没有这条规则时先 `POST` 一条，级别一般，棚区 S01）。再把样例识别的摄像头改成 `CAM-THRESH-01`、CO₂ 改成 1200，POST 一次。`GET /api/v1/alerts` 的待确认列表里有标题「CO₂过高告警」，说明里写着 1200 和阈值 1000。种子规则「二氧化碳过高」仍是 2000。样例文件里的 CO₂ 900 不改，已有演示报文不超过 1000。这台摄像头上同规则的未闭合告警会先关闭，其他摄像头的告警不动。步骤见 [`DEMO_THRESHOLD_ALERT.md`](DEMO_THRESHOLD_ALERT.md)。
 
 `make demo-alert-camera-filter` 用 `POST /api/v1/alerts` 留下两条未闭合告警：棚区 S01 的 `CAM-FILTER-01`（标题「东侧过道告警」）和 `CAM-FILTER-02`（标题「西侧过道告警」）。同摄像头、同标题已有未闭合告警则沿用，不新建。然后 `GET /api/v1/alerts?cameraCode=CAM-FILTER-02` 只含这台摄像头，`GET /api/v1/alerts/:id` 仍能打开它；不带 `cameraCode` 的列表里两条都在。不发识别，不改阈值规则，不确认或关闭其他告警。登录后在 `/alerts` 填写摄像头编号并点「筛选」，点标题进详情，点「清除」回到多摄像头列表。步骤见 [`DEMO_ALERT_CAMERA_FILTER.md`](DEMO_ALERT_CAMERA_FILTER.md)。

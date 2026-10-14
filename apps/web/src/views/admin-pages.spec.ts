@@ -405,6 +405,50 @@ describe('AlertsView', () => {
     refreshed.unmount();
   });
 
+  it('confirms then closes the same list row', async () => {
+    asUser('shed_manager');
+    const open = {
+      ...alert,
+      title: '待确认操作告警',
+      cameraCode: 'CAM-ACK-01',
+      status: 'open' as const,
+    };
+    const acked = { ...open, status: 'acked' as const, ackNote: '已确认' };
+    const closed = {
+      ...acked,
+      status: 'closed' as const,
+      closeReason: 'resolved' as const,
+      closeNote: '已确认',
+    };
+    httpGet.mockResolvedValueOnce({ data: { items: [open], total: 1 } });
+    httpPost.mockResolvedValueOnce({ data: acked });
+    const wrapper = await mountView(AlertsView);
+
+    expect(wrapper.get('[data-testid="alert-status"]').text()).toBe('待确认');
+    expect(wrapper.get('[data-testid="alert-ack"]').text()).toBe('确认');
+    expect(wrapper.get('[data-testid="alert-close"]').text()).toBe('关闭');
+    httpGet.mockResolvedValueOnce({ data: { items: [acked], total: 1 } });
+    await wrapper.get('[data-testid="alert-ack"]').trigger('click');
+    await flushPromises();
+
+    expect(httpPost).toHaveBeenCalledWith('/alerts/alert-1/ack', { note: '已确认' });
+    expect(wrapper.get('[data-testid="alert-status"]').text()).toBe('已确认');
+    expect(wrapper.find('[data-testid="alert-ack"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="alert-close"]').text()).toBe('关闭');
+
+    httpPost.mockResolvedValueOnce({ data: closed });
+    httpGet.mockResolvedValueOnce({ data: { items: [closed], total: 1 } });
+    await wrapper.get('[data-testid="alert-close"]').trigger('click');
+    await flushPromises();
+
+    expect(httpPost).toHaveBeenCalledWith('/alerts/alert-1/close', { note: '已确认' });
+    expect(wrapper.get('[data-testid="alert-status"]').text()).toBe('已关闭');
+    expect(wrapper.text()).toContain('正常关闭');
+    expect(wrapper.find('[data-testid="alert-ack"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="alert-close"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
   it('sends a trimmed handling note when confirming from the list', async () => {
     asUser('shed_manager');
     httpGet.mockResolvedValue({ data: { items: [alert], total: 1 } });
