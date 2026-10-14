@@ -482,6 +482,7 @@ describe('DevicesView batch import', () => {
     });
     const offline = await mountView('/devices?online=offline');
     expect(httpGet).toHaveBeenCalledWith('/devices?pageSize=100&online=offline');
+    expect((offline.get('[data-testid="device-online-filter"]').element as HTMLSelectElement).value).toBe('offline');
     expect(offline.get('[data-testid="device-online-scope"]').text()).toBe('离线 4 台');
     expect(offline.get('[data-code="CAM-DUTY-OFF"]').text()).toContain('离线');
     offline.unmount();
@@ -494,8 +495,91 @@ describe('DevicesView batch import', () => {
     });
     const online = await mountView('/devices?online=online');
     expect(httpGet).toHaveBeenCalledWith('/devices?pageSize=100&online=online');
+    expect((online.get('[data-testid="device-online-filter"]').element as HTMLSelectElement).value).toBe('online');
     expect(online.get('[data-testid="device-online-scope"]').text()).toBe('在线 2 台');
     expect(online.get('[data-code="CAM-DUTY-ON"]').text()).toContain('在线');
     online.unmount();
+  });
+
+  it('filters the list by 在线 or 离线 and drops the query when set back to 全部', async () => {
+    const onlineRow = {
+      ...device,
+      id: 'filt-on',
+      code: 'CAM-FLST-ON',
+      name: '筛选在线镜头',
+      onlineStatus: 'online',
+    };
+    const offlineRow = {
+      ...device,
+      id: 'filt-off',
+      code: 'CAM-FLST-OFF',
+      name: '筛选离线镜头',
+      onlineStatus: 'offline',
+    };
+    httpGet.mockImplementation((url: string) => {
+      if (url.includes('online=online')) {
+        return Promise.resolve({ data: { items: [onlineRow], total: 1 } });
+      }
+      if (url.includes('online=offline')) {
+        return Promise.resolve({ data: { items: [offlineRow], total: 1 } });
+      }
+      return Promise.resolve({ data: { items: [onlineRow, offlineRow], total: 2 } });
+    });
+    const wrapper = await mountView();
+    const select = wrapper.get('[data-testid="device-online-filter"]');
+    expect((select.element as HTMLSelectElement).value).toBe('');
+    expect(select.text()).toContain('全部');
+    expect(select.text()).toContain('在线');
+    expect(select.text()).toContain('离线');
+    expect(wrapper.text()).toContain('CAM-FLST-ON');
+    expect(wrapper.text()).toContain('CAM-FLST-OFF');
+
+    await select.setValue('online');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/devices?pageSize=100&online=online');
+    expect(wrapper.vm.$route.fullPath).toBe('/devices?online=online');
+    expect(wrapper.get('[data-code="CAM-FLST-ON"]').text()).toContain('在线');
+    expect(wrapper.find('[data-code="CAM-FLST-OFF"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="device-online-scope"]').text()).toBe('在线 1 台');
+
+    await select.setValue('offline');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/devices?pageSize=100&online=offline');
+    expect(wrapper.vm.$route.fullPath).toBe('/devices?online=offline');
+    expect(wrapper.get('[data-code="CAM-FLST-OFF"]').text()).toContain('离线');
+    expect(wrapper.find('[data-code="CAM-FLST-ON"]').exists()).toBe(false);
+
+    await select.setValue('');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/devices?pageSize=100');
+    expect(wrapper.vm.$route.fullPath).toBe('/devices');
+    expect(wrapper.find('[data-testid="device-online-scope"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('CAM-FLST-ON');
+    expect(wrapper.text()).toContain('CAM-FLST-OFF');
+    wrapper.unmount();
+  });
+
+  it('does not keep the previous rows when the online filter matches nothing', async () => {
+    httpGet.mockImplementation((url: string) => {
+      if (url.includes('online=offline')) {
+        return Promise.resolve({ data: { items: [], total: 0 } });
+      }
+      return Promise.resolve({
+        data: {
+          items: [{ ...device, id: 'keep', code: 'CAM-KEEP', onlineStatus: 'online' }],
+          total: 1,
+        },
+      });
+    });
+    const wrapper = await mountView();
+    expect(wrapper.find('[data-code="CAM-KEEP"]').exists()).toBe(true);
+
+    await wrapper.get('[data-testid="device-online-filter"]').setValue('offline');
+    await flushPromises();
+
+    expect(wrapper.find('table').exists()).toBe(false);
+    expect(wrapper.find('[data-code="CAM-KEEP"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="device-list-empty"]').text()).toBe('没有符合条件的设备。');
+    wrapper.unmount();
   });
 });

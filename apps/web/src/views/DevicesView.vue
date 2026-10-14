@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { DEVICE_TYPE_LABEL, type DeviceType } from '@mushroom/contracts';
 import { canImportDevices, canRegisterDevices, currentUser } from '../auth';
 import { errorText, http } from '../api';
@@ -34,6 +34,7 @@ interface ImportReport {
 }
 
 const route = useRoute();
+const router = useRouter();
 const rows = ref<DeviceRow[]>([]);
 const listTotal = ref(0);
 const loading = ref(true);
@@ -59,17 +60,30 @@ function onlineQuery(): '' | 'online' | 'offline' {
   return value === 'online' || value === 'offline' ? value : '';
 }
 
-const onlineScope = computed(() => onlineQuery());
+const onlineFilter = ref<'' | 'online' | 'offline'>(onlineQuery());
+const onlineScope = computed(() => onlineFilter.value);
 
 function deviceListPath() {
-  const online = onlineQuery();
+  const online = onlineFilter.value;
   if (!online) return '/devices?pageSize=100';
   return `/devices?pageSize=100&online=${online}`;
+}
+
+function replaceOnlineQuery(value: '' | 'online' | 'offline') {
+  if (value === onlineQuery()) return;
+  const query: Record<string, string> = {};
+  for (const [key, raw] of Object.entries(route.query)) {
+    if (key === 'online' || typeof raw !== 'string' || !raw) continue;
+    query[key] = raw;
+  }
+  if (value) query.online = value;
+  void router.replace({ path: route.path, query });
 }
 
 async function load() {
   loading.value = true;
   error.value = '';
+  rows.value = [];
   try {
     const response = await http.get<{
       items: Omit<DeviceRow, 'draftNote' | 'draftStatus'>[];
@@ -229,9 +243,18 @@ function recognitionHref(code: string): string {
   return `/recognitions?cameraCode=${encodeURIComponent(code)}`;
 }
 
-watch(onlineScope, () => {
+watch(onlineFilter, (value) => {
   void load();
+  replaceOnlineQuery(value);
 });
+
+watch(
+  () => (typeof route.query.online === 'string' ? route.query.online : ''),
+  () => {
+    const next = onlineQuery();
+    if (next !== onlineFilter.value) onlineFilter.value = next;
+  },
+);
 
 onMounted(load);
 </script>
@@ -322,15 +345,26 @@ onMounted(load);
     </section>
     <section class="panel overflow-x-auto">
       <h2 class="mb-3 text-lg">摄像头 / AI 盒 / 传感器</h2>
-      <p v-if="onlineScope" class="mb-3 text-sm" data-testid="device-online-scope">
+      <div class="mb-3 flex flex-wrap gap-3">
+        <label class="text-sm">状态
+          <select v-model="onlineFilter" class="field mt-1" data-testid="device-online-filter">
+            <option value="">全部</option>
+            <option value="online">在线</option>
+            <option value="offline">离线</option>
+          </select>
+        </label>
+      </div>
+      <p v-if="onlineScope && !loading" class="mb-3 text-sm" data-testid="device-online-scope">
         {{ onlineScope === 'online' ? '在线' : '离线' }} {{ listTotal }} 台
       </p>
       <p class="mb-3 text-sm text-mist">
-        摄像头这一行的镜头码与编号相同。点镜头码进入这台摄像头的详情。告警列表按这个镜头码筛选，识别记录也按它打开。传感器和 AI 盒的镜头码是「—」。能改档案时，备注和状态下拉在这一行，提交后列表重新读取。停用只改启用标记，不改在线状态、备注和最近心跳。停用后这一行还在，详情仍可打开。删除会去掉这一行档案。列表和详情都不再有这一台。告警和识别仍按镜头码留着。
+        摄像头这一行的镜头码与编号相同。点镜头码进入这台摄像头的详情。告警列表按这个镜头码筛选，识别记录也按它打开。传感器和 AI 盒的镜头码是「—」。表上方的状态下拉选「在线」或「离线」后，列表只留这一类，地址栏带上 online。选「全部」则不传。没有匹配时写「没有符合条件的设备。」，不留下上一次的表。能改档案时，备注和状态下拉在这一行，提交后列表重新读取。停用只改启用标记，不改在线状态、备注和最近心跳。停用后这一行还在，详情仍可打开。删除会去掉这一行档案。列表和详情都不再有这一台。告警和识别仍按镜头码留着。
       </p>
       <p v-if="loading" class="text-mist">加载中…</p>
       <p v-else-if="error" class="text-danger">{{ error }}</p>
-      <p v-else-if="!rows.length" class="text-mist">暂无设备。识别上报会自动建档。</p>
+      <p v-else-if="!rows.length" class="text-mist" data-testid="device-list-empty">
+        {{ onlineFilter ? '没有符合条件的设备。' : '暂无设备。识别上报会自动建档。' }}
+      </p>
       <table v-else class="data-table">
         <thead>
           <tr>
