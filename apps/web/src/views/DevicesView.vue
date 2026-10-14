@@ -14,6 +14,7 @@ interface DeviceRow {
   lastSeenAt: string | null;
   lastHeartbeatAt?: string | null;
   note: string | null;
+  enabled?: boolean;
   draftNote: string;
   draftStatus: 'online' | 'offline';
 }
@@ -144,6 +145,23 @@ async function saveEdit(row: DeviceRow) {
   }
 }
 
+async function setEnabled(row: DeviceRow, enabled: boolean) {
+  formError.value = '';
+  savingId.value = row.id;
+  try {
+    await http.patch(`/devices/${row.id}`, { enabled });
+    await load();
+  } catch (cause) {
+    formError.value = errorText(cause);
+  } finally {
+    savingId.value = '';
+  }
+}
+
+function enabledText(enabled: boolean | undefined) {
+  return enabled === false ? '停用' : '启用';
+}
+
 function fileBody(selected: File) {
   const body = new FormData();
   body.append('file', selected);
@@ -232,7 +250,7 @@ onMounted(load);
     <section class="panel space-y-3">
       <h2 class="text-lg">登记摄像头</h2>
       <p v-if="canRegister" class="text-sm text-mist">
-        编号、棚区、名称必填。备注可空。登记后出现在下方列表，镜头码进入详情。新建是离线。这一行可以改备注和状态，保存不写心跳。
+        编号、棚区、名称必填。备注可空。登记后出现在下方列表，镜头码进入详情。新建是离线、启用。这一行可以改备注和状态，保存不写心跳。摄像头可以停用，档案仍在。
       </p>
       <p v-else class="text-sm text-mist">当前角色不能登记摄像头。</p>
       <form
@@ -270,7 +288,7 @@ onMounted(load);
     <section class="panel overflow-x-auto">
       <h2 class="mb-3 text-lg">摄像头 / AI 盒 / 传感器</h2>
       <p class="mb-3 text-sm text-mist">
-        摄像头这一行的镜头码与编号相同。点镜头码进入这台摄像头的详情。告警列表按这个镜头码筛选，识别记录也按它打开。传感器和 AI 盒的镜头码是「—」。能改档案时，备注和状态下拉在这一行，提交后列表重新读取。
+        摄像头这一行的镜头码与编号相同。点镜头码进入这台摄像头的详情。告警列表按这个镜头码筛选，识别记录也按它打开。传感器和 AI 盒的镜头码是「—」。能改档案时，备注和状态下拉在这一行，提交后列表重新读取。停用只改启用标记，不改在线状态、备注和最近心跳。停用后这一行还在，详情仍可打开。
       </p>
       <p v-if="loading" class="text-mist">加载中…</p>
       <p v-else-if="error" class="text-danger">{{ error }}</p>
@@ -278,7 +296,7 @@ onMounted(load);
       <table v-else class="data-table">
         <thead>
           <tr>
-            <th>镜头码</th><th>编号</th><th>名称</th><th>类型</th><th>棚区</th><th>状态</th><th>备注</th><th>最近心跳</th><th>相关</th>
+            <th>镜头码</th><th>编号</th><th>名称</th><th>类型</th><th>棚区</th><th>状态</th><th>启用</th><th>备注</th><th>最近心跳</th><th>相关</th>
           </tr>
         </thead>
         <tbody>
@@ -302,6 +320,7 @@ onMounted(load);
                 :class="row.onlineStatus === 'online' ? 'text-accent' : 'text-mist'"
               >{{ row.onlineStatus === 'online' ? '在线' : '离线' }}</span>
             </td>
+            <td data-field="enabled">{{ enabledText(row.enabled) }}</td>
             <td>
               <form
                 v-if="canRegister"
@@ -335,6 +354,14 @@ onMounted(load);
                 <a class="text-accent" :href="detailHref(row.id)" data-field="detail-entry">详情</a>
                 <a class="ml-2 text-accent" :href="alertHref(row.code)" data-field="alert-link">告警</a>
                 <a class="ml-2 text-accent" :href="recognitionHref(row.code)" data-field="recognition-link">识别</a>
+                <button
+                  v-if="canRegister"
+                  class="ml-2 text-accent"
+                  type="button"
+                  :data-testid="`device-enabled-${row.code}`"
+                  :disabled="savingId === row.id"
+                  @click="setEnabled(row, row.enabled === false)"
+                >{{ row.enabled === false ? '启用' : '停用' }}</button>
               </template>
               <span v-else>—</span>
             </td>

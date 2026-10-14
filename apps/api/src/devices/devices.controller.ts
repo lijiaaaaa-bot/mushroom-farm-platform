@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import {
+  IsBoolean,
   IsIn,
   IsOptional,
   IsString,
@@ -78,6 +79,10 @@ class UpdateDeviceDto {
   @IsOptional()
   @IsIn(['online', 'offline'])
   onlineStatus?: 'online' | 'offline';
+
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
 }
 
 @Controller('devices')
@@ -159,7 +164,11 @@ export class DevicesController {
       user,
       action: 'device.update',
       resource: `device:${device.id}`,
-      detail: { code: device.code, onlineStatus: device.onlineStatus },
+      detail: {
+        code: device.code,
+        onlineStatus: device.onlineStatus,
+        enabled: device.enabled,
+      },
       ip: request.ip,
     });
     return device;

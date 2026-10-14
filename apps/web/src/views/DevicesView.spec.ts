@@ -227,6 +227,7 @@ describe('DevicesView batch import', () => {
     expect(wrapper.find('input[type="file"]').exists()).toBe(false);
     expect(wrapper.text()).toContain('CAM-S01');
     expect(wrapper.text()).not.toContain('保存');
+    expect(wrapper.find('[data-testid="device-enabled-CAM-S01"]').exists()).toBe(false);
     wrapper.unmount();
   });
 
@@ -360,6 +361,41 @@ describe('DevicesView batch import', () => {
     wrapper.unmount();
   });
 
+  it('deactivates a camera and shows 停用 on the reloaded row', async () => {
+    httpGet
+      .mockResolvedValueOnce({
+        data: {
+          items: [{ ...device, note: '停用前', onlineStatus: 'offline', enabled: true }],
+          total: 1,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          items: [{ ...device, note: '停用前', onlineStatus: 'offline', enabled: false }],
+          total: 1,
+        },
+      });
+    httpPatch.mockResolvedValue({ data: { id: device.id, enabled: false } });
+    const wrapper = await mountView();
+    expect(wrapper.get('[data-field="enabled"]').text()).toBe('启用');
+    expect(wrapper.get('[data-field="status"]').text()).toBe('离线');
+    expect(wrapper.get('[data-testid="device-enabled-CAM-S01"]').text()).toBe('停用');
+
+    await wrapper.get('[data-testid="device-enabled-CAM-S01"]').trigger('click');
+    await flushPromises();
+
+    expect(httpPatch).toHaveBeenCalledWith('/devices/device-1', { enabled: false });
+    expect(wrapper.get('[data-field="enabled"]').text()).toBe('停用');
+    expect(wrapper.get('[data-field="status"]').text()).toBe('离线');
+    expect(wrapper.get('input[aria-label="备注 CAM-S01"]').element).toHaveProperty(
+      'value',
+      '停用前',
+    );
+    expect(wrapper.get('[data-testid="device-enabled-CAM-S01"]').text()).toBe('启用');
+    expect(wrapper.get('[data-field="detail-entry"]').attributes('href')).toBe('/devices/device-1');
+    wrapper.unmount();
+  });
+
   it('lets a shed manager import but not register', async () => {
     asUser('shed_manager');
     httpGet.mockResolvedValue({ data: { items: [device], total: 1 } });
@@ -369,6 +405,7 @@ describe('DevicesView batch import', () => {
     expect(wrapper.find('[data-testid="camera-register-form"]').exists()).toBe(false);
     expect(wrapper.text()).toContain('当前角色不能登记摄像头。');
     expect(wrapper.text()).not.toContain('保存');
+    expect(wrapper.find('[data-testid="device-enabled-CAM-S01"]').exists()).toBe(false);
     wrapper.unmount();
   });
 });

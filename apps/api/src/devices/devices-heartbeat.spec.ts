@@ -325,6 +325,7 @@ describe('device heartbeat and offline alerts', () => {
       lastSeenAt: new Date('2026-09-23T00:00:00.000Z'),
       lastHeartbeatAt: null,
       note: null,
+      enabled: true,
       meta: {},
       createdAt: new Date('2026-09-23T00:00:00.000Z'),
     });

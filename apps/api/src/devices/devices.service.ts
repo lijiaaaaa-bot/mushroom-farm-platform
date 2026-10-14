@@ -118,6 +118,7 @@ export class DevicesService {
         lastSeenAt: null,
         lastHeartbeatAt: null,
         note: storedNote(input.note),
+        enabled: true,
         meta: {},
       }),
     );
@@ -133,6 +134,7 @@ export class DevicesService {
       type?: string;
       note?: string | null;
       onlineStatus?: 'online' | 'offline';
+      enabled?: boolean;
     },
   ) {
     const device = await this.devices.findOne({ where: { id } });
@@ -151,6 +153,12 @@ export class DevicesService {
         throw new BadRequestException('状态只能是在线或离线');
       }
       device.onlineStatus = patch.onlineStatus;
+    }
+    if (patch.enabled !== undefined) {
+      if (typeof patch.enabled !== 'boolean') {
+        throw new BadRequestException('启用只能是 true 或 false');
+      }
+      device.enabled = patch.enabled;
     }
     return this.devices.save(device);
   }
@@ -226,6 +234,7 @@ export class DevicesService {
             lastSeenAt: null,
             lastHeartbeatAt: null,
             note: null,
+            enabled: true,
             meta: {},
           }),
         );
@@ -291,6 +300,7 @@ export class DevicesService {
         lastSeenAt: null,
         lastHeartbeatAt: null,
         note: null,
+        enabled: true,
         meta: { autoRegistered: true },
       });
     } else if (deviceType && isDeviceType(deviceType)) {
@@ -340,6 +350,7 @@ export class DevicesService {
         lastSeenAt: online ? new Date() : null,
         lastHeartbeatAt: null,
         note: null,
+        enabled: true,
         meta: { autoRegistered: true },
       });
     } else {

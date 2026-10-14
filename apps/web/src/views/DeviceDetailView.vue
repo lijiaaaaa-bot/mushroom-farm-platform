@@ -22,6 +22,7 @@ interface DeviceRow {
   lastSeenAt: string | null;
   lastHeartbeatAt?: string | null;
   note: string | null;
+  enabled?: boolean;
 }
 
 interface AlertRow {
@@ -43,6 +44,7 @@ const alertsTruncated = ref(false);
 const draftNote = ref('');
 const draftStatus = ref<'online' | 'offline'>('offline');
 const saving = ref(false);
+const stopping = ref(false);
 const formError = ref('');
 const canEdit = computed(() => canRegisterDevices(currentUser.value?.role));
 
@@ -55,6 +57,10 @@ function statusText(onlineStatus: string) {
   if (onlineStatus === 'online') return '在线';
   if (onlineStatus === 'offline') return '离线';
   return onlineStatus || '—';
+}
+
+function enabledText(enabled: boolean | undefined) {
+  return enabled === false ? '停用' : '启用';
 }
 
 function clock(value: string | null | undefined) {
@@ -96,6 +102,23 @@ async function saveEdit() {
     formError.value = errorText(cause);
   } finally {
     saving.value = false;
+  }
+}
+
+async function setEnabled(enabled: boolean) {
+  if (!device.value) return;
+  formError.value = '';
+  stopping.value = true;
+  const id = device.value.id;
+  try {
+    await http.patch(`/devices/${encodeURIComponent(id)}`, { enabled });
+    const response = await http.get<DeviceRow>(`/devices/${encodeURIComponent(id)}`);
+    device.value = response.data;
+    syncDraft(response.data);
+  } catch (cause) {
+    formError.value = errorText(cause);
+  } finally {
+    stopping.value = false;
   }
 }
 
@@ -177,6 +200,10 @@ watch(
           <span data-field="status">{{ statusText(device.onlineStatus) }}</span>
         </div>
         <div>
+          <span class="text-mist">启用</span>
+          <span data-field="enabled">{{ enabledText(device.enabled) }}</span>
+        </div>
+        <div>
           <span class="text-mist">备注</span>
           <span data-field="note">{{ device.note || '—' }}</span>
         </div>
@@ -207,7 +234,17 @@ watch(
           {{ saving ? '保存中…' : '保存' }}
         </button>
       </form>
-      <p v-if="formError" class="mt-2 text-sm text-danger" data-testid="device-edit-error">{{ formError }}</p>
+        <p v-if="formError" class="mt-2 text-sm text-danger" data-testid="device-edit-error">{{ formError }}</p>
+      <p v-if="canEdit && device.type === 'camera'" class="mt-4 text-sm">
+        <button
+          class="btn-ghost"
+          type="button"
+          data-testid="device-enabled"
+          :disabled="stopping"
+          @click="setEnabled(device.enabled === false)"
+        >{{ stopping ? '保存中…' : device.enabled === false ? '启用' : '停用' }}</button>
+        <span class="ml-2 text-mist">停用后这一页和设备列表仍能打开这台。在线状态、备注和最近心跳不动。</span>
+      </p>
       <section v-if="device.type === 'camera'" class="mt-4" data-testid="device-alerts">
         <h3 class="mb-2 text-sm">相关告警</h3>
         <p v-if="alertsError" class="text-sm text-danger" data-testid="device-alerts-error">{{ alertsError }}</p>

@@ -181,7 +181,35 @@ describe('DeviceDetailView', () => {
 
     expect(wrapper.get('[data-field="note"]').text()).toBe('镜头码对照告警');
     expect(wrapper.find('[data-testid="device-edit"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="device-enabled"]').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('保存');
+    expect(wrapper.get('[data-field="enabled"]').text()).toBe('启用');
+    wrapper.unmount();
+  });
+
+  it('deactivates the camera and keeps the detail reachable', async () => {
+    asUser('production_admin');
+    httpGet
+      .mockResolvedValueOnce({ data: { ...device, enabled: true } })
+      .mockResolvedValueOnce({ data: { items: [], total: 0 } })
+      .mockResolvedValueOnce({
+        data: { ...device, enabled: false, note: '停用前', onlineStatus: 'offline' },
+      });
+    httpPatch.mockResolvedValue({ data: { ...device, enabled: false } });
+    const wrapper = await mountDetail();
+
+    expect(wrapper.get('[data-field="enabled"]').text()).toBe('启用');
+    expect(wrapper.get('[data-testid="device-enabled"]').text()).toBe('停用');
+    await wrapper.get('[data-testid="device-enabled"]').trigger('click');
+    await flushPromises();
+
+    expect(httpPatch).toHaveBeenCalledWith('/devices/dev-alert-01', { enabled: false });
+    expect(httpGet).toHaveBeenLastCalledWith('/devices/dev-alert-01');
+    expect(wrapper.get('[data-field="enabled"]').text()).toBe('停用');
+    expect(wrapper.get('[data-field="status"]').text()).toBe('离线');
+    expect(wrapper.get('[data-field="note"]').text()).toBe('停用前');
+    expect(wrapper.get('[data-field="code"]').text()).toBe('CAM-ALERT-01');
+    expect(wrapper.get('[data-testid="device-enabled"]').text()).toBe('启用');
     wrapper.unmount();
   });
 });

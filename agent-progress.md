@@ -3,6 +3,7 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
+- 2026-10-14：镜头可停用。`make demo-camera-stop` 登记 `CAM-STOP-01`（棚区 S01，名称可停用镜头，备注停用前）。已存在则不改名称和心跳。再 PATCH `enabled: false`。列表和 `GET /devices/:id` 启用都是停用，备注、在线状态和最近心跳不动，详情仍可打开。`/devices` 与详情页可停用，也可再启用。心跳仍按上报改在线状态，不把停用改回启用。不发识别，不发心跳，不删除档案，不改已有演示命令。步骤 `docs/DEMO_CAMERA_STOP.md`。分支 `cursor/camera-stop-demo-0019`。
 - 2026-10-14：镜头可改备注和状态。`make demo-camera-edit` 登记 `CAM-EDIT-01`（棚区 S01，名称可编辑镜头，备注编辑前）。已存在则不改名称和心跳。再 PATCH 备注「备注已改」、状态在线。列表和 `GET /devices/:id` 一致。`/devices` 与详情页可保存这两项。没有心跳时手改的在线留着；已有心跳仍按超时改回离线。不发识别，不发心跳，不改已有演示命令。步骤 `docs/DEMO_CAMERA_EDIT.md`。分支 `cursor/camera-edit-demo-0620`。
 - 2026-10-14：新增一台镜头后，设备列表和镜头详情都能看到。`make demo-camera-create` 登记 `CAM-NEW-01`（棚区 S01，名称新增镜头，备注新增可演示）。已存在则不改档案。再读 `GET /api/v1/devices?pageSize=100` 与 `GET /api/v1/devices/:id`，字段一致。`/devices` 登记成功后列出这一行，并给出详情链接。不发识别，不发心跳，不新建告警，不改 `CAM-ALERT-01`、`CAM-REG-02` 与已有演示命令。步骤 `docs/DEMO_CAMERA_CREATE.md`。分支 `cursor/camera-create-demo-4ec6`。
 - 2026-10-14：镜头详情可从设备列表点进。`make demo-camera-detail` 保证 `CAM-ALERT-01` 后读 `GET /api/v1/devices/:id`，字段与列表这一行一致，并在 `GET /api/v1/alerts?cameraCode=CAM-ALERT-01` 里看到「镜头详情告警」。已有档案和已有同标题告警不改。不发识别，不发心跳。步骤 `docs/DEMO_CAMERA_DETAIL.md`。分支 `cursor/camera-detail-demo-8ba1`。
@@ -33,6 +34,7 @@
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
+| 2026-10-14 | `make demo-camera-stop`：登记 `CAM-STOP-01`，再 PATCH `enabled: false`。列表与详情启用都是停用，档案仍在。页面停用后重新读取。心跳不把停用改回启用。不发识别，不发心跳，不改已有演示命令 | 待 `make test` 与 `make gates` | 不合并 |
 | 2026-10-14 | `make demo-camera-edit`：登记 `CAM-EDIT-01`，再 PATCH 备注「备注已改」和状态在线。列表与详情一致。页面保存后重新读取。没有心跳和时间戳时超时任务不改手改的在线。不发识别，不发心跳，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 150，API jest 150，web vitest 175）；`make gates` 退出码 0。PR #114 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。不合并 |
 | 2026-10-14 | `make demo-camera-create`：`POST /api/v1/devices` 新增 `CAM-NEW-01`（棚区 S01，名称新增镜头，备注新增可演示）。409 时不改档案。再读 `GET /api/v1/devices?pageSize=100` 与 `GET /api/v1/devices/:id`，字段一致。`/devices` 登记后列表有这一行，并可打开详情。不发识别，不发心跳，不新建告警，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 141，API jest 149，web vitest 172）；`make gates` 退出码 0。PR #113 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。不合并 |
 | 2026-10-14 | `make demo-camera-detail`：设备列表镜头码进入 `/devices/:id`。详情读 `GET /api/v1/devices/:id`（编号、名称、棚区、状态、备注、心跳）。相关告警读 `GET /api/v1/alerts?cameraCode=`。没有「镜头详情告警」时 POST 一条一般、待确认告警。不发识别，不发心跳，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 132，API jest 148，web vitest 172）；`make gates` 退出码 0 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。不合并 |

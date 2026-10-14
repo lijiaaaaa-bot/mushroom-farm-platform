@@ -173,6 +173,7 @@ describe('device batch import HTTP', () => {
       lastSeenAt: null,
       lastHeartbeatAt: null,
       note: null,
+      enabled: true,
       meta: {},
       createdAt: new Date(),
     });

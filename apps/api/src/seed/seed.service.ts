@@ -173,6 +173,7 @@ export class SeedService implements OnModuleInit {
           onlineStatus: 'offline',
           lastSeenAt: null,
           lastHeartbeatAt: null,
+          enabled: true,
           meta: { seeded: true },
         }),
       );
