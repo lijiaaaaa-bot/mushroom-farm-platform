@@ -294,6 +294,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 `make demo-audit-log` 用同一对账号。超管登录的 User-Agent 是 `audit-log-demo/1`，再对不存在的用户 `audit-demo` 做一次失败登录。`/audit` 上方登录日志有 `audit-demo` 失败和 `admin` 成功，User-Agent 都是 `audit-log-demo/1`。下方操作审计有「登录失败」（接口动作 `auth.login_failed`，明细 `audit-demo`）和 `admin` 的「登录成功」（`auth.login`）。`GET /api/v1/login-logs` 与 `GET /api/v1/audit-logs` 对超管是 200，第一页含这些行；查看仍是 403，打开 `/audit` 回到总览。已有 `viewer` 时重设密码，不另建一行。不发识别，不发心跳，不改告警。步骤见 [`DEMO_AUDIT_LOG.md`](DEMO_AUDIT_LOG.md)。
 
+`make demo-user-mgmt` 用同一对账号，写入查看账号的方式与 `make demo-rbac` 相同。超管的 `GET /api/v1/users` 至少有 `admin`（角色超管）和 `viewer`（角色查看），列表不含密码。`/users` 的角色列用 `ROLE_LABEL` 写出这两字。查看该接口是 403，侧栏没有「用户」，打开 `/users` 回到总览。页面没有新建或重设密码的表单。不发识别，不发心跳，不改告警。步骤见 [`DEMO_USER_MGMT.md`](DEMO_USER_MGMT.md)。
+
 ## 存储
 
 | 组件 | 现状 |
