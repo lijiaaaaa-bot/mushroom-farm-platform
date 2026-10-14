@@ -66,7 +66,7 @@
 
 ## 设备、识别、环境、病害
 
-设备 `/devices`。`GET/POST /api/v1/devices`，`PATCH /api/v1/devices/:id`，`POST /api/v1/devices/import`（CSV 文件、CSV 文本或 JSON 行）。导入时编码冲突跳过且不改原档案。单条 `POST` 遇到已有编码返回 409，文案「设备编码已存在」。登记字段：编号 `code`、名称 `name`、类型 `type`（页面固定为 `camera`）、棚区 `shedCode`、备注 `note`（可空，最长 500 字，空白记为 null）。`PATCH` 可改备注。超管与生产管理员可登记和改备注；棚区负责人可导入，不能单条登记或改备注；查看人员 403。心跳超时（默认 5 分钟，`DEVICE_OFFLINE_AFTER_MS`）产生「设备离线」告警，恢复心跳自动关闭。在线状态以 `lastHeartbeatAt` 为准。登记和改备注不改在线状态，之后的心跳也不清备注。
+设备 `/devices`。`GET/POST /api/v1/devices`，`PATCH /api/v1/devices/:id`，`POST /api/v1/devices/import`（CSV 文件、CSV 文本或 JSON 行）。导入时编码冲突跳过且不改原档案。单条 `POST` 遇到已有编码返回 409，文案「设备编码已存在」。登记字段：编号 `code`、名称 `name`、类型 `type`（页面固定为 `camera`）、棚区 `shedCode`、备注 `note`（可空，最长 500 字，空白记为 null）。`PATCH` 可改备注，也可把 `onlineStatus` 改成 `online` 或 `offline`。超管与生产管理员可登记、改备注和改状态；棚区负责人可导入，不能单条登记或改档案；查看人员 403。心跳超时（默认 5 分钟，`DEVICE_OFFLINE_AFTER_MS`）产生「设备离线」告警，恢复心跳自动关闭。已有 `lastHeartbeatAt` 或 `lastSeenAt` 时，超时仍按该时间把在线改回离线。两者都空时，手改的在线留在列表和详情里，超时任务不改它。手改状态不写心跳，不新建、不关闭离线告警。之后的心跳按上报改状态，不清备注。只改备注时不改在线状态。
 
 ### 登记一台摄像头
 
@@ -133,6 +133,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 `make demo-camera-detail` 用与列表演示相同的 `POST /api/v1/devices` 保证 `CAM-ALERT-01`，已存在则不改档案。再读 `GET /api/v1/devices/:id`，字段必须和列表这一行一致。相关告警沿用标题「镜头详情告警」；没有则 `POST /api/v1/alerts`（一般、待确认）。不发识别，不发心跳，不确认、不关闭已有告警。步骤见 [`DEMO_CAMERA_DETAIL.md`](DEMO_CAMERA_DETAIL.md)。
 
 `make demo-camera-create` 用同一条 `POST /api/v1/devices` 新增镜头码 `CAM-NEW-01`（棚区 `S01`，名称新增镜头，备注新增可演示）。编码已存在则不改档案。然后读设备页同一份 `GET /api/v1/devices?pageSize=100`，再用这一行的 `id` 读 `GET /api/v1/devices/:id`。详情字段与列表这一行一致。`/devices` 登记成功后列出这一行，并给出详情链接。不发识别，不发心跳，不新建告警，不改 `CAM-ALERT-01` 与 `CAM-REG-02`。步骤见 [`DEMO_CAMERA_CREATE.md`](DEMO_CAMERA_CREATE.md)。
+
+`make demo-camera-edit` 先 `POST /api/v1/devices` 登记镜头码 `CAM-EDIT-01`（棚区 `S01`，名称可编辑镜头，备注编辑前）。编码已存在则不改名称和心跳。然后 `PATCH /api/v1/devices/:id`，备注改为「备注已改」，状态改为在线。再读设备页同一份 `GET /api/v1/devices?pageSize=100` 和 `GET /api/v1/devices/:id`，两处备注和状态一致。不发识别，不发心跳，不新建告警，不改 `CAM-NEW-01`、`CAM-ALERT-01` 与 `CAM-REG-02`。`/devices` 这一行和 `/devices/:id` 都能改备注和状态，保存后重新读取。步骤见 [`DEMO_CAMERA_EDIT.md`](DEMO_CAMERA_EDIT.md)。
 
 识别 `/recognitions`。`GET /api/v1/ingest/recognitions`，可按摄像头、上海日筛选。有图时打开已存抓拍。
 

@@ -30,7 +30,8 @@ make web      # http://127.0.0.1:43123
 告警抓拍写入对象存储，详情页打开这张图：[`docs/DEMO_ALERT_SNAPSHOT_MINIO.md`](docs/DEMO_ALERT_SNAPSHOT_MINIO.md)（`make demo-alert-snapshot-minio`）。  
 发两条环境遥测，最新值出现在环境读数页：[`docs/DEMO_TELEMETRY_LATEST.md`](docs/DEMO_TELEMETRY_LATEST.md)（`make demo-telemetry-latest`）。  
 发一条超阈值环境遥测，告警列表和详情出现这条告警：[`docs/DEMO_TELEMETRY_THRESHOLD_ALERT.md`](docs/DEMO_TELEMETRY_THRESHOLD_ALERT.md)（`make demo-telemetry-threshold-alert`）。  
-新增一台镜头，设备列表和镜头详情都能看到：[`docs/DEMO_CAMERA_CREATE.md`](docs/DEMO_CAMERA_CREATE.md)（`make demo-camera-create`）。
+新增一台镜头，设备列表和镜头详情都能看到：[`docs/DEMO_CAMERA_CREATE.md`](docs/DEMO_CAMERA_CREATE.md)（`make demo-camera-create`）。  
+改一台镜头的备注和状态，列表和详情都能看到：[`docs/DEMO_CAMERA_EDIT.md`](docs/DEMO_CAMERA_EDIT.md)（`make demo-camera-edit`）。
 
 ## 接入
 

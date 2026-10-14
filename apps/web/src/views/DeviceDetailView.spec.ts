@@ -1,12 +1,14 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { currentUser, type SessionUser } from '../auth';
 import DeviceDetailView from './DeviceDetailView.vue';
 
 const httpGet = vi.hoisted(() => vi.fn());
+const httpPatch = vi.hoisted(() => vi.fn());
 
 vi.mock('../api', () => ({
-  http: { get: httpGet },
+  http: { get: httpGet, patch: httpPatch },
   errorText: () => '请求失败',
 }));
 
@@ -47,9 +49,21 @@ async function mountDetail(id = device.id) {
   return wrapper;
 }
 
+function asUser(role: SessionUser['role']) {
+  currentUser.value = {
+    id: 'user-1',
+    username: role,
+    displayName: role,
+    role,
+    shedCodes: ['S01'],
+  };
+}
+
 describe('DeviceDetailView', () => {
   beforeEach(() => {
     httpGet.mockReset();
+    httpPatch.mockReset();
+    currentUser.value = null;
   });
 
   it('shows the camera fields and related alerts', async () => {
@@ -118,6 +132,56 @@ describe('DeviceDetailView', () => {
     expect(wrapper.get('[data-testid="device-detail-error"]').text()).toBe('请求失败');
     expect(wrapper.find('[data-testid="device-detail"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="device-alerts"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="device-edit"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('saves a note and status, then shows them on the detail', async () => {
+    asUser('production_admin');
+    httpGet
+      .mockResolvedValueOnce({ data: device })
+      .mockResolvedValueOnce({ data: { items: [alert], total: 1 } })
+      .mockResolvedValueOnce({
+        data: { ...device, note: '备注已改', onlineStatus: 'online' },
+      });
+    httpPatch.mockResolvedValue({
+      data: { ...device, note: '备注已改', onlineStatus: 'online' },
+    });
+    const wrapper = await mountDetail();
+
+    expect(wrapper.get('[data-field="status"]').text()).toBe('离线');
+    expect(wrapper.get('[data-field="note"]').text()).toBe('镜头码对照告警');
+    expect(wrapper.get('select[aria-label="编辑状态"]').element).toHaveProperty('value', 'offline');
+    await wrapper.get('select[aria-label="编辑状态"]').setValue('online');
+    await wrapper.get('input[aria-label="编辑备注"]').setValue('备注已改');
+    await wrapper.get('[data-testid="device-edit"]').trigger('submit');
+    await flushPromises();
+
+    expect(httpPatch).toHaveBeenCalledWith('/devices/dev-alert-01', {
+      note: '备注已改',
+      onlineStatus: 'online',
+    });
+    expect(httpGet).toHaveBeenLastCalledWith('/devices/dev-alert-01');
+    expect(wrapper.get('[data-field="status"]').text()).toBe('在线');
+    expect(wrapper.get('[data-field="note"]').text()).toBe('备注已改');
+    expect(wrapper.get('[data-field="heartbeat"]').text()).toBe('—');
+    expect(wrapper.get('select[aria-label="编辑状态"]').element).toHaveProperty('value', 'online');
+    expect(wrapper.get('input[aria-label="编辑备注"]').element).toHaveProperty('value', '备注已改');
+    wrapper.unmount();
+  });
+
+  it('hides the edit form for viewers', async () => {
+    asUser('viewer');
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/devices/dev-alert-01') return Promise.resolve({ data: device });
+      if (url === '/alerts') return Promise.resolve({ data: { items: [], total: 0 } });
+      return Promise.reject(new Error(url));
+    });
+    const wrapper = await mountDetail();
+
+    expect(wrapper.get('[data-field="note"]').text()).toBe('镜头码对照告警');
+    expect(wrapper.find('[data-testid="device-edit"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('保存');
     wrapper.unmount();
   });
 });

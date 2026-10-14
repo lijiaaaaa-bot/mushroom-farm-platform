@@ -1,4 +1,4 @@
-.PHONY: up images images-probe api web test smoke smoke-evidence migrate contracts lint gates gates-selftest backup object-tier demo-one-ingest demo-register-and-ingest demo-register-and-heartbeat demo-camera-list demo-camera-detail demo-camera-create demo-one-alert demo-ack-one-alert demo-close-one-alert demo-threshold-alert demo-alert-camera-filter demo-alert-status-filter demo-alert-title-search demo-alert-handle-note demo-telemetry-latest demo-telemetry-threshold-alert demo-alert-rule-config demo-alert-snapshot-minio demo-contrast
+.PHONY: up images images-probe api web test smoke smoke-evidence migrate contracts lint gates gates-selftest backup object-tier demo-one-ingest demo-register-and-ingest demo-register-and-heartbeat demo-camera-list demo-camera-detail demo-camera-create demo-camera-edit demo-one-alert demo-ack-one-alert demo-close-one-alert demo-threshold-alert demo-alert-camera-filter demo-alert-status-filter demo-alert-title-search demo-alert-handle-note demo-telemetry-latest demo-telemetry-threshold-alert demo-alert-rule-config demo-alert-snapshot-minio demo-contrast
 
 contracts:
 	npm --prefix packages/contracts install
@@ -35,7 +35,7 @@ lint:
 
 test: contracts lint
 	npm --prefix packages/contracts test
-	node --test scripts/boundaries.spec.mjs scripts/evidence.spec.mjs scripts/edge-simulator.spec.mjs scripts/demo-one-http-recognition.spec.mjs scripts/demo-register-and-ingest.spec.mjs scripts/demo-register-and-heartbeat.spec.mjs scripts/demo-camera-list.spec.mjs scripts/demo-camera-detail.spec.mjs scripts/demo-camera-create.spec.mjs scripts/demo-one-alert.spec.mjs scripts/demo-ack-close-alert.spec.mjs scripts/demo-threshold-alert.spec.mjs scripts/demo-alert-camera-filter.spec.mjs scripts/demo-alert-status-filter.spec.mjs scripts/demo-alert-title-search.spec.mjs scripts/demo-alert-handle-note.spec.mjs scripts/demo-telemetry-latest.spec.mjs scripts/demo-telemetry-threshold-alert.spec.mjs scripts/demo-alert-rule-config.spec.mjs scripts/demo-alert-snapshot-minio.spec.mjs scripts/object-lifecycle.spec.mjs scripts/object-tier.spec.mjs scripts/backup-postgres.spec.mjs scripts/compose-minio-image.spec.mjs
+	node --test scripts/boundaries.spec.mjs scripts/evidence.spec.mjs scripts/edge-simulator.spec.mjs scripts/demo-one-http-recognition.spec.mjs scripts/demo-register-and-ingest.spec.mjs scripts/demo-register-and-heartbeat.spec.mjs scripts/demo-camera-list.spec.mjs scripts/demo-camera-detail.spec.mjs scripts/demo-camera-create.spec.mjs scripts/demo-camera-edit.spec.mjs scripts/demo-one-alert.spec.mjs scripts/demo-ack-close-alert.spec.mjs scripts/demo-threshold-alert.spec.mjs scripts/demo-alert-camera-filter.spec.mjs scripts/demo-alert-status-filter.spec.mjs scripts/demo-alert-title-search.spec.mjs scripts/demo-alert-handle-note.spec.mjs scripts/demo-telemetry-latest.spec.mjs scripts/demo-telemetry-threshold-alert.spec.mjs scripts/demo-alert-rule-config.spec.mjs scripts/demo-alert-snapshot-minio.spec.mjs scripts/object-lifecycle.spec.mjs scripts/object-tier.spec.mjs scripts/backup-postgres.spec.mjs scripts/compose-minio-image.spec.mjs
 	npm --prefix apps/api test
 	npm --prefix apps/web run typecheck
 	npm --prefix apps/web test
@@ -80,6 +80,10 @@ demo-camera-detail: contracts
 # 新增 CAM-NEW-01，设备列表和镜头详情都能看到。步骤见 docs/DEMO_CAMERA_CREATE.md。
 demo-camera-create: contracts
 	node scripts/demo-camera-create.mjs
+
+# 改 CAM-EDIT-01 的备注和状态，列表和镜头详情都能看到。步骤见 docs/DEMO_CAMERA_EDIT.md。
+demo-camera-edit: contracts
+	node scripts/demo-camera-edit.mjs
 
 # 发一条超阈值识别，留下一条温度过高告警。步骤见 docs/DEMO_ONE_ALERT.md。
 demo-one-alert: contracts

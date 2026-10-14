@@ -416,4 +416,105 @@ describe('camera registration', () => {
     expect(lead.status).toBe(403);
     expect(devices.rows[0].note).toBeNull();
   });
+
+  it('edits a camera note and status, then list and detail show them', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/devices')
+      .set('x-test-role', 'production_admin')
+      .send({
+        code: 'CAM-EDIT-01',
+        name: '可编辑镜头',
+        type: 'camera',
+        shedCode: 'S01',
+        note: '编辑前',
+      });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({
+      code: 'CAM-EDIT-01',
+      name: '可编辑镜头',
+      note: '编辑前',
+      onlineStatus: 'offline',
+      lastHeartbeatAt: null,
+    });
+
+    const patched = await request(app.getHttpServer())
+      .patch(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'super_admin')
+      .send({ note: '备注已改', onlineStatus: 'online' });
+    expect(patched.status).toBe(200);
+    expect(patched.body).toMatchObject({
+      id: created.body.id,
+      code: 'CAM-EDIT-01',
+      name: '可编辑镜头',
+      note: '备注已改',
+      onlineStatus: 'online',
+      lastHeartbeatAt: null,
+      lastSeenAt: null,
+    });
+
+    const listed = await request(app.getHttpServer())
+      .get('/api/v1/devices')
+      .query({ pageSize: 100 })
+      .set('x-test-role', 'viewer');
+    expect(listed.status).toBe(200);
+    expect(listed.body.items).toEqual([
+      expect.objectContaining({
+        id: created.body.id,
+        code: 'CAM-EDIT-01',
+        note: '备注已改',
+        onlineStatus: 'online',
+      }),
+    ]);
+
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'viewer');
+    expect(detail.status).toBe(200);
+    expect(detail.body).toMatchObject({
+      id: created.body.id,
+      note: '备注已改',
+      onlineStatus: 'online',
+      lastHeartbeatAt: null,
+    });
+
+    const service = app.get(DevicesService);
+    await service.markStaleOffline(new Date('2026-10-14T03:00:00.000Z'));
+    expect(devices.rows[0]).toMatchObject({
+      onlineStatus: 'online',
+      note: '备注已改',
+      lastHeartbeatAt: null,
+    });
+
+    const invalid = await request(app.getHttpServer())
+      .patch(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'super_admin')
+      .send({ onlineStatus: 'asleep' });
+    expect(invalid.status).toBe(400);
+    expect(devices.rows[0].onlineStatus).toBe('online');
+
+    const denied = await request(app.getHttpServer())
+      .patch(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'viewer')
+      .send({ note: '不该写入', onlineStatus: 'offline' });
+    expect(denied.status).toBe(403);
+    expect(devices.rows[0].note).toBe('备注已改');
+    expect(devices.rows[0].onlineStatus).toBe('online');
+
+    await service.heartbeat(
+      'S01',
+      'CAM-EDIT-01',
+      'camera',
+      true,
+      '2026-10-14T02:00:00.000Z',
+    );
+    expect(devices.rows[0].note).toBe('备注已改');
+    expect(devices.rows[0].onlineStatus).toBe('online');
+    expect(devices.rows[0].lastHeartbeatAt).toEqual(
+      new Date('2026-10-14T02:00:00.000Z'),
+    );
+
+    await service.markStaleOffline(new Date('2026-10-14T02:06:00.000Z'));
+    expect(devices.rows[0].onlineStatus).toBe('offline');
+    expect(devices.rows[0].note).toBe('备注已改');
+  });
 });

@@ -73,6 +73,7 @@
 - 设备列表显示镜头码：`make demo-camera-list` 保证 `CAM-ALERT-01` 在 `GET /api/v1/devices?pageSize=100` 里。编码已存在则不改档案。`/devices` 摄像头行有镜头码、编号、名称、类型、棚区、状态、备注、最近心跳，并链到 `/alerts?cameraCode=CAM-ALERT-01` 与 `/recognitions?cameraCode=CAM-ALERT-01`。新建时名称「温度告警镜头」、棚区 S01、离线、备注「镜头码对照告警」。不发识别，不发心跳，不改已有演示命令。步骤见 `docs/DEMO_CAMERA_LIST.md`。
 - 新增一台镜头：`make demo-camera-create` 登记 `CAM-NEW-01`（棚区 S01，名称新增镜头，备注新增可演示）。编码已存在则不改档案。`GET /api/v1/devices?pageSize=100` 与 `GET /api/v1/devices/:id` 字段一致。`/devices` 登记后列表有这一行，并可打开详情。不发识别，不发心跳，不新建告警，不改已有演示命令。步骤见 `docs/DEMO_CAMERA_CREATE.md`。
 - 镜头详情：`/devices` 点镜头码进入 `/devices/:id`。`GET /api/v1/devices/:id` 返回编号、名称、类型、棚区、状态、备注、最近心跳。相关告警来自 `GET /api/v1/alerts?cameraCode=`。`make demo-camera-detail` 保证 `CAM-ALERT-01` 并留下或沿用「镜头详情告警」。不发识别，不发心跳，不改已有演示命令。步骤见 `docs/DEMO_CAMERA_DETAIL.md`。PR #112。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/112
+- 镜头可改备注和状态：`make demo-camera-edit` 登记 `CAM-EDIT-01`（棚区 S01，名称可编辑镜头，备注编辑前）。已存在则不改名称和心跳。再 `PATCH` 备注为「备注已改」、状态为在线。`GET /api/v1/devices?pageSize=100` 与 `GET /api/v1/devices/:id` 两处一致。`/devices` 与 `/devices/:id` 可保存这两项。不发识别，不发心跳，不改已有演示命令。步骤见 `docs/DEMO_CAMERA_EDIT.md`。
 
 ## 进行中
 - 无

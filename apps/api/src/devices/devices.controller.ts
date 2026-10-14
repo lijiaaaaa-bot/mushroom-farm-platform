@@ -74,6 +74,10 @@ class UpdateDeviceDto {
   @IsString()
   @MaxLength(500)
   note?: string;
+
+  @IsOptional()
+  @IsIn(['online', 'offline'])
+  onlineStatus?: 'online' | 'offline';
 }
 
 @Controller('devices')
@@ -155,7 +159,7 @@ export class DevicesController {
       user,
       action: 'device.update',
       resource: `device:${device.id}`,
-      detail: { code: device.code },
+      detail: { code: device.code, onlineStatus: device.onlineStatus },
       ip: request.ip,
     });
     return device;

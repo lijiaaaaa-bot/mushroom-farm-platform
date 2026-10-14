@@ -297,15 +297,65 @@ describe('DevicesView batch import', () => {
     expect((note.element as HTMLInputElement).value).toBe('靠门');
 
     await note.setValue('靠门，已核对');
-    await wrapper.get('[data-testid="device-note-CAM-S01"]').trigger('submit');
+    await wrapper.get('[data-testid="device-edit-CAM-S01"]').trigger('submit');
     await flushPromises();
 
-    expect(httpPatch).toHaveBeenCalledWith('/devices/device-1', { note: '靠门，已核对' });
+    expect(httpPatch).toHaveBeenCalledWith('/devices/device-1', {
+      note: '靠门，已核对',
+      onlineStatus: 'online',
+    });
     const gets = httpGet.mock.invocationCallOrder;
     expect(gets[gets.length - 1]).toBeGreaterThan(httpPatch.mock.invocationCallOrder[0]);
     expect(wrapper.get('input[aria-label="备注 CAM-S01"]').element).toHaveProperty(
       'value',
       '靠门，已核对',
+    );
+    expect(wrapper.get('select[aria-label="状态 CAM-S01"]').element).toHaveProperty(
+      'value',
+      'online',
+    );
+    expect(wrapper.get('tr[data-code="CAM-S01"] [data-field="status"]').text()).toBe('在线');
+    wrapper.unmount();
+  });
+
+  it('saves a status change and shows it in the list', async () => {
+    httpGet
+      .mockResolvedValueOnce({
+        data: { items: [{ ...device, note: '编辑前', onlineStatus: 'offline' }], total: 1 },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          items: [{ ...device, note: '备注已改', onlineStatus: 'online' }],
+          total: 1,
+        },
+      });
+    httpPatch.mockResolvedValue({
+      data: { id: device.id, note: '备注已改', onlineStatus: 'online' },
+    });
+    const wrapper = await mountView();
+    expect(wrapper.get('[data-field="status"]').text()).toBe('离线');
+    expect(wrapper.get('select[aria-label="状态 CAM-S01"]').element).toHaveProperty(
+      'value',
+      'offline',
+    );
+
+    await wrapper.get('select[aria-label="状态 CAM-S01"]').setValue('online');
+    await wrapper.get('input[aria-label="备注 CAM-S01"]').setValue('备注已改');
+    await wrapper.get('[data-testid="device-edit-CAM-S01"]').trigger('submit');
+    await flushPromises();
+
+    expect(httpPatch).toHaveBeenCalledWith('/devices/device-1', {
+      note: '备注已改',
+      onlineStatus: 'online',
+    });
+    expect(wrapper.get('[data-field="status"]').text()).toBe('在线');
+    expect(wrapper.get('input[aria-label="备注 CAM-S01"]').element).toHaveProperty(
+      'value',
+      '备注已改',
+    );
+    expect(wrapper.get('select[aria-label="状态 CAM-S01"]').element).toHaveProperty(
+      'value',
+      'online',
     );
     wrapper.unmount();
   });
