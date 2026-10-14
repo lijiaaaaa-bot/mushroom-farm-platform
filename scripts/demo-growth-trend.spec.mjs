@@ -27,6 +27,9 @@ test('payload keeps three rising days on CAM-GT-01 and leaves the one-ingest fix
   assert.equal(fixture.contrastCamera, CONTRAST_CAMERA);
   assert.equal(fixture.diseaseCount, 0);
   assert.equal(fixture.temperature, 22.5);
+  assert.equal(fixture.body.cameraCode, DEMO_CAMERA);
+  assert.equal(fixture.body.mushroomCount, 21);
+  assert.equal(fixture.body.matureCount, 8);
   assert.deepEqual(
     fixture.points.map((point) => [point.offsetDays, point.mushroomCount, point.matureCount]),
     [
