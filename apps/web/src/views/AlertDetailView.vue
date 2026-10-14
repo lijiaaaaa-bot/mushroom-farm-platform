@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import {
   ALERT_CLOSE_REASON_LABEL,
@@ -34,6 +34,8 @@ interface AlertDetail {
   ackNote: string | null;
   closeReason: AlertCloseReason | null;
   closeNote: string | null;
+  recognitionId?: string | null;
+  snapshotObjectKey?: string | null;
 }
 
 const route = useRoute();
@@ -42,6 +44,9 @@ const loading = ref(true);
 const error = ref('');
 const actionError = ref('');
 const handleNote = ref('');
+const snapshotUrl = ref('');
+const snapshotError = ref('');
+let snapshotTicket = 0;
 
 const alertId = computed(() => {
   const value = route.params.id;
@@ -164,8 +169,36 @@ async function act(action: 'ack' | 'close') {
   }
 }
 
+function clearSnapshot() {
+  if (snapshotUrl.value) URL.revokeObjectURL(snapshotUrl.value);
+  snapshotUrl.value = '';
+  snapshotError.value = '';
+}
+
+async function loadSnapshot(current: AlertDetail) {
+  const ticket = ++snapshotTicket;
+  clearSnapshot();
+  if (!current.snapshotObjectKey) return;
+  try {
+    const response = await http.get<Blob>(`/alerts/${current.id}/snapshot`, {
+      responseType: 'blob',
+    });
+    if (ticket !== snapshotTicket) return;
+    if (!response.data || response.data.size === 0) {
+      snapshotError.value = '抓拍不可用';
+      return;
+    }
+    snapshotUrl.value = URL.createObjectURL(response.data);
+  } catch (cause) {
+    if (ticket !== snapshotTicket) return;
+    snapshotError.value = errorText(cause);
+  }
+}
+
 async function load() {
   const id = alertId.value;
+  snapshotTicket += 1;
+  clearSnapshot();
   loading.value = true;
   error.value = '';
   actionError.value = '';
@@ -178,6 +211,7 @@ async function load() {
   try {
     const response = await http.get<AlertDetail>(`/alerts/${id}`);
     row.value = response.data;
+    await loadSnapshot(response.data);
   } catch (cause) {
     error.value = errorText(cause);
     row.value = null;
@@ -190,6 +224,11 @@ watch(alertId, () => {
   handleNote.value = '';
   void load();
 }, { immediate: true });
+
+onBeforeUnmount(() => {
+  snapshotTicket += 1;
+  clearSnapshot();
+});
 </script>
 
 <template>
@@ -201,6 +240,25 @@ watch(alertId, () => {
     <p v-else-if="error" class="text-sm text-danger" data-testid="alert-detail-error">{{ error }}</p>
     <section v-else-if="row" class="panel" data-testid="alert-detail">
       <h1 class="mb-3 text-base font-semibold">{{ row.title }}</h1>
+      <figure v-if="row.snapshotObjectKey" class="snapshot" data-testid="alert-snapshot">
+        <img
+          v-if="snapshotUrl"
+          :src="snapshotUrl"
+          alt="抓拍"
+          data-testid="alert-snapshot-image"
+        />
+        <p v-else-if="snapshotError" class="text-sm text-danger" data-testid="alert-snapshot-error">{{ snapshotError }}</p>
+        <p v-else class="text-sm text-mist" data-testid="alert-snapshot-pending">加载中…</p>
+        <a
+          v-if="snapshotUrl"
+          class="text-accent"
+          :href="snapshotUrl"
+          target="_blank"
+          rel="noopener"
+          data-testid="alert-snapshot-link"
+        >打开抓拍</a>
+        <p class="key" data-testid="alert-snapshot-key">{{ row.snapshotObjectKey }}</p>
+      </figure>
       <dl class="detail">
         <div v-for="field in fields" :key="field.key">
           <dt>{{ field.label }}</dt>
@@ -264,5 +322,28 @@ dt {
 dd {
   margin: 2px 0 0;
   white-space: pre-wrap;
+}
+.snapshot {
+  margin: 0 0 16px;
+}
+.snapshot img {
+  display: block;
+  max-width: 240px;
+  max-height: 180px;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  background: #fff;
+}
+.snapshot a {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.key {
+  margin: 8px 0 0;
+  color: var(--text-secondary);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  word-break: break-all;
 }
 </style>

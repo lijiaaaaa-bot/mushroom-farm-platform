@@ -141,9 +141,25 @@ describe('AlertsView', () => {
     expect(wrapper.text()).toContain('高温');
     expect(wrapper.get('[data-testid="alert-camera"]').text()).toBe('CAM-S01');
     expect(wrapper.get('[data-testid="alert-detail-link"]').attributes('href')).toBe('/alerts/alert-1');
+    expect(wrapper.find('[data-testid="alert-snapshot-link"]').exists()).toBe(false);
     expect(wrapper.text()).toContain('严重');
     expect(wrapper.text()).toContain('待确认');
     expect(wrapper.text()).not.toContain('暂无告警');
+    wrapper.unmount();
+  });
+
+  it('links a stored snapshot from the row to the same detail', async () => {
+    httpGet.mockResolvedValue({
+      data: {
+        items: [{ ...alert, snapshotObjectKey: 'snapshots/S01/2026-10-14/CAM-SNAP-01/1.jpg' }],
+        total: 1,
+      },
+    });
+    const wrapper = await mountView(AlertsView);
+
+    expect(wrapper.get('[data-testid="alert-snapshot-link"]').text()).toBe('抓拍');
+    expect(wrapper.get('[data-testid="alert-snapshot-link"]').attributes('href')).toBe('/alerts/alert-1');
+    expect(wrapper.get('[data-testid="alert-detail-link"]').attributes('href')).toBe('/alerts/alert-1');
     wrapper.unmount();
   });
 

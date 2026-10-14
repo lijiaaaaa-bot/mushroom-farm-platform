@@ -26,7 +26,8 @@ make web      # http://127.0.0.1:43123
 按摄像头编号筛选告警列表，清除后两台摄像头都回来：[`docs/DEMO_ALERT_CAMERA_FILTER.md`](docs/DEMO_ALERT_CAMERA_FILTER.md)（`make demo-alert-camera-filter`）。  
 按状态筛选告警列表，改回全部后两条都回来：[`docs/DEMO_ALERT_STATUS_FILTER.md`](docs/DEMO_ALERT_STATUS_FILTER.md)（`make demo-alert-status-filter`）。  
 按标题关键词搜索告警列表，清除搜索后两条都回来：[`docs/DEMO_ALERT_TITLE_SEARCH.md`](docs/DEMO_ALERT_TITLE_SEARCH.md)（`make demo-alert-title-search`）。  
-确认或关闭告警时填写处理说明，详情刷新后仍在：[`docs/DEMO_ALERT_HANDLE_NOTE.md`](docs/DEMO_ALERT_HANDLE_NOTE.md)（`make demo-alert-handle-note`）。
+确认或关闭告警时填写处理说明，详情刷新后仍在：[`docs/DEMO_ALERT_HANDLE_NOTE.md`](docs/DEMO_ALERT_HANDLE_NOTE.md)（`make demo-alert-handle-note`）。  
+告警抓拍写入对象存储，详情页打开这张图：[`docs/DEMO_ALERT_SNAPSHOT_MINIO.md`](docs/DEMO_ALERT_SNAPSHOT_MINIO.md)（`make demo-alert-snapshot-minio`）。
 
 ## 接入
 

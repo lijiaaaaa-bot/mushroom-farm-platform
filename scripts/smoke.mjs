@@ -165,9 +165,9 @@ async function login() {
   return { authorization: `Bearer ${session.accessToken}`, 'content-type': 'application/json' };
 }
 
-function runDemoOne() {
+function runDemoScript(script, label) {
   return new Promise((resolve, reject) => {
-    const demo = spawn(process.execPath, [join(root, 'scripts/demo-one-http-recognition.mjs')], {
+    const demo = spawn(process.execPath, [join(root, script)], {
       cwd: root,
       env: process.env,
     });
@@ -183,12 +183,20 @@ function runDemoOne() {
     demo.on('error', reject);
     demo.on('exit', (code) => {
       if (code !== 0) {
-        reject(new Error(`demo-one-ingest 退出 ${code}: ${stderr.trim() || stdout.trim()}`));
+        reject(new Error(`${label} 退出 ${code}: ${stderr.trim() || stdout.trim()}`));
         return;
       }
       resolve(stdout);
     });
   });
+}
+
+function runDemoOne() {
+  return runDemoScript('scripts/demo-one-http-recognition.mjs', 'demo-one-ingest');
+}
+
+function runDemoAlertSnapshot() {
+  return runDemoScript('scripts/demo-alert-snapshot-minio.mjs', 'demo-alert-snapshot-minio');
 }
 
 function wire(sent, extra) {
@@ -534,6 +542,29 @@ try {
       : { stdout: demoStdout },
   });
   if (!demoOk) throw new Error(`样例抓拍未写入对象存储\n${demoStdout}`);
+
+  const alertSnapStdout = await runDemoAlertSnapshot();
+  const alertSnapKey = alertSnapStdout.match(/抓拍对象键: (\S+)/)?.[1];
+  const alertSnapRead = alertSnapStdout.match(/告警抓拍: (\S+)/)?.[1];
+  const alertSnapId = alertSnapStdout.match(/告警 id: (\S+)/)?.[1];
+  const alertSnapOk = Boolean(alertSnapKey && alertSnapRead && alertSnapId);
+  record({
+    id: 'demo-alert-snapshot',
+    timestamp: new Date().toISOString(),
+    channel: 'http',
+    method: 'POST',
+    path: '/api/v1/ingest/recognition',
+    fixture: 'recognition.demo-one.json',
+    fixtureLabel: '告警抓拍',
+    rawBody: demoFixture.body,
+    actor: 'demo-alert-snapshot-minio',
+    pass: alertSnapOk,
+    error: alertSnapOk ? undefined : '告警抓拍未写入对象存储或详情读不回',
+    proof: alertSnapOk
+      ? { alertId: alertSnapId, snapshotObjectKey: alertSnapKey, snapshotRead: alertSnapRead }
+      : { stdout: alertSnapStdout },
+  });
+  if (!alertSnapOk) throw new Error(`告警抓拍未写入对象存储\n${alertSnapStdout}`);
 
   console.log('smoke ok', {
     recognitionId: httpHit.id,
