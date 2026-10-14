@@ -153,6 +153,7 @@ describe('device batch import HTTP', () => {
           ['BOX-1', 'ai_box', '一号盒'],
         ],
       );
+      expect(devices.rows.every((row) => row.note == null)).toBe(true);
       expect(audit.write).toHaveBeenCalledWith(
         expect.objectContaining({
           action: 'device.import',
@@ -206,6 +207,82 @@ describe('device batch import HTTP', () => {
     expect(devices.rows.find((row) => row.code === 'CAM-2')?.name).toBe(
       '西摄像头',
     );
+  });
+
+  it('stores an optional note on a new row and does not overwrite it on conflict', async () => {
+    const csv = [
+      '设备编码,棚编码,名称,类型,备注',
+      'CAM-CSV-01,S01,CSV导入镜头,摄像头,CSV导入可演示',
+      'CAM-CSV-01,S01,覆盖名称,摄像头,覆盖备注',
+    ].join('\n');
+
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/devices/import')
+      .set('x-test-role', 'super_admin')
+      .send({ csv });
+
+    expect(created.status).toBe(200);
+    expect(created.body).toMatchObject({
+      successCount: 1,
+      failCount: 0,
+      skippedCount: 1,
+      skipped: [{ row: 2, reason: '设备编码已存在，已跳过' }],
+    });
+    expect(devices.rows).toHaveLength(1);
+    expect(devices.rows[0]).toMatchObject({
+      code: 'CAM-CSV-01',
+      name: 'CSV导入镜头',
+      type: 'camera',
+      shedCode: 'S01',
+      note: 'CSV导入可演示',
+    });
+
+    const again = await request(app.getHttpServer())
+      .post('/api/v1/devices/import')
+      .set('x-test-role', 'super_admin')
+      .send({ csv });
+
+    expect(again.status).toBe(200);
+    expect(again.body).toMatchObject({
+      successCount: 0,
+      failCount: 0,
+      skippedCount: 2,
+    });
+    expect(again.body.skipped).toEqual([
+      { row: 1, reason: '设备编码已存在，已跳过' },
+      { row: 2, reason: '设备编码已存在，已跳过' },
+    ]);
+    expect(devices.rows).toHaveLength(1);
+    expect(devices.rows[0]).toMatchObject({
+      code: 'CAM-CSV-01',
+      name: 'CSV导入镜头',
+      note: 'CSV导入可演示',
+    });
+  });
+
+  it('rejects a note longer than 500 characters on a new row', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/api/v1/devices/import')
+      .set('x-test-role', 'production_admin')
+      .send({
+        rows: [
+          {
+            code: 'CAM-LONG',
+            name: '长备注',
+            shedCode: 'S01',
+            note: '备'.repeat(501),
+          },
+        ],
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      successCount: 0,
+      failCount: 1,
+      skippedCount: 0,
+      errors: [{ row: 1, reason: '备注超过 500 字' }],
+    });
+    expect(devices.rows).toHaveLength(0);
   });
 
   it('fails a missing shed on that row and still imports the others', async () => {

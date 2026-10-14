@@ -218,8 +218,8 @@ export class DevicesService {
   }
 
   /**
-   * 设备编码冲突时跳过，不改已有名称、棚或类型。
-   * 棚不存在或无权访问时只失败该行。
+   * 设备编码冲突时跳过，不改已有名称、棚、类型或备注。
+   * 棚不存在或无权访问时只失败该行。备注只写在新建行上。
    */
   async importRows(
     user: AuthUser,
@@ -276,6 +276,11 @@ export class DevicesService {
         this.skipRow(result, rowNumber, '设备编码已存在，已跳过');
         continue;
       }
+      const note = storedNote(row.note);
+      if (note && note.length > 500) {
+        this.rejectRow(result, rowNumber, '备注超过 500 字');
+        continue;
+      }
       try {
         await this.devices.save(
           this.devices.create({
@@ -287,7 +292,7 @@ export class DevicesService {
             onlineStatus: 'offline',
             lastSeenAt: null,
             lastHeartbeatAt: null,
-            note: null,
+            note,
             enabled: true,
             meta: {},
           }),

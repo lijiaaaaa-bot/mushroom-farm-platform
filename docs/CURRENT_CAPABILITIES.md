@@ -70,7 +70,7 @@
 
 ## 设备、识别、环境、病害
 
-设备 `/devices`。`GET/POST /api/v1/devices`，`PATCH /api/v1/devices/:id`，`POST /api/v1/devices/import`（CSV 文件、CSV 文本或 JSON 行）。导入时编码冲突跳过且不改原档案。单条 `POST` 遇到已有编码返回 409，文案「设备编码已存在」。登记字段：编号 `code`、名称 `name`、类型 `type`（页面固定为 `camera`）、棚区 `shedCode`、备注 `note`（可空，最长 500 字，空白记为 null）。`PATCH` 可改备注，也可把 `onlineStatus` 改成 `online` 或 `offline`，也可把 `enabled` 设为 `false`（停用）或 `true`（启用）。停用后档案仍在，列表和详情的 `enabled` 为 false。停用不改在线状态、备注和最近心跳。之后的心跳仍按上报改在线状态，不把停用改回启用。`DELETE /api/v1/devices/:id` 删掉这一行。之后列表不再返回它，`GET /api/v1/devices/:id` 是 404，文案「设备不存在」。没有软删除列。告警和识别仍按镜头码留着，删除不改它们。同一编码可以再登记。超管与生产管理员可登记、改备注、改状态、停用和删除；棚区负责人可导入，不能单条登记、改档案或删除；查看人员 403。心跳超时（默认 5 分钟，`DEVICE_OFFLINE_AFTER_MS`）产生「设备离线」告警，恢复心跳自动关闭。已有 `lastHeartbeatAt` 或 `lastSeenAt` 时，超时仍按该时间把在线改回离线。两者都空时，手改的在线留在列表和详情里，超时任务不改它。手改状态不写心跳，不新建、不关闭离线告警。之后的心跳按上报改状态，不清备注。只改备注时不改在线状态。
+设备 `/devices`。`GET/POST /api/v1/devices`，`PATCH /api/v1/devices/:id`，`POST /api/v1/devices/import`（CSV 文件、CSV 文本或 JSON 行）。表头必填设备编码、棚编码、名称。类型可空，空着记为摄像头。备注可空，最长 500 字，只写在新建行上。导入时编码冲突跳过且不改原档案，也不改原备注。单条 `POST` 遇到已有编码返回 409，文案「设备编码已存在」。登记字段：编号 `code`、名称 `name`、类型 `type`（页面固定为 `camera`）、棚区 `shedCode`、备注 `note`（可空，最长 500 字，空白记为 null）。`PATCH` 可改备注，也可把 `onlineStatus` 改成 `online` 或 `offline`，也可把 `enabled` 设为 `false`（停用）或 `true`（启用）。停用后档案仍在，列表和详情的 `enabled` 为 false。停用不改在线状态、备注和最近心跳。之后的心跳仍按上报改在线状态，不把停用改回启用。`DELETE /api/v1/devices/:id` 删掉这一行。之后列表不再返回它，`GET /api/v1/devices/:id` 是 404，文案「设备不存在」。没有软删除列。告警和识别仍按镜头码留着，删除不改它们。同一编码可以再登记。超管与生产管理员可登记、改备注、改状态、停用和删除；棚区负责人可导入，不能单条登记、改档案或删除；查看人员 403。心跳超时（默认 5 分钟，`DEVICE_OFFLINE_AFTER_MS`）产生「设备离线」告警，恢复心跳自动关闭。已有 `lastHeartbeatAt` 或 `lastSeenAt` 时，超时仍按该时间把在线改回离线。两者都空时，手改的在线留在列表和详情里，超时任务不改它。手改状态不写心跳，不新建、不关闭离线告警。之后的心跳按上报改状态，不清备注。只改备注时不改在线状态。
 
 ### 登记一台摄像头
 
@@ -139,6 +139,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 `make demo-camera-detail` 用与列表演示相同的 `POST /api/v1/devices` 保证 `CAM-ALERT-01`，已存在则不改档案。再读 `GET /api/v1/devices/:id`，字段必须和列表这一行一致。相关告警沿用标题「镜头详情告警」；没有则 `POST /api/v1/alerts`（一般、待确认）。不发识别，不发心跳，不确认、不关闭已有告警。步骤见 [`DEMO_CAMERA_DETAIL.md`](DEMO_CAMERA_DETAIL.md)。
 
 `make demo-camera-create` 用同一条 `POST /api/v1/devices` 新增镜头码 `CAM-NEW-01`（棚区 `S01`，名称新增镜头，备注新增可演示）。编码已存在则不改档案。然后读设备页同一份 `GET /api/v1/devices?pageSize=100`，再用这一行的 `id` 读 `GET /api/v1/devices/:id`。详情字段与列表这一行一致。`/devices` 登记成功后列出这一行，并给出详情链接。不发识别，不发心跳，不新建告警，不改 `CAM-ALERT-01` 与 `CAM-REG-02`。步骤见 [`DEMO_CAMERA_CREATE.md`](DEMO_CAMERA_CREATE.md)。
+
+`make demo-device-csv-import` 自己生成两行 CSV，`POST /api/v1/devices/import` 的请求体是 `{csv}`。第一行是镜头码 `CAM-CSV-01`（棚区 `S01`，名称 CSV导入镜头，类型摄像头，备注 CSV导入可演示）。第二行编码相同，名称「覆盖名称」，备注「覆盖备注」，用来跳过。新建时成功 1、跳过 1，明细是「设备编码已存在，已跳过」。再跑时成功 0、跳过 2，名称和备注仍是第一行。然后读设备页同一份 `GET /api/v1/devices?pageSize=100`。`/devices` 的「批量导入」可以粘贴同一份 CSV，导入后列表有这一行；再导入一次，页面写出跳过，原档案不变。不发识别，不发心跳，不单条登记，不改 `CAM-NEW-01` 与 `CAM-REG-02`。步骤见 [`DEMO_DEVICE_CSV_IMPORT.md`](DEMO_DEVICE_CSV_IMPORT.md)。
 
 `make demo-camera-edit` 先 `POST /api/v1/devices` 登记镜头码 `CAM-EDIT-01`（棚区 `S01`，名称可编辑镜头，备注编辑前）。编码已存在则不改名称和心跳。然后 `PATCH /api/v1/devices/:id`，备注改为「备注已改」，状态改为在线。再读设备页同一份 `GET /api/v1/devices?pageSize=100` 和 `GET /api/v1/devices/:id`，两处备注和状态一致。不发识别，不发心跳，不新建告警，不改 `CAM-NEW-01`、`CAM-ALERT-01` 与 `CAM-REG-02`。`/devices` 这一行和 `/devices/:id` 都能改备注和状态，保存后重新读取。步骤见 [`DEMO_CAMERA_EDIT.md`](DEMO_CAMERA_EDIT.md)。
 
