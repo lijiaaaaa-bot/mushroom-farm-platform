@@ -62,9 +62,11 @@ const levelFilter = ref(allowedQuery('level', levels));
 const shedCodeFilter = ref(plainQuery('shedCode'));
 const cameraDraft = ref(plainQuery('cameraCode').trim());
 const cameraCodeFilter = ref(cameraDraft.value);
+const titleDraft = ref(plainQuery('q').trim());
+const titleFilter = ref(titleDraft.value);
 const highlightId = ref(plainQuery('alertId'));
 
-const addressKeys = ['status', 'level', 'shedCode', 'cameraCode', 'alertId'] as const;
+const addressKeys = ['status', 'level', 'shedCode', 'cameraCode', 'q', 'alertId'] as const;
 
 function listParams() {
   return {
@@ -73,16 +75,18 @@ function listParams() {
     level: levelFilter.value || undefined,
     ...(shedCodeFilter.value ? { shedCode: shedCodeFilter.value } : {}),
     ...(cameraCodeFilter.value ? { cameraCode: cameraCodeFilter.value } : {}),
+    ...(titleFilter.value ? { q: titleFilter.value } : {}),
   };
 }
 
-function addressQuery(cameraCode: string) {
+function addressQuery(cameraCode: string, titleKeyword: string) {
   const query: Record<string, string> = {};
   if (statusFilter.value) query.status = statusFilter.value;
   if (levelFilter.value) query.level = levelFilter.value;
   if (shedCodeFilter.value) query.shedCode = shedCodeFilter.value;
   if (highlightId.value) query.alertId = highlightId.value;
   if (cameraCode) query.cameraCode = cameraCode;
+  if (titleKeyword) query.q = titleKeyword;
   return query;
 }
 
@@ -91,7 +95,7 @@ function currentAddressQuery() {
   for (const key of addressKeys) {
     const value = route.query[key];
     if (typeof value !== 'string' || !value) continue;
-    query[key] = key === 'cameraCode' ? value.trim() : value;
+    query[key] = key === 'cameraCode' || key === 'q' ? value.trim() : value;
   }
   return query;
 }
@@ -106,6 +110,7 @@ function detailTo(row: AlertRow) {
   if (levelFilter.value) query.level = levelFilter.value;
   if (shedCodeFilter.value) query.shedCode = shedCodeFilter.value;
   if (cameraCodeFilter.value) query.cameraCode = cameraCodeFilter.value;
+  if (titleFilter.value) query.q = titleFilter.value;
   if (!Object.keys(query).length) return `/alerts/${row.id}`;
   return { path: `/alerts/${row.id}`, query };
 }
@@ -114,7 +119,19 @@ async function applyCamera() {
   const next = cameraDraft.value.trim();
   cameraDraft.value = next;
   if (next === cameraCodeFilter.value && next === plainQuery('cameraCode').trim()) return;
-  await router.replace({ path: route.path, query: addressQuery(next) });
+  await router.replace({ path: route.path, query: addressQuery(next, titleFilter.value) });
+}
+
+async function applyTitle() {
+  const next = titleDraft.value.trim();
+  titleDraft.value = next;
+  if (next === titleFilter.value && next === plainQuery('q').trim()) return;
+  await router.replace({ path: route.path, query: addressQuery(cameraCodeFilter.value, next) });
+}
+
+function clearTitle() {
+  titleDraft.value = '';
+  return applyTitle();
 }
 
 function clearCamera() {
@@ -144,6 +161,11 @@ function applyRouteQuery() {
   if (camera !== cameraCodeFilter.value) {
     cameraDraft.value = camera;
     cameraCodeFilter.value = camera;
+  }
+  const title = plainQuery('q').trim();
+  if (title !== titleFilter.value) {
+    titleDraft.value = title;
+    titleFilter.value = title;
   }
   highlightId.value = plainQuery('alertId');
 }
@@ -192,12 +214,12 @@ async function act(id: string, action: 'ack' | 'close' | 'claim' | 'false-positi
   }
 }
 
-watch([statusFilter, levelFilter, shedCodeFilter, cameraCodeFilter], () => {
+watch([statusFilter, levelFilter, shedCodeFilter, cameraCodeFilter, titleFilter], () => {
   void load();
 });
 
 watch([statusFilter, levelFilter], () => {
-  const next = addressQuery(cameraCodeFilter.value);
+  const next = addressQuery(cameraCodeFilter.value, titleFilter.value);
   if (sameAddress(next, currentAddressQuery())) return;
   void router.replace({ path: route.path, query: next });
 });
@@ -255,8 +277,20 @@ onMounted(load);
         </label>
         <button class="btn-ghost self-end" type="button" data-testid="alert-camera-apply" @click="applyCamera">筛选</button>
         <button class="btn-ghost self-end" type="button" data-testid="alert-camera-clear" @click="clearCamera">清除</button>
+        <label class="text-sm">标题
+          <input
+            v-model="titleDraft"
+            class="field mt-1"
+            placeholder="标题关键词"
+            data-testid="alert-title-filter"
+            @keydown.enter.prevent="applyTitle"
+          />
+        </label>
+        <button class="btn-ghost self-end" type="button" data-testid="alert-title-apply" @click="applyTitle">搜索</button>
+        <button class="btn-ghost self-end" type="button" data-testid="alert-title-clear" @click="clearTitle">清除搜索</button>
         <p v-if="shedCodeFilter" class="self-end text-sm text-mist" data-testid="alert-shed-scope">棚 {{ shedCodeFilter }}</p>
         <p v-if="cameraCodeFilter" class="self-end text-sm text-mist" data-testid="alert-camera-scope">摄像头 {{ cameraCodeFilter }}</p>
+        <p v-if="titleFilter" class="self-end text-sm text-mist" data-testid="alert-title-scope">标题 {{ titleFilter }}</p>
       </div>
       <p v-if="loading" class="text-mist">加载中…</p>
       <p v-else-if="!error && !rows.length" class="text-mist">暂无告警。</p>

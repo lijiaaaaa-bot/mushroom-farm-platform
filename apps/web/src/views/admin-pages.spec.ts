@@ -666,6 +666,97 @@ describe('AlertsView', () => {
     expect(blank.find('[data-testid="alert-camera-scope"]').exists()).toBe(false);
     blank.unmount();
   });
+
+  it('searches by title keyword, keeps the detail link, and restores both titles on clear', async () => {
+    const east = {
+      ...alert,
+      id: 'alert-east',
+      cameraCode: 'CAM-TITLE-01',
+      title: '东侧标题搜索告警',
+      message: '东侧说明',
+    };
+    const west = {
+      ...alert,
+      id: 'alert-west',
+      cameraCode: 'CAM-TITLE-02',
+      title: '西侧过道对照告警',
+      message: '正文里有东侧标题',
+    };
+    httpGet.mockImplementation((_url: string, config?: { params?: { q?: string; status?: string } }) => {
+      const keyword = (config?.params?.q || '').trim().toLowerCase();
+      const items = [east, west].filter(
+        (row) => !keyword || row.title.toLowerCase().includes(keyword),
+      );
+      return Promise.resolve({ data: { items, total: items.length } });
+    });
+    const wrapper = await mountView(AlertsView);
+
+    expect(wrapper.findAll('[data-testid="alert-detail-link"]').map((node) => node.text())).toEqual([
+      '东侧标题搜索告警',
+      '西侧过道对照告警',
+    ]);
+
+    await wrapper.get('[data-testid="alert-title-filter"]').setValue(' 东侧标题 ');
+    await wrapper.get('[data-testid="alert-title-apply"]').trigger('click');
+    await flushPromises();
+
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: undefined, level: undefined, q: '东侧标题' },
+    });
+    expect(decodeURIComponent(memoryRouter.currentRoute.value.fullPath)).toBe('/alerts?q=东侧标题');
+    expect(wrapper.get('[data-testid="alert-title-scope"]').text()).toBe('标题 东侧标题');
+    expect(wrapper.findAll('[data-testid="alert-detail-link"]').map((node) => node.text())).toEqual([
+      '东侧标题搜索告警',
+    ]);
+    expect(wrapper.text()).not.toContain('西侧过道对照告警');
+    expect(decodeURIComponent(wrapper.get('[data-testid="alert-detail-link"]').attributes('href') || '')).toBe(
+      '/alerts/alert-east?q=东侧标题',
+    );
+
+    await wrapper.get('[data-testid="alert-status-filter"]').setValue('open');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: 'open', level: undefined, q: '东侧标题' },
+    });
+    expect(decodeURIComponent(memoryRouter.currentRoute.value.fullPath)).toBe(
+      '/alerts?status=open&q=东侧标题',
+    );
+
+    await wrapper.get('[data-testid="alert-title-clear"]').trigger('click');
+    await flushPromises();
+    const calls = httpGet.mock.calls;
+    const last = calls[calls.length - 1];
+    expect(last?.[0]).toBe('/alerts');
+    expect(last?.[1].params.q).toBeUndefined();
+    expect(last?.[1].params.status).toBe('open');
+    expect(wrapper.find('[data-testid="alert-title-scope"]').exists()).toBe(false);
+    expect(wrapper.findAll('[data-testid="alert-detail-link"]').map((node) => node.text())).toEqual([
+      '东侧标题搜索告警',
+      '西侧过道对照告警',
+    ]);
+    wrapper.unmount();
+  });
+
+  it('applies q from the address and omits a blank value', async () => {
+    httpGet.mockResolvedValue({ data: { items: [alert], total: 1 } });
+    const wrapper = await mountView(AlertsView, { q: '东侧标题' });
+    expect((wrapper.get('[data-testid="alert-title-filter"]').element as HTMLInputElement).value).toBe(
+      '东侧标题',
+    );
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: undefined, level: undefined, q: '东侧标题' },
+    });
+    expect(wrapper.get('[data-testid="alert-title-scope"]').text()).toBe('标题 东侧标题');
+    wrapper.unmount();
+
+    httpGet.mockClear();
+    const blank = await mountView(AlertsView, { q: '   ' });
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: undefined, level: undefined },
+    });
+    expect(blank.find('[data-testid="alert-title-scope"]').exists()).toBe(false);
+    blank.unmount();
+  });
 });
 
 describe('HarvestView', () => {
