@@ -103,6 +103,40 @@ describe('DeviceDetailView', () => {
     wrapper.unmount();
   });
 
+  it('shows 在线 and a real last heartbeat on the detail', async () => {
+    const beat = '2026-10-14T08:00:00.000Z';
+    const online = {
+      ...device,
+      id: 'dev-dtl-on',
+      code: 'CAM-DTL-ON',
+      name: '详情在线镜头',
+      onlineStatus: 'online' as const,
+      lastHeartbeatAt: beat,
+      note: '设备详情在线',
+    };
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/devices/dev-dtl-on') return Promise.resolve({ data: online });
+      if (url === '/alerts') return Promise.resolve({ data: { items: [], total: 0 } });
+      return Promise.reject(new Error(url));
+    });
+    const wrapper = await mountDetail(online.id);
+    const shown = new Intl.DateTimeFormat('zh-CN', {
+      timeZone: 'Asia/Shanghai',
+      hour12: false,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(new Date(beat));
+
+    expect(wrapper.get('[data-field="status"]').text()).toBe('在线');
+    expect(wrapper.get('[data-field="heartbeat"]').text()).toBe(shown);
+    expect(wrapper.get('[data-field="heartbeat"]').text()).not.toBe('—');
+    expect(wrapper.get('[data-field="code"]').text()).toBe('CAM-DTL-ON');
+    wrapper.unmount();
+  });
+
   it('shows an empty related-alert line when this camera has none', async () => {
     httpGet.mockImplementation((url: string) => {
       if (url === '/devices/dev-alert-01') return Promise.resolve({ data: device });

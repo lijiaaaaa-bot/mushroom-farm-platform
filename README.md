@@ -26,6 +26,7 @@ make web      # http://127.0.0.1:43123
 心跳停够之后设备变离线，并打开「设备离线」告警：[`docs/DEMO_HEARTBEAT_OFFLINE_ALERT.md`](docs/DEMO_HEARTBEAT_OFFLINE_ALERT.md)（`make demo-heartbeat-offline-alert`）。  
 值班看板一眼看到在线、离线和待确认，点进去对列表：[`docs/DEMO_DUTY_BOARD.md`](docs/DEMO_DUTY_BOARD.md)（`make demo-duty-board`）。  
 设备列表 `/devices` 同一页能看到 `CAM-ON-01` 在线和 `CAM-OFF-01` 离线：[`docs/DEMO_DEVICE_ONLINE.md`](docs/DEMO_DEVICE_ONLINE.md)（`make demo-device-online`）。  
+设备详情 `/devices/<id>` 能看到 `CAM-DTL-ON` 在线且最近心跳有时间，以及 `CAM-DTL-OFF` 离线：[`docs/DEMO_DEVICE_DETAIL.md`](docs/DEMO_DEVICE_DETAIL.md)（`make demo-device-detail`）。  
 发一条温度过高告警，在告警列表点进详情：[`docs/DEMO_ONE_ALERT.md`](docs/DEMO_ONE_ALERT.md)（`make demo-one-alert`）。  
 直接打开这一条的详情，读完整字段：[`docs/DEMO_ALERT_DETAIL.md`](docs/DEMO_ALERT_DETAIL.md)（`make demo-alert-detail`）。  
 确认或关闭这条待确认告警，刷新后状态仍在：[`docs/DEMO_ACK_CLOSE_ALERT.md`](docs/DEMO_ACK_CLOSE_ALERT.md)（`make demo-ack-one-alert`、`make demo-close-one-alert`）。  
