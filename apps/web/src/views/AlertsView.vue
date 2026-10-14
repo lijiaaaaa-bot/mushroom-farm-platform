@@ -64,6 +64,8 @@ const cameraDraft = ref(plainQuery('cameraCode').trim());
 const cameraCodeFilter = ref(cameraDraft.value);
 const highlightId = ref(plainQuery('alertId'));
 
+const addressKeys = ['status', 'level', 'shedCode', 'cameraCode', 'alertId'] as const;
+
 function listParams() {
   return {
     pageSize: 50,
@@ -74,25 +76,45 @@ function listParams() {
   };
 }
 
+function addressQuery(cameraCode: string) {
+  const query: Record<string, string> = {};
+  if (statusFilter.value) query.status = statusFilter.value;
+  if (levelFilter.value) query.level = levelFilter.value;
+  if (shedCodeFilter.value) query.shedCode = shedCodeFilter.value;
+  if (highlightId.value) query.alertId = highlightId.value;
+  if (cameraCode) query.cameraCode = cameraCode;
+  return query;
+}
+
+function currentAddressQuery() {
+  const query: Record<string, string> = {};
+  for (const key of addressKeys) {
+    const value = route.query[key];
+    if (typeof value !== 'string' || !value) continue;
+    query[key] = key === 'cameraCode' ? value.trim() : value;
+  }
+  return query;
+}
+
+function sameAddress(left: Record<string, string>, right: Record<string, string>) {
+  return addressKeys.every((key) => (left[key] || '') === (right[key] || ''));
+}
+
 function detailTo(row: AlertRow) {
-  if (!cameraCodeFilter.value) return `/alerts/${row.id}`;
-  return {
-    path: `/alerts/${row.id}`,
-    query: { cameraCode: cameraCodeFilter.value },
-  };
+  const query: Record<string, string> = {};
+  if (statusFilter.value) query.status = statusFilter.value;
+  if (levelFilter.value) query.level = levelFilter.value;
+  if (shedCodeFilter.value) query.shedCode = shedCodeFilter.value;
+  if (cameraCodeFilter.value) query.cameraCode = cameraCodeFilter.value;
+  if (!Object.keys(query).length) return `/alerts/${row.id}`;
+  return { path: `/alerts/${row.id}`, query };
 }
 
 async function applyCamera() {
   const next = cameraDraft.value.trim();
   cameraDraft.value = next;
   if (next === cameraCodeFilter.value && next === plainQuery('cameraCode').trim()) return;
-  const query: Record<string, string> = {};
-  if (statusFilter.value) query.status = statusFilter.value;
-  if (levelFilter.value) query.level = levelFilter.value;
-  if (shedCodeFilter.value) query.shedCode = shedCodeFilter.value;
-  if (highlightId.value) query.alertId = highlightId.value;
-  if (next) query.cameraCode = next;
-  await router.replace({ path: route.path, query });
+  await router.replace({ path: route.path, query: addressQuery(next) });
 }
 
 function clearCamera() {
@@ -118,8 +140,11 @@ function applyRouteQuery() {
   statusFilter.value = allowedQuery('status', statuses);
   levelFilter.value = allowedQuery('level', levels);
   shedCodeFilter.value = plainQuery('shedCode');
-  cameraDraft.value = plainQuery('cameraCode').trim();
-  cameraCodeFilter.value = cameraDraft.value;
+  const camera = plainQuery('cameraCode').trim();
+  if (camera !== cameraCodeFilter.value) {
+    cameraDraft.value = camera;
+    cameraCodeFilter.value = camera;
+  }
   highlightId.value = plainQuery('alertId');
 }
 
@@ -169,6 +194,12 @@ async function act(id: string, action: 'ack' | 'close' | 'claim' | 'false-positi
 
 watch([statusFilter, levelFilter, shedCodeFilter, cameraCodeFilter], () => {
   void load();
+});
+
+watch([statusFilter, levelFilter], () => {
+  const next = addressQuery(cameraCodeFilter.value);
+  if (sameAddress(next, currentAddressQuery())) return;
+  void router.replace({ path: route.path, query: next });
 });
 
 watch(() => route.fullPath, () => {

@@ -98,6 +98,29 @@ describe('AlertDetailView', () => {
     wrapper.unmount();
   });
 
+  it('returns to the status-filtered list and keeps a camera filter beside it', async () => {
+    httpGet.mockResolvedValue({
+      data: { ...alert, status: 'closed', title: '已关闭筛选告警', cameraCode: 'CAM-STATUS-02' },
+    });
+    const closed = await mountDetail('alert-closed', '?status=closed');
+    expect(closed.get('[data-testid="alert-back"]').attributes('href')).toBe('/alerts?status=closed');
+    expect(closed.get('[data-field="status"]').text()).toBe('已关闭');
+    closed.unmount();
+
+    httpGet.mockResolvedValue({ data: alert });
+    const both = await mountDetail('alert-1', '?status=open&cameraCode=CAM-STATUS-01');
+    expect(both.get('[data-testid="alert-back"]').attributes('href')).toBe(
+      '/alerts?status=open&cameraCode=CAM-STATUS-01',
+    );
+    both.unmount();
+
+    const invalid = await mountDetail('alert-1', '?status=nope&cameraCode=%20CAM-FILTER-02%20');
+    expect(invalid.get('[data-testid="alert-back"]').attributes('href')).toBe(
+      '/alerts?cameraCode=CAM-FILTER-02',
+    );
+    invalid.unmount();
+  });
+
   it('shows the error and no detail card when the alert cannot be loaded', async () => {
     httpGet.mockRejectedValue(new Error('down'));
     const wrapper = await mountDetail();

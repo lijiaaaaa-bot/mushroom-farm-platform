@@ -543,6 +543,110 @@ describe('AlertsView', () => {
     wrapper.unmount();
   });
 
+  it('filters by status, keeps the detail link, and shows both rows again for 全部', async () => {
+    const pending = {
+      ...alert,
+      id: 'alert-open',
+      cameraCode: 'CAM-STATUS-01',
+      status: 'open' as const,
+      title: '待确认筛选告警',
+    };
+    const closed = {
+      ...alert,
+      id: 'alert-closed',
+      cameraCode: 'CAM-STATUS-02',
+      status: 'closed' as const,
+      title: '已关闭筛选告警',
+    };
+    httpGet.mockImplementation((_url: string, config?: { params?: { status?: string } }) => {
+      const status = config?.params?.status;
+      const items = [pending, closed].filter((row) => !status || row.status === status);
+      return Promise.resolve({ data: { items, total: items.length } });
+    });
+    const wrapper = await mountView(AlertsView);
+
+    expect(wrapper.findAll('[data-testid="alert-detail-link"]').map((node) => node.text())).toEqual([
+      '待确认筛选告警',
+      '已关闭筛选告警',
+    ]);
+
+    await wrapper.get('[data-testid="alert-status-filter"]').setValue('open');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: 'open', level: undefined },
+    });
+    expect(memoryRouter.currentRoute.value.fullPath).toBe('/alerts?status=open');
+    expect(wrapper.findAll('[data-testid="alert-detail-link"]').map((node) => node.text())).toEqual([
+      '待确认筛选告警',
+    ]);
+    expect(wrapper.findAll('[data-testid="alert-status"]').map((node) => node.text())).toEqual(['待确认']);
+    expect(wrapper.text()).not.toContain('已关闭筛选告警');
+    expect(wrapper.get('[data-testid="alert-detail-link"]').attributes('href')).toBe(
+      '/alerts/alert-open?status=open',
+    );
+
+    await wrapper.get('[data-testid="alert-status-filter"]').setValue('closed');
+    await flushPromises();
+    const closedCalls = httpGet.mock.calls;
+    const closedCall = closedCalls[closedCalls.length - 1];
+    expect(closedCall?.[0]).toBe('/alerts');
+    expect(closedCall?.[1].params.status).toBe('closed');
+    expect(memoryRouter.currentRoute.value.fullPath).toBe('/alerts?status=closed');
+    expect(wrapper.findAll('[data-testid="alert-detail-link"]').map((node) => node.text())).toEqual([
+      '已关闭筛选告警',
+    ]);
+    expect(wrapper.findAll('[data-testid="alert-status"]').map((node) => node.text())).toEqual(['已关闭']);
+    expect(wrapper.text()).not.toContain('待确认筛选告警');
+    expect(wrapper.get('[data-testid="alert-detail-link"]').attributes('href')).toBe(
+      '/alerts/alert-closed?status=closed',
+    );
+
+    await wrapper.get('[data-testid="alert-status-filter"]').setValue('');
+    await flushPromises();
+    const calls = httpGet.mock.calls;
+    const last = calls[calls.length - 1];
+    expect(last?.[0]).toBe('/alerts');
+    expect(last?.[1].params.status).toBeUndefined();
+    expect(memoryRouter.currentRoute.value.query.status).toBeUndefined();
+    expect(wrapper.findAll('[data-testid="alert-detail-link"]').map((node) => node.text())).toEqual([
+      '待确认筛选告警',
+      '已关闭筛选告警',
+    ]);
+    wrapper.unmount();
+  });
+
+  it('applies status from the address and hides the other status', async () => {
+    const pending = {
+      ...alert,
+      id: 'alert-open',
+      status: 'open' as const,
+      title: '待确认筛选告警',
+    };
+    const closed = {
+      ...alert,
+      id: 'alert-closed',
+      status: 'closed' as const,
+      title: '已关闭筛选告警',
+    };
+    httpGet.mockImplementation((_url: string, config?: { params?: { status?: string } }) => {
+      const status = config?.params?.status;
+      const items = [pending, closed].filter((row) => !status || row.status === status);
+      return Promise.resolve({ data: { items, total: items.length } });
+    });
+    const wrapper = await mountView(AlertsView, { status: 'closed' });
+    expect((wrapper.get('[data-testid="alert-status-filter"]').element as HTMLSelectElement).value).toBe(
+      'closed',
+    );
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: 'closed', level: undefined },
+    });
+    expect(wrapper.findAll('[data-testid="alert-detail-link"]').map((node) => node.text())).toEqual([
+      '已关闭筛选告警',
+    ]);
+    expect(wrapper.text()).not.toContain('待确认筛选告警');
+    wrapper.unmount();
+  });
+
   it('applies cameraCode from the address and omits a blank value', async () => {
     httpGet.mockResolvedValue({ data: { items: [alert], total: 1 } });
     const wrapper = await mountView(AlertsView, { cameraCode: 'CAM-FILTER-02' });

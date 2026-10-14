@@ -477,6 +477,74 @@ describe('alert claim and false-positive close', () => {
     expect(open.body.items).toEqual([]);
   });
 
+  it('filters pending and closed alerts apart and still opens each detail', async () => {
+    const pending = await createAlert('S01', '待确认筛选告警', 'CAM-STATUS-01');
+    const finished = await createAlert(
+      'S01',
+      '已关闭筛选告警',
+      'CAM-STATUS-02',
+    );
+    const closed = await request(app.getHttpServer())
+      .post(`/api/v1/alerts/${finished.id}/close`)
+      .set(auth('production_admin', 'producer'))
+      .send({ note: '已关闭' });
+    expect(closed.status).toBe(201);
+    expect(closed.body.status).toBe('closed');
+
+    const openList = await request(app.getHttpServer())
+      .get('/api/v1/alerts?status=open&pageSize=50')
+      .set(auth('super_admin', 'id-super'));
+    expect(openList.status).toBe(200);
+    expect(openList.body.items).toEqual([
+      expect.objectContaining({
+        id: pending.id,
+        status: 'open',
+        title: '待确认筛选告警',
+        cameraCode: 'CAM-STATUS-01',
+      }),
+    ]);
+
+    const closedList = await request(app.getHttpServer())
+      .get('/api/v1/alerts?status=closed&pageSize=50')
+      .set(auth('super_admin', 'id-super'));
+    expect(closedList.status).toBe(200);
+    expect(closedList.body.items).toEqual([
+      expect.objectContaining({
+        id: finished.id,
+        status: 'closed',
+        title: '已关闭筛选告警',
+        cameraCode: 'CAM-STATUS-02',
+      }),
+    ]);
+
+    const all = await request(app.getHttpServer())
+      .get('/api/v1/alerts?shedCode=S01&pageSize=50')
+      .set(auth('super_admin', 'id-super'));
+    expect(all.status).toBe(200);
+    expect(all.body.items).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: pending.id, status: 'open' }),
+        expect.objectContaining({ id: finished.id, status: 'closed' }),
+      ]),
+    );
+
+    const openDetail = await request(app.getHttpServer())
+      .get(`/api/v1/alerts/${pending.id}`)
+      .set(auth('super_admin', 'id-super'));
+    expect(openDetail.status).toBe(200);
+    expect(openDetail.body.status).toBe('open');
+
+    const closedDetail = await request(app.getHttpServer())
+      .get(`/api/v1/alerts/${finished.id}`)
+      .set(auth('super_admin', 'id-super'));
+    expect(closedDetail.status).toBe(200);
+    expect(closedDetail.body).toMatchObject({
+      status: 'closed',
+      closeReason: 'resolved',
+      closeNote: '已关闭',
+    });
+  });
+
   it('filters the alert list by camera code and keeps detail readable', async () => {
     const east = await createAlert('S01', '东侧过道告警', 'CAM-FILTER-01');
     const west = await createAlert('S01', '西侧过道告警', 'CAM-FILTER-02');
