@@ -46,6 +46,7 @@ make web      # http://127.0.0.1:43123
 按摄像头和时间窗看识别记录：[`docs/DEMO_RECOGNITION_HISTORY.md`](docs/DEMO_RECOGNITION_HISTORY.md)（`make demo-recognition-history`）。  
 报表页 `/reports` 预览园区生长并下载 xlsx：[`docs/DEMO_REPORT_XLSX.md`](docs/DEMO_REPORT_XLSX.md)（`make demo-report-xlsx`）。  
 病害记录可查可见：[`docs/DEMO_DISEASE_LIST.md`](docs/DEMO_DISEASE_LIST.md)（`make demo-disease-list`）。  
+病害按等级筛选可查可见：[`docs/DEMO_DISEASE_GRADE_FILTER.md`](docs/DEMO_DISEASE_GRADE_FILTER.md)（`make demo-disease-grade-filter`）。  
 采摘记录可查可见：[`docs/DEMO_HARVEST_LIST.md`](docs/DEMO_HARVEST_LIST.md)（`make demo-harvest-list`）。  
 按棚区和时间窗筛选采摘记录：[`docs/DEMO_HARVEST_FILTER.md`](docs/DEMO_HARVEST_FILTER.md)（`make demo-harvest-filter`）。  
 采摘任务可查可排：[`docs/DEMO_HARVEST_TASK.md`](docs/DEMO_HARVEST_TASK.md)（`make demo-harvest-task`）。  
