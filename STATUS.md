@@ -68,7 +68,7 @@
 - 告警抓拍写入对象存储，详情页显示这张图：识别触发告警时记下 `snapshotObjectKey`。`GET /api/v1/alerts/:id/snapshot` 从 MinIO 读回。`/alerts/:id` 显示图片、对象键和「打开抓拍」。列表有对象键时标题旁有「抓拍」。`make demo-alert-snapshot-minio` 用摄像头 `CAM-SNAP-01`、温度 30 和样例 JPEG 留下一条告警，并核对对象键与读回字节。未闭合告警还没有对象键时，下一次同规则识别把键补上，不改状态。步骤见 `docs/DEMO_ALERT_SNAPSHOT_MINIO.md`。
 - `make up` 拉取的 Postgres、Redis、Mosquitto 与对象存储基础镜像都带 sha256。对象存储镜像 `mushroom-object-store:20260916` 使用 `pull_policy: build`，不向 Docker Hub 拉取这个名字。`make images-probe` 核对摘要和 silo 包仍可取。登录按钮与告警链接的绿色改为 `#1B7A4E`，警告色文字改为 `#9A6700`，白底和页面底上达到 4.5:1。新建告警的棚区、摄像头、级别、标题、说明有可访问名称。步骤见 `docs/DEMO_MAKE_UP.md`。
 - 环境遥测最新值：`make demo-telemetry-latest` 先 POST 较早一条（温度 19.2℃），再 POST 当前时刻的一条（传感器 `SENSOR-LATEST-01`，温度 24.6℃，湿度 85%，CO₂ 760，基质含水率 72%）。`GET /api/v1/ingest/environment-readings/latest?sensorCode=SENSOR-LATEST-01` 只返回后一条。`GET /api/v1/ingest/environment-readings/:id` 是同一条。`/environment` 的「最新值」点传感器进入 `/environment/:id`。MQTT 主题 `mushroom/S01/SENSOR-LATEST-01/environment`。`environment.golden.json` 不改。步骤见 `docs/DEMO_TELEMETRY_LATEST.md`。
-- 环境遥测超阈自动告警：`make demo-telemetry-threshold-alert` POST 一条传感器 `SENSOR-TELEM-01`、温度 32℃ 的环境读数。种子规则「温度过高」（阈值 28，严重）留下未闭合告警。告警列表标题下有传感器和说明，详情有标题、当前值 32℃、阈值 28℃、状态待确认。湿度 88%、CO₂ 900、基质含水率 70% 不超过其余种子规则。不改 `make demo-one-alert`、`make demo-threshold-alert`、`make demo-telemetry-latest`。步骤见 `docs/DEMO_TELEMETRY_THRESHOLD_ALERT.md`。
+- 环境遥测超阈自动告警：`make demo-telemetry-threshold-alert` POST 一条传感器 `SENSOR-TELEM-01`、温度 32℃ 的环境读数。种子规则「温度过高」（阈值 28，严重）留下未闭合告警。告警列表标题下有传感器和说明，详情有标题、当前值 32℃、阈值 28℃、状态待确认。湿度 88%、CO₂ 900、基质含水率 70% 不超过其余种子规则。不改 `make demo-one-alert`、`make demo-threshold-alert`、`make demo-telemetry-latest`。步骤见 `docs/DEMO_TELEMETRY_THRESHOLD_ALERT.md`。PR #109。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/109
 
 ## 进行中
 - 无
