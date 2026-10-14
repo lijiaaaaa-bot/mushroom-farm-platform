@@ -444,6 +444,66 @@ describe('alert claim and false-positive close', () => {
     expect(alerts.rows[0].ackNote).toBe('已确认');
   });
 
+  it('stores a trimmed handling note and a later read still shows it', async () => {
+    const created = await createAlert('S01', '处理说明告警', 'CAM-NOTE-01');
+    const ack = await request(app.getHttpServer())
+      .post(`/api/v1/alerts/${created.id}/ack`)
+      .set(auth('shed_manager', 'shed-a', 'S01'))
+      .send({ note: '  现场已开窗通风  ' });
+    expect(ack.status).toBe(201);
+    expect(ack.body).toMatchObject({
+      id: created.id,
+      status: 'acked',
+      ackNote: '现场已开窗通风',
+    });
+    expect(auditWrite).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'alert.ack',
+        resource: `alert:${created.id}`,
+        detail: { note: '现场已开窗通风' },
+      }),
+    );
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/alerts/${created.id}`)
+      .set(auth('viewer', 'viewer-s01', 'S01'));
+    expect(detail.status).toBe(200);
+    expect(detail.body).toMatchObject({
+      status: 'acked',
+      ackNote: '现场已开窗通风',
+    });
+
+    const blank = await createAlert('S01', '空白说明告警', 'CAM-NOTE-02');
+    const ackedBlank = await request(app.getHttpServer())
+      .post(`/api/v1/alerts/${blank.id}/ack`)
+      .set(auth('shed_manager', 'shed-a', 'S01'))
+      .send({ note: '   ' });
+    expect(ackedBlank.status).toBe(201);
+    expect(ackedBlank.body.ackNote).toBeNull();
+
+    const pending = await createAlert('S01', '关闭说明告警', 'CAM-NOTE-03');
+    const closed = await request(app.getHttpServer())
+      .post(`/api/v1/alerts/${pending.id}/close`)
+      .set(auth('production_admin', 'producer'))
+      .send({ note: '  已恢复通风  ' });
+    expect(closed.status).toBe(201);
+    expect(closed.body).toMatchObject({
+      id: pending.id,
+      status: 'closed',
+      closeReason: 'resolved',
+      closeNote: '已恢复通风',
+      ackNote: '关闭时自动确认',
+    });
+    const closedDetail = await request(app.getHttpServer())
+      .get(`/api/v1/alerts/${pending.id}`)
+      .set(auth('super_admin', 'id-super'));
+    expect(closedDetail.status).toBe(200);
+    expect(closedDetail.body).toMatchObject({
+      status: 'closed',
+      closeNote: '已恢复通风',
+      ackNote: '关闭时自动确认',
+    });
+  });
+
   it('closes a pending alert and a later read still shows closed', async () => {
     const created = await createAlert('S01', '温度过高告警');
     const closed = await request(app.getHttpServer())

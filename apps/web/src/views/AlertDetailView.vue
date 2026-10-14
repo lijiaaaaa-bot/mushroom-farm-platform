@@ -41,6 +41,7 @@ const row = ref<AlertDetail | null>(null);
 const loading = ref(true);
 const error = ref('');
 const actionError = ref('');
+const handleNote = ref('');
 
 const alertId = computed(() => {
   const value = route.params.id;
@@ -93,6 +94,12 @@ function quantity(metric: string | null, value: number | null): string {
   return String(value);
 }
 
+function handlingText(current: AlertDetail): string {
+  if (current.status === 'closed') return (current.closeNote || '').trim();
+  if (current.status === 'acked') return (current.ackNote || '').trim();
+  return '';
+}
+
 function shanghaiStamp(value: string | null | undefined): string {
   if (!value) return '—';
   const parsed = Date.parse(value);
@@ -119,6 +126,9 @@ const fields = computed(() => {
     { key: 'message', label: '说明', value: current.message },
     { key: 'level', label: '级别', value: ALERT_LEVEL_LABEL[current.level] },
     { key: 'status', label: '状态', value: ALERT_STATUS_LABEL[current.status] },
+    ...(handlingText(current)
+      ? [{ key: 'handleNote', label: '处理说明', value: handlingText(current) }]
+      : []),
     { key: 'shed', label: '棚区', value: current.shedCode },
     { key: 'camera', label: '摄像头', value: current.cameraCode || '—' },
     { key: 'time', label: '发生时间', value: shanghaiStamp(current.createdAt) },
@@ -140,11 +150,14 @@ const fields = computed(() => {
 async function act(action: 'ack' | 'close') {
   const id = row.value?.id;
   if (!id) return;
+  const note = handleNote.value.trim();
+  if (!note) {
+    actionError.value = '请填写处理说明';
+    return;
+  }
   actionError.value = '';
   try {
-    await http.post(`/alerts/${id}/${action}`, {
-      note: action === 'ack' ? '已确认' : '已关闭',
-    });
+    await http.post(`/alerts/${id}/${action}`, { note });
     await load();
   } catch (cause) {
     actionError.value = errorText(cause);
@@ -174,6 +187,7 @@ async function load() {
 }
 
 watch(alertId, () => {
+  handleNote.value = '';
   void load();
 }, { immediate: true });
 </script>
@@ -196,17 +210,37 @@ watch(alertId, () => {
       <p v-if="actionError" class="mt-3 text-sm text-danger" data-testid="alert-action-error">{{ actionError }}</p>
       <div
         v-if="canOperate(currentUser?.role) && row.status !== 'closed'"
-        class="mt-4 flex flex-wrap gap-2"
+        class="mt-4 space-y-3"
         data-testid="alert-actions"
       >
-        <button
-          v-if="row.status === 'open'"
-          class="btn-ghost"
-          type="button"
-          data-testid="alert-ack"
-          @click="act('ack')"
-        >确认</button>
-        <button class="btn-ghost" type="button" data-testid="alert-close" @click="act('close')">关闭</button>
+        <label class="block text-sm">
+          处理说明
+          <textarea
+            v-model="handleNote"
+            class="field mt-1 w-full"
+            rows="2"
+            maxlength="500"
+            placeholder="填写本次确认或关闭的说明"
+            data-testid="alert-handle-note"
+          />
+        </label>
+        <div class="flex flex-wrap gap-2">
+          <button
+            v-if="row.status === 'open'"
+            class="btn-ghost"
+            type="button"
+            data-testid="alert-ack"
+            :disabled="!handleNote.trim()"
+            @click="act('ack')"
+          >确认</button>
+          <button
+            class="btn-ghost"
+            type="button"
+            data-testid="alert-close"
+            :disabled="!handleNote.trim()"
+            @click="act('close')"
+          >关闭</button>
+        </div>
       </div>
     </section>
   </div>

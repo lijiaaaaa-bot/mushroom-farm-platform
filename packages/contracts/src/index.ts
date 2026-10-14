@@ -292,7 +292,7 @@ export type CreateAlertInput = z.infer<typeof createAlertSchema>;
 
 export const alertNoteSchema = z
   .object({
-    note: z.string().max(500).optional(),
+    note: z.string().trim().max(500).optional(),
   })
   .strict();
 export type AlertNoteInput = z.infer<typeof alertNoteSchema>;

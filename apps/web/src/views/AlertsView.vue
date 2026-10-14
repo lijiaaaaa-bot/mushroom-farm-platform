@@ -204,10 +204,13 @@ function reasonLabel(row: AlertRow) {
 }
 
 async function act(id: string, action: 'ack' | 'close' | 'claim' | 'false-positive') {
-  if (action === 'false-positive' && !note.value.trim()) return;
+  const text = note.value.trim();
+  if (action !== 'claim' && !text) return;
   error.value = '';
   try {
-    await http.post(`/alerts/${id}/${action}`, { note: note.value });
+    await http.post(`/alerts/${id}/${action}`, {
+      note: action === 'claim' ? note.value : text,
+    });
     await load();
   } catch (cause) {
     error.value = errorText(cause);
@@ -249,7 +252,15 @@ onMounted(load);
       <input v-model="form.title" class="field md:col-span-2" placeholder="标题" required />
       <button class="btn-primary" type="submit">新建告警</button>
       <textarea v-model="form.message" class="field md:col-span-5" placeholder="说明" required />
-      <input v-model="note" class="field" placeholder="处置备注（误报必填）" />
+      <label class="text-sm">
+        处理说明
+        <input
+          v-model="note"
+          class="field mt-1"
+          placeholder="处置备注（误报必填）"
+          data-testid="alert-list-handle-note"
+        />
+      </label>
     </form>
     <p v-if="error" class="text-sm text-danger">{{ error }}</p>
     <section class="panel overflow-x-auto">
@@ -327,9 +338,9 @@ onMounted(load);
             </td>
             <td class="font-mono text-xs">{{ new Date(row.createdAt).toLocaleString('zh-CN') }}</td>
             <td class="space-x-2 whitespace-nowrap" v-if="canOperate(currentUser?.role)">
-              <button v-if="row.status === 'open'" class="btn-ghost" type="button" data-testid="alert-ack" @click="act(row.id, 'ack')">确认</button>
+              <button v-if="row.status === 'open'" class="btn-ghost" type="button" data-testid="alert-ack" :disabled="!note.trim()" @click="act(row.id, 'ack')">确认</button>
               <button v-if="row.status !== 'closed'" class="btn-ghost" type="button" @click="act(row.id, 'claim')">认领</button>
-              <button v-if="row.status !== 'closed'" class="btn-ghost" type="button" data-testid="alert-close" @click="act(row.id, 'close')">关闭</button>
+              <button v-if="row.status !== 'closed'" class="btn-ghost" type="button" data-testid="alert-close" :disabled="!note.trim()" @click="act(row.id, 'close')">关闭</button>
               <button
                 v-if="row.status !== 'closed'"
                 class="btn-ghost"

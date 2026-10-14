@@ -59,6 +59,12 @@ describe('golden fixtures', () => {
     const note = load('alert.ack.json');
     const acked = parseAlertNote(note.body);
     assert.equal(acked.ok, note.expect === 'ok');
+    const padded = parseAlertNote({ note: '  现场已开窗通风  ' });
+    assert.equal(padded.ok, true);
+    if (padded.ok) assert.equal(padded.value.note, '现场已开窗通风');
+    const blankNote = parseAlertNote({ note: '   ' });
+    assert.equal(blankNote.ok, true);
+    if (blankNote.ok) assert.equal(blankNote.value.note, '');
     const falsePositive = load('alert.false-positive.json');
     const closed = parseAlertFalsePositive(falsePositive.body);
     assert.equal(closed.ok, falsePositive.expect === 'ok');

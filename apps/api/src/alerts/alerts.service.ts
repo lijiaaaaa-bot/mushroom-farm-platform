@@ -151,7 +151,7 @@ export class AlertsService {
     }
     alert.claimedBy = user.username;
     alert.claimedAt = new Date();
-    alert.claimNote = note ?? null;
+    alert.claimNote = storedNote(note);
     return this.alerts.save(alert);
   }
 
@@ -167,7 +167,7 @@ export class AlertsService {
     alert.status = 'acked';
     alert.ackedBy = user.username;
     alert.ackedAt = new Date();
-    alert.ackNote = note ?? null;
+    alert.ackNote = storedNote(note);
     return this.alerts.save(alert);
   }
 
@@ -183,7 +183,7 @@ export class AlertsService {
     alert.status = 'closed';
     alert.closedBy = user.username;
     alert.closedAt = new Date();
-    alert.closeNote = note ?? null;
+    alert.closeNote = storedNote(note);
     alert.closeReason = 'resolved';
     if (!alert.ackedAt) {
       alert.ackedBy = user.username;
@@ -205,7 +205,7 @@ export class AlertsService {
     alert.status = 'closed';
     alert.closedBy = user.username;
     alert.closedAt = new Date();
-    alert.closeNote = note;
+    alert.closeNote = storedNote(note);
     alert.closeReason = 'false_positive';
     if (!alert.ackedAt) {
       alert.ackedBy = user.username;
@@ -318,4 +318,9 @@ export class AlertsService {
     if (!scope.codes.length) qb.andWhere('1 = 0');
     else qb.andWhere('a.shedCode IN (:...codes)', { codes: scope.codes });
   }
+}
+
+function storedNote(note?: string | null): string | null {
+  const text = typeof note === 'string' ? note.trim() : '';
+  return text || null;
 }

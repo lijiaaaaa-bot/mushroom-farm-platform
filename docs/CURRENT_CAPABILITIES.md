@@ -140,7 +140,7 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 `make demo-one-alert` 读取 `recognition.demo-one.json`，把本次请求的摄像头改成 `CAM-ALERT-01`、温度改成 30，只 POST 一次识别。样例文件里的 `CAM-DEMO-01` 与温度 22.5 不改。种子规则「温度过高」（阈值 28，严重）因此留下一条未闭合告警。同一摄像头已有未闭合的温度过高告警时不再新建，命令仍打印该条 id。登录后打开 `/alerts`，点标题进入 `/alerts/:id`。步骤见 [`DEMO_ONE_ALERT.md`](DEMO_ONE_ALERT.md)。
 
-待确认的行可以点「确认」，未关闭的行可以点「关闭」。列表点下去后重新请求 `GET /api/v1/alerts`。详情页同样两个按钮：确认备注为「已确认」，关闭备注为「已关闭」，然后重新请求 `GET /api/v1/alerts/:id`。刷新页面后状态仍是这次写入的结果。查看人员没有这两个按钮。列表上的「处置备注」默认是「已确认」，确认和关闭都带上这个备注。
+待确认的行可以点「确认」，未关闭的行可以点「关闭」。列表点下去后重新请求 `GET /api/v1/alerts`。列表上的「处理说明」默认是「已确认」，确认和关闭都带上这段非空文字；只剩空白时这两个按钮不能点。详情页有单独的「处理说明」输入框，确认或关闭前必须填写。确认把这段文字写入 `ackNote`，关闭写入 `closeNote`，然后重新请求 `GET /api/v1/alerts/:id`。已确认时处理说明显示 `ackNote`，已关闭时显示 `closeNote`。刷新页面后状态和处理说明仍是这次写入的结果。查看人员没有输入框和这两个按钮。
 
 `make demo-ack-one-alert` 确认这条待确认的温度过高告警，再读详情和 `status=acked` 的列表。已经是已确认、没有待确认时命令失败，不改这条告警。`make demo-close-one-alert` 关闭这条未闭合告警（待确认或已确认），再读详情和 `status=closed` 的列表。没有未闭合告警时，先按 `make demo-one-alert` 的方式补一条识别再关闭。两个命令都不改样例文件，也不改 `make demo-one-alert`。步骤见 [`DEMO_ACK_CLOSE_ALERT.md`](DEMO_ACK_CLOSE_ALERT.md)。
 
@@ -151,6 +151,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 `make demo-alert-status-filter` 留下两条告警：棚区 S01 的 `CAM-STATUS-01`（标题「待确认筛选告警」，状态待确认）和 `CAM-STATUS-02`（标题「已关闭筛选告警」，状态已关闭）。待确认已在则沿用。已关闭已在则沿用；只有待确认或已确认时，用与 `make demo-close-one-alert` 相同的关闭接口和备注「已关闭」把它关掉，不关其他告警。然后 `GET /api/v1/alerts?status=open` 只有待确认且含第一条，`status=closed` 只有已关闭且含第二条，详情都能打开；不带 `status` 时两条都在。登录后在 `/alerts` 把状态下拉改成「待确认」或「已关闭」，点标题进详情，再改回「全部」。步骤见 [`DEMO_ALERT_STATUS_FILTER.md`](DEMO_ALERT_STATUS_FILTER.md)。
 
 `make demo-alert-title-search` 用 `POST /api/v1/alerts` 留下两条未闭合告警：棚区 S01 的 `CAM-TITLE-01`（标题「东侧标题搜索告警」）和 `CAM-TITLE-02`（标题「西侧过道对照告警」）。同摄像头、同标题已有未闭合告警则沿用，不新建。然后 `GET /api/v1/alerts?q=东侧标题` 只含标题里有这段文字的告警，`GET /api/v1/alerts/:id` 仍能打开匹配的那条；不带 `q`，或 `q` 只有空白时，两条都在。匹配不区分大小写，按标题子串，不看说明。不发识别，不改阈值规则，不确认或关闭其他告警。登录后在 `/alerts` 填写标题关键词并点「搜索」，点标题进详情，点「清除搜索」回到两条都在的列表。步骤见 [`DEMO_ALERT_TITLE_SEARCH.md`](DEMO_ALERT_TITLE_SEARCH.md)。
+
+`make demo-alert-handle-note` 从棚区 S01、摄像头 `CAM-NOTE-01`、标题「处理说明告警」的待确认告警开始。没有则 `POST /api/v1/alerts` 新建一条。然后 `POST /api/v1/alerts/:id/ack`，处理说明是「现场已开窗通风」。连续两次 `GET /api/v1/alerts/:id`，状态都是已确认，`ackNote` 都是这一句。不发识别，不改阈值规则，不确认或关闭其他告警。登录后打开打印的详情地址，能看到处理说明；刷新后仍在。页面上也可以对别的待确认告警填写处理说明后点「关闭」，关闭备注同样留在详情里。步骤见 [`DEMO_ALERT_HANDLE_NOTE.md`](DEMO_ALERT_HANDLE_NOTE.md)。
 
 | 动作 | 接口 | 结果 |
 |------|------|------|
