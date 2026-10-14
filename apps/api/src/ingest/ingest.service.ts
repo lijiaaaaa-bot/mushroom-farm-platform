@@ -541,7 +541,7 @@ export class IngestService {
     }
     if (query.shedCode)
       qb.andWhere('e.shedCode = :shedCode', { shedCode: query.shedCode });
-    const sensorCode = query.sensorCode?.trim();
+    const sensorCode = (query.sensorCode || query.deviceCode)?.trim();
     if (sensorCode) {
       qb.andWhere('e.sensorCode = :sensorCode', { sensorCode });
     }

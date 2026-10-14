@@ -530,6 +530,89 @@ describe('environment ingest', () => {
     });
   });
 
+  it('lists one sensor inside a time window and leaves other rows out', async () => {
+    await post({
+      ...golden.body,
+      idempotencyKey: 'hist-in-older',
+      sensorCode: 'SENSOR-HIST-01',
+      observedAt: '2026-09-23T01:22:00.000Z',
+      temperature: 18.4,
+      humidity: 86,
+      co2: 820,
+      substrateMoisture: 66,
+    });
+    await post({
+      ...golden.body,
+      idempotencyKey: 'hist-in-newer',
+      sensorCode: 'SENSOR-HIST-01',
+      observedAt: '2026-09-23T01:30:00.000Z',
+      temperature: 23.1,
+      humidity: 80,
+      co2: 740,
+      substrateMoisture: 71,
+    });
+    await post({
+      ...golden.body,
+      idempotencyKey: 'hist-outside',
+      sensorCode: 'SENSOR-HIST-01',
+      observedAt: '2026-09-23T00:00:00.000Z',
+      temperature: 16.5,
+      humidity: 84,
+      co2: 900,
+      substrateMoisture: 68,
+    });
+    await post({
+      ...golden.body,
+      idempotencyKey: 'hist-other',
+      sensorCode: 'SENSOR-HIST-02',
+      observedAt: '2026-09-23T01:26:00.000Z',
+      temperature: 21,
+      humidity: 82,
+      co2: 880,
+      substrateMoisture: 67,
+    });
+
+    const history = await request(app.getHttpServer())
+      .get('/api/v1/ingest/environment-readings')
+      .query({
+        sensorCode: 'SENSOR-HIST-01',
+        from: '2026-09-23T01:00:00.000Z',
+        to: '2026-09-23T01:40:00.000Z',
+        pageSize: '50',
+      })
+      .set('x-test-role', 'super_admin');
+    const byDevice = await request(app.getHttpServer())
+      .get('/api/v1/ingest/environment-readings')
+      .query({
+        deviceCode: 'SENSOR-HIST-01',
+        from: '2026-09-23T01:00:00.000Z',
+        to: '2026-09-23T01:40:00.000Z',
+        pageSize: '50',
+      })
+      .set('x-test-role', 'super_admin');
+
+    expect(history.status).toBe(200);
+    expect(history.body.total).toBe(2);
+    expect(
+      history.body.items.map(
+        (item: { temperature: number }) => item.temperature,
+      ),
+    ).toEqual([23.1, 18.4]);
+    expect(
+      history.body.items.every(
+        (item: { sensorCode: string }) => item.sensorCode === 'SENSOR-HIST-01',
+      ),
+    ).toBe(true);
+    expect(JSON.stringify(history.body.items)).not.toContain('16.5');
+    expect(JSON.stringify(history.body.items)).not.toContain('SENSOR-HIST-02');
+    expect(byDevice.body.total).toBe(2);
+    expect(
+      byDevice.body.items.map(
+        (item: { temperature: number }) => item.temperature,
+      ),
+    ).toEqual([23.1, 18.4]);
+  });
+
   it('hides another shed from the latest list and the detail', async () => {
     const own = await post(golden.body);
     const other = await post({

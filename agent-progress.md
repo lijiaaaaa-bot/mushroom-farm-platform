@@ -3,6 +3,7 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
+- 2026-10-14：环境遥测历史列表。`make demo-telemetry-history` 写入 `SENSOR-HIST-01`（16.5℃ 在窗外，18.4℃ 与 23.1℃ 在近 30 分钟窗口）和 `SENSOR-HIST-02` 的 21℃。`GET /api/v1/ingest/environment-readings?sensorCode=&from=&to=` 只返回这台设备窗口内的读数。页面 `/environment` 可按传感器编号和时间查询「历史读数」。小时桶仍是入库时写入，历史列表读 `environment_readings`。不改 `make demo-telemetry-latest` 与 `environment.golden.json`。步骤 `docs/DEMO_TELEMETRY_HISTORY.md`。分支 `cursor/telemetry-history-demo-8996`。
 - 2026-10-14：镜头可删除。`make demo-camera-delete` 登记 `CAM-DEL-01`（棚区 S01，名称可删除镜头，备注删除前）。已存在则不改名称和心跳。列表能看到后 PATCH 备注「删除前已改」，再 DELETE。列表不再有这一台，详情 404「设备不存在」。没有软删除列。告警和识别仍按镜头码留着。`/devices` 与详情页可删除。不发识别，不发心跳，不改已有演示命令。步骤 `docs/DEMO_CAMERA_DELETE.md`。分支 `cursor/camera-delete-demo-cb35`。
 - 2026-10-14：镜头可停用。`make demo-camera-stop` 登记 `CAM-STOP-01`（棚区 S01，名称可停用镜头，备注停用前）。已存在则不改名称和心跳。再 PATCH `enabled: false`。列表和 `GET /devices/:id` 启用都是停用，备注、在线状态和最近心跳不动，详情仍可打开。`/devices` 与详情页可停用，也可再启用。心跳仍按上报改在线状态，不把停用改回启用。不发识别，不发心跳，不删除档案，不改已有演示命令。步骤 `docs/DEMO_CAMERA_STOP.md`。分支 `cursor/camera-stop-demo-0019`。
 - 2026-10-14：镜头可改备注和状态。`make demo-camera-edit` 登记 `CAM-EDIT-01`（棚区 S01，名称可编辑镜头，备注编辑前）。已存在则不改名称和心跳。再 PATCH 备注「备注已改」、状态在线。列表和 `GET /devices/:id` 一致。`/devices` 与详情页可保存这两项。没有心跳时手改的在线留着；已有心跳仍按超时改回离线。不发识别，不发心跳，不改已有演示命令。步骤 `docs/DEMO_CAMERA_EDIT.md`。分支 `cursor/camera-edit-demo-0620`。
@@ -35,6 +36,7 @@
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
+| 2026-10-14 | `make demo-telemetry-history`：写入 `SENSOR-HIST-01` 的 16.5℃（窗外）、18.4℃ 与 23.1℃（近 30 分钟）以及 `SENSOR-HIST-02` 的 21℃。`GET /ingest/environment-readings` 按 `sensorCode` 或 `deviceCode` 加 `from`/`to` 只返回窗口内这台设备的读数。`/environment` 可查询「历史读数」。小时桶仍在入库时写入。不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 172，API jest 153，web vitest 183）；`make gates` 退出码 0。PR #117 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/environment`。草稿不合并 |
 | 2026-10-14 | `make demo-camera-delete`：登记 `CAM-DEL-01`，列表可见后 PATCH 备注「删除前已改」，再 DELETE。列表没有这一台，详情 404「设备不存在」。查看员和棚区负责人 403。同一编码可再登记。页面删除后列表重新读取，详情回到 `/devices`。不发识别，不发心跳，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 166，API jest 152，web vitest 179）；`make gates` 退出码 0。PR #116 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。草稿不合并 |
 | 2026-10-14 | `make demo-camera-stop`：登记 `CAM-STOP-01`，再 PATCH `enabled: false`。列表与详情启用都是停用，档案仍在。`enabled` 不是布尔时 400。页面停用后重新读取。心跳不把停用改回启用。不发识别，不发心跳，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 159，API jest 151，web vitest 177）；`make gates` 退出码 0。PR #115 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。草稿不合并 |
 | 2026-10-14 | `make demo-camera-edit`：登记 `CAM-EDIT-01`，再 PATCH 备注「备注已改」和状态在线。列表与详情一致。页面保存后重新读取。没有心跳和时间戳时超时任务不改手改的在线。不发识别，不发心跳，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 150，API jest 150，web vitest 175）；`make gates` 退出码 0。PR #114 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。不合并 |

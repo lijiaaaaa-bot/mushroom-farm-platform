@@ -1,0 +1,44 @@
+{
+  "clock": "2026-09-23T02:00:00.000Z",
+  "expect": "ok",
+  "outside": {
+    "idempotencyKey": "demo-telemetry-history-outside",
+    "shedCode": "S01",
+    "sensorCode": "SENSOR-HIST-01",
+    "observedAt": "2026-09-22T23:00:00.000Z",
+    "temperature": 16.5,
+    "humidity": 84,
+    "co2": 900,
+    "substrateMoisture": 68
+  },
+  "other": {
+    "idempotencyKey": "demo-telemetry-history-other",
+    "shedCode": "S01",
+    "sensorCode": "SENSOR-HIST-02",
+    "observedAt": "2026-09-23T01:26:00.000Z",
+    "temperature": 21,
+    "humidity": 82,
+    "co2": 880,
+    "substrateMoisture": 67
+  },
+  "older": {
+    "idempotencyKey": "demo-telemetry-history-older",
+    "shedCode": "S01",
+    "sensorCode": "SENSOR-HIST-01",
+    "observedAt": "2026-09-23T01:22:00.000Z",
+    "temperature": 18.4,
+    "humidity": 86,
+    "co2": 820,
+    "substrateMoisture": 66
+  },
+  "body": {
+    "idempotencyKey": "demo-telemetry-history",
+    "shedCode": "S01",
+    "sensorCode": "SENSOR-HIST-01",
+    "observedAt": "2026-09-23T01:30:00.000Z",
+    "temperature": 23.1,
+    "humidity": 80,
+    "co2": 740,
+    "substrateMoisture": 71
+  }
+}
