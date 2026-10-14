@@ -35,6 +35,9 @@ export class Device {
   @Column({ type: 'timestamptz', nullable: true })
   lastHeartbeatAt: Date | null;
 
+  @Column({ type: 'text', nullable: true })
+  note: string | null;
+
   @Column({ type: 'jsonb', default: {} })
   meta: Record<string, unknown>;
 

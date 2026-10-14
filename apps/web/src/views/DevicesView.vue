@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { DEVICE_TYPE_LABEL, type DeviceType } from '@mushroom/contracts';
-import { canImportDevices, currentUser } from '../auth';
+import { canImportDevices, canRegisterDevices, currentUser } from '../auth';
 import { errorText, http } from '../api';
 
 interface DeviceRow {
@@ -13,6 +13,8 @@ interface DeviceRow {
   onlineStatus: string;
   lastSeenAt: string | null;
   lastHeartbeatAt?: string | null;
+  note: string | null;
+  draftNote: string;
 }
 
 interface ImportMessage {
@@ -37,13 +39,27 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const importing = ref(false);
 const report = ref<ImportReport | null>(null);
 const canImport = computed(() => canImportDevices(currentUser.value?.role));
+const canRegister = computed(() => canRegisterDevices(currentUser.value?.role));
+const cameraCode = ref('');
+const shedCode = ref('S01');
+const cameraName = ref('');
+const cameraNote = ref('');
+const registering = ref(false);
+const savingId = ref('');
+const formError = ref('');
 
 async function load() {
   loading.value = true;
   error.value = '';
   try {
-    const response = await http.get<{ items: DeviceRow[] }>('/devices?pageSize=100');
-    rows.value = response.data.items;
+    const response = await http.get<{ items: Omit<DeviceRow, 'draftNote'>[] }>(
+      '/devices?pageSize=100',
+    );
+    rows.value = response.data.items.map((row) => ({
+      ...row,
+      note: row.note ?? null,
+      draftNote: row.note ?? '',
+    }));
   } catch (cause) {
     error.value = errorText(cause);
   } finally {
@@ -83,6 +99,41 @@ async function submitImport() {
   }
 }
 
+async function registerCamera() {
+  formError.value = '';
+  registering.value = true;
+  try {
+    await http.post('/devices', {
+      code: cameraCode.value.trim(),
+      name: cameraName.value.trim(),
+      type: 'camera',
+      shedCode: shedCode.value.trim(),
+      note: cameraNote.value.trim() || undefined,
+    });
+    cameraCode.value = '';
+    cameraName.value = '';
+    cameraNote.value = '';
+    await load();
+  } catch (cause) {
+    formError.value = errorText(cause);
+  } finally {
+    registering.value = false;
+  }
+}
+
+async function saveNote(row: DeviceRow) {
+  formError.value = '';
+  savingId.value = row.id;
+  try {
+    await http.patch(`/devices/${row.id}`, { note: row.draftNote });
+    await load();
+  } catch (cause) {
+    formError.value = errorText(cause);
+  } finally {
+    savingId.value = '';
+  }
+}
+
 function fileBody(selected: File) {
   const body = new FormData();
   body.append('file', selected);
@@ -114,7 +165,12 @@ onMounted(load);
         表头需包含设备编码、棚编码、名称。未填类型时记为摄像头。已存在的设备编码会跳过，不覆盖原档案。失败行号按数据行计算，不含表头。选择文件时以文件为准。
       </p>
       <p v-else class="text-sm text-mist">当前角色不能批量导入设备。</p>
-      <form v-if="canImport" class="grid gap-3" @submit.prevent="submitImport">
+      <form
+        v-if="canImport"
+        class="grid gap-3"
+        data-testid="device-import-form"
+        @submit.prevent="submitImport"
+      >
         <input
           ref="fileInput"
           class="text-sm"
@@ -147,6 +203,36 @@ onMounted(load);
         </li>
       </ul>
     </section>
+    <section class="panel space-y-3">
+      <h2 class="text-lg">登记摄像头</h2>
+      <p v-if="canRegister" class="text-sm text-mist">
+        编号、棚区、名称必填。备注可空。在线或离线仍由心跳决定，这里不改。
+      </p>
+      <p v-else class="text-sm text-mist">当前角色不能登记摄像头。</p>
+      <form
+        v-if="canRegister"
+        class="grid gap-3 sm:grid-cols-4"
+        data-testid="camera-register-form"
+        @submit.prevent="registerCamera"
+      >
+        <label class="text-sm">编号
+          <input v-model="cameraCode" class="field mt-1" aria-label="摄像头编号" required />
+        </label>
+        <label class="text-sm">棚区
+          <input v-model="shedCode" class="field mt-1" aria-label="棚区" required />
+        </label>
+        <label class="text-sm">名称
+          <input v-model="cameraName" class="field mt-1" aria-label="名称" required />
+        </label>
+        <label class="text-sm">备注
+          <input v-model="cameraNote" class="field mt-1" aria-label="登记备注" maxlength="500" />
+        </label>
+        <button class="btn-primary sm:col-span-4 w-fit" type="submit" :disabled="registering">
+          {{ registering ? '登记中…' : '登记' }}
+        </button>
+      </form>
+      <p v-if="formError" class="text-sm text-danger">{{ formError }}</p>
+    </section>
     <section class="panel overflow-x-auto">
       <h2 class="mb-3 text-lg">摄像头 / AI 盒 / 传感器</h2>
       <p v-if="loading" class="text-mist">加载中…</p>
@@ -154,7 +240,9 @@ onMounted(load);
       <p v-else-if="!rows.length" class="text-mist">暂无设备。识别上报会自动建档。</p>
       <table v-else class="data-table">
         <thead>
-          <tr><th>编号</th><th>名称</th><th>类型</th><th>棚区</th><th>状态</th><th>最近心跳</th></tr>
+          <tr>
+            <th>编号</th><th>名称</th><th>类型</th><th>棚区</th><th>状态</th><th>备注</th><th>最近心跳</th>
+          </tr>
         </thead>
         <tbody>
           <tr v-for="row in rows" :key="row.id">
@@ -167,6 +255,25 @@ onMounted(load);
                 class="inline-flex rounded-lg bg-canvas px-2 py-0.5"
                 :class="row.onlineStatus === 'online' ? 'text-accent' : 'text-mist'"
               >{{ row.onlineStatus === 'online' ? '在线' : '离线' }}</span>
+            </td>
+            <td>
+              <form
+                v-if="canRegister"
+                class="flex items-center gap-2"
+                :data-testid="`device-note-${row.code}`"
+                @submit.prevent="saveNote(row)"
+              >
+                <input
+                  v-model="row.draftNote"
+                  class="field"
+                  :aria-label="`备注 ${row.code}`"
+                  maxlength="500"
+                />
+                <button class="btn-ghost" type="submit" :disabled="savingId === row.id">
+                  {{ savingId === row.id ? '保存中…' : '保存' }}
+                </button>
+              </form>
+              <span v-else>{{ row.note || '—' }}</span>
             </td>
             <td class="font-mono text-xs">{{ heartbeatText(row) }}</td>
           </tr>
