@@ -289,6 +289,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 `make demo-report-xlsx` 读取 `recognition.demo-one.json`，把本次请求改成棚区 `S02`、摄像头 `CAM-RPT-01`、蘑菇数量 17、成熟数量 9，只 POST 一次识别。样例文件里的 `CAM-DEMO-01` 不改。然后核对上海当天的园区生长预览：`shedCode=S02` 时至少一行且没有其他棚，蘑菇数量至少 17，成熟数量至少 9；不带棚区时行数不少于这一份。`GET /api/v1/reports/export.xlsx` 用同一组 S02 参数返回 xlsx，工作表是「园区生长」，里面有 S02。登录后打开终端打印的 `/reports?kind=growth&...&shedCode=S02`。不确认、不关闭告警。步骤见 [`DEMO_REPORT_XLSX.md`](DEMO_REPORT_XLSX.md)。
 
+告警闭环台账预览表里的等级、状态、关闭原因用告警页同一套中文（一般、待确认、已关闭、正常关闭）。`make demo-alert-ledger` 在棚区 `S01` 留下或沿用「台账待确认告警」（`CAM-ALED-OPEN`，待确认）和「台账已关闭告警」（`CAM-ALED-CLOSED`，已关闭）。已关闭这条没有时先 `POST /api/v1/alerts`，再 `POST /api/v1/alerts/:id/close`，备注「台账关闭」，关闭原因 `resolved`。预览窗口盖住两条的创建日。不带状态时两行都在；`status=open` 只有待确认那条，行数更少；`status=closed` 只有已关闭那条，行数更少。`export.xlsx` 用已关闭参数，工作表是「告警闭环」，里面有已关闭那条，没有待确认那条。`alerts.xlsx` 工作表是「告警」，里面也有已关闭那条。不发识别。不改 `make demo-report-xlsx`。步骤见 [`DEMO_ALERT_LEDGER.md`](DEMO_ALERT_LEDGER.md)。
+
 浏览器打印：预览区出现后，按钮调用 `window.print()`，打印当前页。没有单独的打印样式表。
 
 页面上另有五个快捷下载，和上面的预览不是同一条读路径：

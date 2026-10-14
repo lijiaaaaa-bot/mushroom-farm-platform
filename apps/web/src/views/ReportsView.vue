@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { ALERT_STATUS_LABEL, alertStatusSchema } from '@mushroom/contracts';
+import {
+  ALERT_CLOSE_REASON_LABEL,
+  ALERT_LEVEL_LABEL,
+  ALERT_STATUS_LABEL,
+  alertStatusSchema,
+} from '@mushroom/contracts';
 import { errorText, http } from '../api';
 
 interface PreviewColumn {
@@ -44,6 +49,20 @@ const alertStatuses = alertStatusSchema.options;
 const preview = ref<Preview | null>(null);
 const previewError = ref('');
 const downloadNote = ref('');
+
+function cellText(key: string, value: string | number | null | undefined) {
+  if (value === null || value === undefined || value === '') return '—';
+  if (key === 'status' && typeof value === 'string' && value in ALERT_STATUS_LABEL) {
+    return ALERT_STATUS_LABEL[value as keyof typeof ALERT_STATUS_LABEL];
+  }
+  if (key === 'level' && typeof value === 'string' && value in ALERT_LEVEL_LABEL) {
+    return ALERT_LEVEL_LABEL[value as keyof typeof ALERT_LEVEL_LABEL];
+  }
+  if (key === 'closeReason' && typeof value === 'string' && value in ALERT_CLOSE_REASON_LABEL) {
+    return ALERT_CLOSE_REASON_LABEL[value as keyof typeof ALERT_CLOSE_REASON_LABEL];
+  }
+  return String(value);
+}
 
 function queryText(search: URLSearchParams, key: string) {
   return search.get(key)?.trim() || '';
@@ -232,7 +251,7 @@ onMounted(() => {
         </thead>
         <tbody>
           <tr v-for="(row, index) in preview.rows" :key="index">
-            <td v-for="column in preview.columns" :key="column.key">{{ row[column.key] ?? '—' }}</td>
+            <td v-for="column in preview.columns" :key="column.key">{{ cellText(column.key, row[column.key]) }}</td>
           </tr>
         </tbody>
       </table>

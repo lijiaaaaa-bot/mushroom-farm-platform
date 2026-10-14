@@ -135,6 +135,47 @@ describe('ReportsView preview', () => {
     wrapper.unmount();
   });
 
+  it('shows alert level, status, and close reason in Chinese', async () => {
+    window.history.pushState(
+      {},
+      '',
+      '/reports?kind=alerts&status=closed&shedCode=S01&from=2026-10-14&to=2026-10-14',
+    );
+    httpGet.mockResolvedValue({
+      data: {
+        title: '告警闭环',
+        columns: [
+          { key: 'level', header: '等级' },
+          { key: 'status', header: '状态' },
+          { key: 'closeReason', header: '关闭原因' },
+          { key: 'title', header: '标题' },
+          { key: 'cameraCode', header: '摄像头' },
+        ],
+        rows: [
+          {
+            level: 'warning',
+            status: 'closed',
+            closeReason: 'resolved',
+            title: '台账已关闭告警',
+            cameraCode: 'CAM-ALED-CLOSED',
+          },
+        ],
+      },
+    });
+    const wrapper = mount(ReportsView);
+    await flushPromises();
+    const text = wrapper.get('[data-testid="report-preview"]').text();
+    expect(text).toContain('告警闭环');
+    expect(text).toContain('一般');
+    expect(text).toContain('已关闭');
+    expect(text).toContain('正常关闭');
+    expect(text).toContain('台账已关闭告警');
+    expect(text).toContain('CAM-ALED-CLOSED');
+    expect(text).not.toContain('resolved');
+    expect(text).not.toContain('warning');
+    wrapper.unmount();
+  });
+
   it('does not preview until asked when the address has no kind', async () => {
     const wrapper = mount(ReportsView);
     await flushPromises();
