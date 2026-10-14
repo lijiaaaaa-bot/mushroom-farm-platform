@@ -121,7 +121,7 @@ demo-threshold-alert: contracts
 demo-alert-camera-filter: contracts
 	node scripts/demo-alert-camera-filter.mjs
 
-# 留下一条待确认和一条已关闭告警，再按状态筛选。步骤见 docs/DEMO_ALERT_STATUS_FILTER.md。
+# 留下待确认、已确认、已关闭各一条告警，再按状态筛选。步骤见 docs/DEMO_ALERT_STATUS_FILTER.md。
 demo-alert-status-filter: contracts
 	node scripts/demo-alert-status-filter.mjs
 
