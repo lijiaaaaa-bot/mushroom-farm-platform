@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils';
+import { createMemoryHistory, createRouter } from 'vue-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { currentUser, type SessionUser } from '../auth';
 import DevicesView from './DevicesView.vue';
@@ -41,8 +42,14 @@ function asUser(role: SessionUser['role']) {
   };
 }
 
-async function mountView() {
-  const wrapper = mount(DevicesView);
+async function mountView(path = '/devices') {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: '/devices', component: DevicesView }],
+  });
+  await router.push(path);
+  await router.isReady();
+  const wrapper = mount(DevicesView, { global: { plugins: [router] } });
   await flushPromises();
   return wrapper;
 }
@@ -464,5 +471,31 @@ describe('DevicesView batch import', () => {
     expect(wrapper.get('[data-field="code"]').text()).toBe('SENSOR-KEEP-01');
     expect(wrapper.find('[data-testid="device-delete-CAM-S01"]').exists()).toBe(false);
     wrapper.unmount();
+  });
+
+  it('lists the online or offline set from the duty board link', async () => {
+    httpGet.mockResolvedValue({
+      data: {
+        items: [{ ...device, id: 'duty-off', code: 'CAM-DUTY-OFF', onlineStatus: 'offline' }],
+        total: 4,
+      },
+    });
+    const offline = await mountView('/devices?online=offline');
+    expect(httpGet).toHaveBeenCalledWith('/devices?pageSize=100&online=offline');
+    expect(offline.get('[data-testid="device-online-scope"]').text()).toBe('离线 4 台');
+    expect(offline.get('[data-code="CAM-DUTY-OFF"]').text()).toContain('离线');
+    offline.unmount();
+
+    httpGet.mockResolvedValue({
+      data: {
+        items: [{ ...device, id: 'duty-on', code: 'CAM-DUTY-ON', onlineStatus: 'online' }],
+        total: 2,
+      },
+    });
+    const online = await mountView('/devices?online=online');
+    expect(httpGet).toHaveBeenCalledWith('/devices?pageSize=100&online=online');
+    expect(online.get('[data-testid="device-online-scope"]').text()).toBe('在线 2 台');
+    expect(online.get('[data-code="CAM-DUTY-ON"]').text()).toContain('在线');
+    online.unmount();
   });
 });

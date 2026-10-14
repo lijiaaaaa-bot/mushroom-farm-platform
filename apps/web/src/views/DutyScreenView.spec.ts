@@ -164,7 +164,8 @@ async function mountDuty(): Promise<VueWrapper> {
       { path: '/', component: { template: '<div />' } },
       { path: '/login', component: { template: '<div />' } },
       { path: '/big-screen', component: { template: '<div />' } },
-      { path: '/alerts', component: { template: '<div />' } },
+      { path: '/devices', component: { template: '<div data-test="devices" />' } },
+      { path: '/alerts', component: { template: '<div data-test="alerts" />' } },
       { path: '/duty-screen', component: DutyScreenView },
       {
         path: '/duty-screen/:shedCode',
@@ -247,6 +248,40 @@ describe('DutyScreenView', () => {
     expect(wrapper.get('[data-test="shed-counts"]').text()).toContain('蘑菇 9');
     expect(wrapper.text()).toContain('22.5');
     expect(wrapper.get('[data-shed="S02"]').attributes('href')).toBe('/duty-screen/S02');
+
+    const counts = wrapper.get('[data-test="duty-counts"]');
+    expect(counts.get('[data-field="online-devices"]').text()).toContain('在线设备');
+    expect(counts.get('[data-field="online-devices"]').text()).toContain('5');
+    expect(counts.get('[data-field="online-devices"]').attributes('href')).toBe('/devices?online=online');
+    expect(counts.get('[data-field="offline-devices"]').text()).toContain('离线设备');
+    expect(counts.get('[data-field="offline-devices"]').text()).toContain('3');
+    expect(counts.get('[data-field="offline-devices"]').attributes('href')).toBe('/devices?online=offline');
+    expect(counts.get('[data-field="open-alerts"]').text()).toContain('待确认');
+    expect(counts.get('[data-field="open-alerts"]').text()).toContain('2');
+    expect(counts.get('[data-field="open-alerts"]').attributes('href')).toBe('/alerts?status=open');
+    wrapper.unmount();
+  });
+
+  it('opens the online device list and the open alert list from the counts', async () => {
+    const wrapper = await mountDuty();
+    await wrapper.get('[data-field="online-devices"]').trigger('click');
+    await flushPromises();
+    expect(memoryRouter.currentRoute.value.path).toBe('/devices');
+    expect(memoryRouter.currentRoute.value.query.online).toBe('online');
+
+    await memoryRouter.push('/duty-screen');
+    await flushPromises();
+    await wrapper.get('[data-field="offline-devices"]').trigger('click');
+    await flushPromises();
+    expect(memoryRouter.currentRoute.value.path).toBe('/devices');
+    expect(memoryRouter.currentRoute.value.query.online).toBe('offline');
+
+    await memoryRouter.push('/duty-screen');
+    await flushPromises();
+    await wrapper.get('[data-field="open-alerts"]').trigger('click');
+    await flushPromises();
+    expect(memoryRouter.currentRoute.value.path).toBe('/alerts');
+    expect(memoryRouter.currentRoute.value.query.status).toBe('open');
     wrapper.unmount();
   });
 
@@ -270,6 +305,21 @@ describe('DutyScreenView', () => {
     expect(s01.get('[data-field="alert"]').text()).toContain('告警加载失败');
     expect(s01.text()).not.toContain('无未闭合告警');
     expect(s01.text()).not.toContain('正常');
+    expect(wrapper.get('[data-field="open-alerts"]').text()).toContain('—');
+    expect(wrapper.get('[data-field="open-alerts"]').text()).not.toContain('2');
+    wrapper.unmount();
+  });
+
+  it('does not show zero devices when the overview request fails', async () => {
+    httpGet.mockImplementation((url: string, config?: { params?: Record<string, string | number> }) => {
+      if (url === '/dashboard/overview') return Promise.reject(new Error('总览加载失败'));
+      return Promise.resolve({ data: payloadFor(url, config) });
+    });
+    const wrapper = await mountDuty();
+    expect(wrapper.get('[data-field="online-devices"]').text()).toContain('—');
+    expect(wrapper.get('[data-field="offline-devices"]').text()).toContain('—');
+    expect(wrapper.get('[data-field="online-devices"]').text()).not.toMatch(/\d/);
+    expect(wrapper.text()).toContain('总览加载失败');
     wrapper.unmount();
   });
 

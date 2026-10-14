@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { DEVICE_TYPE_LABEL, type DeviceType } from '@mushroom/contracts';
 import { canImportDevices, canRegisterDevices, currentUser } from '../auth';
 import { errorText, http } from '../api';
@@ -32,7 +33,9 @@ interface ImportReport {
   skipped: ImportMessage[];
 }
 
+const route = useRoute();
 const rows = ref<DeviceRow[]>([]);
+const listTotal = ref(0);
 const loading = ref(true);
 const error = ref('');
 const csvText = ref('');
@@ -51,21 +54,35 @@ const savingId = ref('');
 const formError = ref('');
 const createdCamera = ref<{ id: string; code: string } | null>(null);
 
+function onlineQuery(): '' | 'online' | 'offline' {
+  const value = route.query.online;
+  return value === 'online' || value === 'offline' ? value : '';
+}
+
+const onlineScope = computed(() => onlineQuery());
+
+function deviceListPath() {
+  const online = onlineQuery();
+  if (!online) return '/devices?pageSize=100';
+  return `/devices?pageSize=100&online=${online}`;
+}
+
 async function load() {
   loading.value = true;
   error.value = '';
   try {
     const response = await http.get<{
       items: Omit<DeviceRow, 'draftNote' | 'draftStatus'>[];
-    }>(
-      '/devices?pageSize=100',
-    );
+      total?: number;
+    }>(deviceListPath());
     rows.value = response.data.items.map((row) => ({
       ...row,
       note: row.note ?? null,
       draftNote: row.note ?? '',
       draftStatus: row.onlineStatus === 'online' ? 'online' : 'offline',
     }));
+    const total = Number(response.data.total);
+    listTotal.value = Number.isFinite(total) ? total : rows.value.length;
   } catch (cause) {
     error.value = errorText(cause);
   } finally {
@@ -212,6 +229,10 @@ function recognitionHref(code: string): string {
   return `/recognitions?cameraCode=${encodeURIComponent(code)}`;
 }
 
+watch(onlineScope, () => {
+  void load();
+});
+
 onMounted(load);
 </script>
 
@@ -301,6 +322,9 @@ onMounted(load);
     </section>
     <section class="panel overflow-x-auto">
       <h2 class="mb-3 text-lg">摄像头 / AI 盒 / 传感器</h2>
+      <p v-if="onlineScope" class="mb-3 text-sm" data-testid="device-online-scope">
+        {{ onlineScope === 'online' ? '在线' : '离线' }} {{ listTotal }} 台
+      </p>
       <p class="mb-3 text-sm text-mist">
         摄像头这一行的镜头码与编号相同。点镜头码进入这台摄像头的详情。告警列表按这个镜头码筛选，识别记录也按它打开。传感器和 AI 盒的镜头码是「—」。能改档案时，备注和状态下拉在这一行，提交后列表重新读取。停用只改启用标记，不改在线状态、备注和最近心跳。停用后这一行还在，详情仍可打开。删除会去掉这一行档案。列表和详情都不再有这一台。告警和识别仍按镜头码留着。
       </p>
