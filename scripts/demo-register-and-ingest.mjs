@@ -34,7 +34,7 @@ function messageText(payload) {
   return '';
 }
 
-async function login() {
+export async function login() {
   let response;
   try {
     response = await fetch(`${apiBase()}/auth/login`, {
