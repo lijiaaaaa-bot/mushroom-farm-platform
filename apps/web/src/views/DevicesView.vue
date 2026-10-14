@@ -270,7 +270,7 @@ onMounted(load);
     <section class="panel overflow-x-auto">
       <h2 class="mb-3 text-lg">摄像头 / AI 盒 / 传感器</h2>
       <p class="mb-3 text-sm text-mist">
-        摄像头这一行的镜头码与编号相同。点镜头码进入这台摄像头的详情。告警列表按这个镜头码筛选，识别记录也按它打开。传感器和 AI 盒的镜头码是「—」。备注和状态在这一行保存，列表会重新读取。
+        摄像头这一行的镜头码与编号相同。点镜头码进入这台摄像头的详情。告警列表按这个镜头码筛选，识别记录也按它打开。传感器和 AI 盒的镜头码是「—」。能改档案时，备注和状态下拉在这一行，提交后列表重新读取。
       </p>
       <p v-if="loading" class="text-mist">加载中…</p>
       <p v-else-if="error" class="text-danger">{{ error }}</p>

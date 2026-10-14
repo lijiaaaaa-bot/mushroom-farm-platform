@@ -33,7 +33,7 @@
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
-| 2026-10-14 | `make demo-camera-edit`：登记 `CAM-EDIT-01`，再 PATCH 备注「备注已改」和状态在线。列表与详情一致。页面保存后重新读取。没有心跳和时间戳时超时任务不改手改的在线。不发识别，不发心跳，不改已有演示命令 | 待 `make test` 与 `make gates` | 不合并 |
+| 2026-10-14 | `make demo-camera-edit`：登记 `CAM-EDIT-01`，再 PATCH 备注「备注已改」和状态在线。列表与详情一致。页面保存后重新读取。没有心跳和时间戳时超时任务不改手改的在线。不发识别，不发心跳，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 150，API jest 150，web vitest 175）；`make gates` 退出码 0。PR #114 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。不合并 |
 | 2026-10-14 | `make demo-camera-create`：`POST /api/v1/devices` 新增 `CAM-NEW-01`（棚区 S01，名称新增镜头，备注新增可演示）。409 时不改档案。再读 `GET /api/v1/devices?pageSize=100` 与 `GET /api/v1/devices/:id`，字段一致。`/devices` 登记后列表有这一行，并可打开详情。不发识别，不发心跳，不新建告警，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 141，API jest 149，web vitest 172）；`make gates` 退出码 0。PR #113 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。不合并 |
 | 2026-10-14 | `make demo-camera-detail`：设备列表镜头码进入 `/devices/:id`。详情读 `GET /api/v1/devices/:id`（编号、名称、棚区、状态、备注、心跳）。相关告警读 `GET /api/v1/alerts?cameraCode=`。没有「镜头详情告警」时 POST 一条一般、待确认告警。不发识别，不发心跳，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 132，API jest 148，web vitest 172）；`make gates` 退出码 0 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。不合并 |
 | 2026-10-14 | `make demo-camera-list`：`POST /api/v1/devices` 保证镜头码 `CAM-ALERT-01`（棚区 S01）。409 时不改档案。再读 `GET /api/v1/devices?pageSize=100`。`/devices` 摄像头显示镜头码，并链到 `/alerts?cameraCode=` 与 `/recognitions?cameraCode=`。不发识别，不发心跳，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 125，API jest 147，web vitest 167）；`make gates` 退出码 0。PR #111 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。不合并 |
