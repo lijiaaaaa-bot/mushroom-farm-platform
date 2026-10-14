@@ -40,6 +40,8 @@
 
 三条 HTTP 都要 `X-Ingest-Token`。MQTT 与 HTTP 走同一套解析。多出来的字段按契约 `.strict()` 拒绝，错误码 `UNKNOWN_FIELD`。识别与环境补传窗口 90 天（`LIMITS.recognizedAtPastDays`），超出拒收。
 
+发一条样例识别：`make demo-one-ingest`。样例是 `packages/contracts/fixtures/recognition.demo-one.json`（棚区编号、摄像头编号、识别时间、蘑菇数量、成熟数量、各菌盖直径、病害数量、病害等级、AI抓拍图、环境温湿度、CO₂、基质含水率）。脚本把识别时间改成当前时刻，幂等键改成 `demo-one-<毫秒>`，只 POST 一次 `POST /api/v1/ingest/recognition`，终端打印记录 id。登录 `admin` / `Admin@123456` 后打开 `/recognitions?cameraCode=CAM-DEMO-01`。同一条按识别时间出现在 `/big-screen` 抓拍墙。步骤见 [`DEMO_ONE_INGEST.md`](DEMO_ONE_INGEST.md)。MQTT 备选是 `node scripts/demo-one-http-recognition.mjs --channel mqtt`，主题 `mushroom/S01/CAM-DEMO-01/recognition`。
+
 幂等：Redis `SETNX`，键存活 7 天（`IDEMPOTENCY_TTL_SECONDS`），再加数据库唯一约束。识别优先用报文 `idempotencyKey`，否则按棚、摄像头、识别时间哈希。环境优先用显式键，否则按棚、传感器、观测时间哈希。同一键再发返回已有记录，不双计。心跳在 `reportedAt` 不新于已存心跳时记为重复。
 
 拒收观测：校验失败写入拒收记录。`GET /api/v1/ingest/observability` 汇总近窗接收、拒收、延迟和最近错误，覆盖识别（HTTP/MQTT）、环境与心跳。页面加载失败不渲染空表。棚区负责人看不到他棚，也看不到没有棚号的拒收。

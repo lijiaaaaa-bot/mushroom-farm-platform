@@ -1,4 +1,4 @@
-.PHONY: up api web test smoke smoke-evidence migrate contracts lint gates gates-selftest backup object-tier
+.PHONY: up api web test smoke smoke-evidence migrate contracts lint gates gates-selftest backup object-tier demo-one-ingest
 
 contracts:
 	npm --prefix packages/contracts install
@@ -27,7 +27,7 @@ lint:
 
 test: contracts lint
 	npm --prefix packages/contracts test
-	node --test scripts/boundaries.spec.mjs scripts/evidence.spec.mjs scripts/edge-simulator.spec.mjs scripts/object-lifecycle.spec.mjs scripts/object-tier.spec.mjs scripts/backup-postgres.spec.mjs scripts/compose-minio-image.spec.mjs
+	node --test scripts/boundaries.spec.mjs scripts/evidence.spec.mjs scripts/edge-simulator.spec.mjs scripts/demo-one-http-recognition.spec.mjs scripts/object-lifecycle.spec.mjs scripts/object-tier.spec.mjs scripts/backup-postgres.spec.mjs scripts/compose-minio-image.spec.mjs
 	npm --prefix apps/api test
 	npm --prefix apps/web run typecheck
 	npm --prefix apps/web test
@@ -48,6 +48,10 @@ smoke: contracts
 	node scripts/smoke.mjs
 
 smoke-evidence: smoke
+
+# 发一条识别样例（HTTP）。识别时间改为当前时刻。步骤见 docs/DEMO_ONE_INGEST.md。
+demo-one-ingest: contracts
+	node scripts/demo-one-http-recognition.mjs
 
 backup:
 	node scripts/backup-postgres.mjs
