@@ -515,6 +515,7 @@ try {
   const snapshotKey = demoStdout.match(/抓拍对象键: (\S+)/)?.[1];
   const snapshotRead = demoStdout.match(/抓拍读取: (\S+)/)?.[1];
   const demoId = demoStdout.match(/^id: (\S+)/m)?.[1];
+  const demoFixture = readFixture('recognition.demo-one.json');
   const demoOk = Boolean(snapshotKey && snapshotRead && demoId);
   record({
     id: 'demo-one-snapshot',
@@ -524,6 +525,7 @@ try {
     path: '/api/v1/ingest/recognition',
     fixture: 'recognition.demo-one.json',
     fixtureLabel: '一条识别样例',
+    rawBody: demoFixture.body,
     actor: 'demo-one-ingest',
     pass: demoOk,
     error: demoOk ? undefined : '样例抓拍未写入对象存储或读不回',
