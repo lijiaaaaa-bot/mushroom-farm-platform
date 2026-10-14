@@ -96,7 +96,7 @@
 
 - 告警列表可按起止时间筛选：`GET /api/v1/alerts` 的 `from`、`to` 按列表「时间」列的 `createdAt` 比较，含两端。`/alerts` 填写开始时间、结束时间后点「查询」，地址栏同步；点「清除时间」不再传。状态下拉仍单独传 `status`。没有落在窗口里时写「没有符合条件的告警。」。时间无效时写「时间筛选无效」。`make demo-alert-time-range` 留下 `CAM-TIME-01`（前 3 小时，「时间窗外告警」）、`CAM-TIME-02`（前 8 分钟，「时间窗内较早告警」）、`CAM-TIME-03`（当前时刻，「时间窗内当前告警」）。宽窗口三条都在，窄窗口只有后两条。不改 `make demo-alert-status-filter`。步骤见 `docs/DEMO_ALERT_TIME_RANGE.md`。
 
-- 报表预览有行并可下载 xlsx：`make demo-report-xlsx` 把样例识别改成棚区 S02、摄像头 `CAM-RPT-01`、蘑菇数量 17、成熟数量 9，只 POST 一次。样例文件里的 `CAM-DEMO-01` 不改。上海当天 `kind=growth` 且 `shedCode=S02` 的预览至少一行，没有其他棚；不带棚区时行数不少于这一份。`GET /api/v1/reports/export.xlsx` 返回工作簿，表名「园区生长」，里面有 S02。`/reports?kind=growth` 打开后自己出预览表。点「导出」后页面写「已开始下载 growth.xlsx」。不确认、不关闭告警。步骤见 `docs/DEMO_REPORT_XLSX.md`。
+- 报表预览有行并可下载 xlsx：`make demo-report-xlsx` 把样例识别改成棚区 S02、摄像头 `CAM-RPT-01`、蘑菇数量 17、成熟数量 9，只 POST 一次。样例文件里的 `CAM-DEMO-01` 不改。上海当天 `kind=growth` 且 `shedCode=S02` 的预览至少一行，没有其他棚；不带棚区时行数不少于这一份。`GET /api/v1/reports/export.xlsx` 返回工作簿，表名「园区生长」，里面有 S02。`/reports?kind=growth` 打开后自己出预览表。点「导出」后页面写「已开始下载 growth.xlsx」。不确认、不关闭告警。步骤见 `docs/DEMO_REPORT_XLSX.md`。PR #132。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/132
 
 ## 进行中
 - 无
