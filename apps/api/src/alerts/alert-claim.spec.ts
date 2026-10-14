@@ -26,6 +26,7 @@ class MemoryAlertQuery {
   private blocked = false;
   private sheds: string[] | null = null;
   private status: string | null = null;
+  private camera: string | null = null;
   private skipN = 0;
   private takeN: number | null = null;
 
@@ -37,12 +38,18 @@ class MemoryAlertQuery {
 
   andWhere(
     condition: string,
-    params?: { codes?: string[]; shedCode?: string; status?: string },
+    params?: {
+      codes?: string[];
+      shedCode?: string;
+      status?: string;
+      cameraCode?: string;
+    },
   ) {
     if (condition.includes('1 = 0')) this.blocked = true;
     if (params?.codes) this.sheds = params.codes;
     if (params?.shedCode) this.sheds = [params.shedCode];
     if (params?.status) this.status = params.status;
+    if (params?.cameraCode) this.camera = params.cameraCode;
     return this;
   }
 
@@ -66,6 +73,10 @@ class MemoryAlertQuery {
     if (this.status) {
       const status = this.status;
       items = items.filter((row) => row.status === status);
+    }
+    if (this.camera) {
+      const camera = this.camera;
+      items = items.filter((row) => row.cameraCode === camera);
     }
     items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     return items;
@@ -164,7 +175,11 @@ describe('alert claim and false-positive close', () => {
     await app.close();
   });
 
-  async function createAlert(shedCode = 'S01', title = '高温') {
+  async function createAlert(
+    shedCode = 'S01',
+    title = '高温',
+    cameraCode?: string,
+  ) {
     const response = await request(app.getHttpServer())
       .post('/api/v1/alerts')
       .set(auth('super_admin', 'id-super'))
@@ -173,9 +188,14 @@ describe('alert claim and false-positive close', () => {
         level: 'severe',
         title,
         message: `${title}说明`,
+        ...(cameraCode ? { cameraCode } : {}),
       });
     expect(response.status).toBe(201);
-    return response.body as { id: string; shedCode: string };
+    return response.body as {
+      id: string;
+      shedCode: string;
+      cameraCode: string | null;
+    };
   }
 
   it('records the claimant and shows it to another operator in the same shed', async () => {
@@ -455,6 +475,63 @@ describe('alert claim and false-positive close', () => {
       .get('/api/v1/alerts?status=open&pageSize=50')
       .set(auth('super_admin', 'id-super'));
     expect(open.body.items).toEqual([]);
+  });
+
+  it('filters the alert list by camera code and keeps detail readable', async () => {
+    const east = await createAlert('S01', '东侧过道告警', 'CAM-FILTER-01');
+    const west = await createAlert('S01', '西侧过道告警', 'CAM-FILTER-02');
+    const plain = await createAlert('S01', '无摄像头');
+
+    const filtered = await request(app.getHttpServer())
+      .get('/api/v1/alerts?cameraCode=CAM-FILTER-02&pageSize=50')
+      .set(auth('super_admin', 'id-super'));
+    expect(filtered.status).toBe(200);
+    expect(filtered.body.total).toBe(1);
+    expect(filtered.body.items).toEqual([
+      expect.objectContaining({
+        id: west.id,
+        cameraCode: 'CAM-FILTER-02',
+        title: '西侧过道告警',
+      }),
+    ]);
+
+    const padded = await request(app.getHttpServer())
+      .get('/api/v1/alerts?cameraCode=%20CAM-FILTER-02%20&pageSize=50')
+      .set(auth('super_admin', 'id-super'));
+    expect(padded.body.items.map((row: { id: string }) => row.id)).toEqual([
+      west.id,
+    ]);
+
+    const blank = await request(app.getHttpServer())
+      .get('/api/v1/alerts?cameraCode=%20%20&pageSize=50')
+      .set(auth('super_admin', 'id-super'));
+    expect(blank.body.total).toBe(3);
+    expect(blank.body.items.map((row: { id: string }) => row.id)).toEqual(
+      expect.arrayContaining([east.id, west.id, plain.id]),
+    );
+
+    const restored = await request(app.getHttpServer())
+      .get('/api/v1/alerts?pageSize=50')
+      .set(auth('super_admin', 'id-super'));
+    expect(restored.body.items.map((row: { id: string }) => row.id)).toEqual(
+      expect.arrayContaining([east.id, west.id, plain.id]),
+    );
+
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/alerts/${west.id}`)
+      .set(auth('super_admin', 'id-super'));
+    expect(detail.status).toBe(200);
+    expect(detail.body).toMatchObject({
+      id: west.id,
+      cameraCode: 'CAM-FILTER-02',
+      shedCode: 'S01',
+    });
+
+    const outsider = await request(app.getHttpServer())
+      .get('/api/v1/alerts?cameraCode=CAM-FILTER-02&pageSize=50')
+      .set(auth('shed_manager', 'shed-c', 'S02'));
+    expect(outsider.status).toBe(200);
+    expect(outsider.body.items).toEqual([]);
   });
 
   it('forbids a viewer from confirming a pending alert', async () => {

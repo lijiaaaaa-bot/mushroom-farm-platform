@@ -139,6 +139,7 @@ describe('AlertsView', () => {
     });
     expect(wrapper.get('a[href="/phase2/wecom"]').text()).toBe('企微/钉钉推送');
     expect(wrapper.text()).toContain('高温');
+    expect(wrapper.get('[data-testid="alert-camera"]').text()).toBe('CAM-S01');
     expect(wrapper.get('[data-testid="alert-detail-link"]').attributes('href')).toBe('/alerts/alert-1');
     expect(wrapper.text()).toContain('严重');
     expect(wrapper.text()).toContain('待确认');
@@ -476,6 +477,89 @@ describe('AlertsView', () => {
     });
     expect((wrapper.get('[data-testid="alert-status-filter"]').element as HTMLSelectElement).value).toBe('');
     wrapper.unmount();
+  });
+
+  it('filters by camera code, keeps the detail link, and restores both cameras on clear', async () => {
+    const east = {
+      ...alert,
+      id: 'alert-east',
+      cameraCode: 'CAM-FILTER-01',
+      title: '东侧过道告警',
+    };
+    const west = {
+      ...alert,
+      id: 'alert-west',
+      cameraCode: 'CAM-FILTER-02',
+      title: '西侧过道告警',
+    };
+    httpGet.mockImplementation((_url: string, config?: { params?: { cameraCode?: string; status?: string } }) => {
+      const code = config?.params?.cameraCode;
+      const items = [east, west].filter((row) => !code || row.cameraCode === code);
+      return Promise.resolve({ data: { items, total: items.length } });
+    });
+    const wrapper = await mountView(AlertsView);
+
+    expect(wrapper.findAll('[data-testid="alert-camera"]').map((node) => node.text())).toEqual([
+      'CAM-FILTER-01',
+      'CAM-FILTER-02',
+    ]);
+    expect(wrapper.findAll('[data-testid="alert-detail-link"]')).toHaveLength(2);
+
+    await wrapper.get('[data-testid="alert-camera-filter"]').setValue(' CAM-FILTER-02 ');
+    await wrapper.get('[data-testid="alert-camera-apply"]').trigger('click');
+    await flushPromises();
+
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: undefined, level: undefined, cameraCode: 'CAM-FILTER-02' },
+    });
+    expect(wrapper.get('[data-testid="alert-camera-scope"]').text()).toBe('摄像头 CAM-FILTER-02');
+    expect(wrapper.findAll('[data-testid="alert-camera"]').map((node) => node.text())).toEqual([
+      'CAM-FILTER-02',
+    ]);
+    expect(wrapper.text()).not.toContain('东侧过道告警');
+    expect(wrapper.get('[data-testid="alert-detail-link"]').attributes('href')).toBe(
+      '/alerts/alert-west?cameraCode=CAM-FILTER-02',
+    );
+
+    await wrapper.get('[data-testid="alert-status-filter"]').setValue('open');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: 'open', level: undefined, cameraCode: 'CAM-FILTER-02' },
+    });
+
+    await wrapper.get('[data-testid="alert-camera-clear"]').trigger('click');
+    await flushPromises();
+    const last = httpGet.mock.calls.at(-1);
+    expect(last?.[0]).toBe('/alerts');
+    expect(last?.[1].params.cameraCode).toBeUndefined();
+    expect(last?.[1].params.status).toBe('open');
+    expect(wrapper.find('[data-testid="alert-camera-scope"]').exists()).toBe(false);
+    expect(wrapper.findAll('[data-testid="alert-camera"]').map((node) => node.text())).toEqual([
+      'CAM-FILTER-01',
+      'CAM-FILTER-02',
+    ]);
+    expect(wrapper.findAll('[data-testid="alert-detail-link"]')).toHaveLength(2);
+    wrapper.unmount();
+  });
+
+  it('applies cameraCode from the address and omits a blank value', async () => {
+    httpGet.mockResolvedValue({ data: { items: [alert], total: 1 } });
+    const wrapper = await mountView(AlertsView, { cameraCode: 'CAM-FILTER-02' });
+    expect((wrapper.get('[data-testid="alert-camera-filter"]').element as HTMLInputElement).value).toBe(
+      'CAM-FILTER-02',
+    );
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: undefined, level: undefined, cameraCode: 'CAM-FILTER-02' },
+    });
+    wrapper.unmount();
+
+    httpGet.mockClear();
+    const blank = await mountView(AlertsView, { cameraCode: '   ' });
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: undefined, level: undefined },
+    });
+    expect(blank.find('[data-testid="alert-camera-scope"]').exists()).toBe(false);
+    blank.unmount();
   });
 });
 

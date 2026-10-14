@@ -134,7 +134,7 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 ## 告警与阈值规则
 
-告警 `/alerts`。`GET /api/v1/alerts`。页面可按状态、级别筛选，选全部不传。值班棚详情带入的 `shedCode` 传给同一列表接口；`alertId` 只高亮该行，不是新的查询参数。侧栏再打开 `/alerts` 时不带这三项。列表里的标题链到 `/alerts/:id`。
+告警 `/alerts`。`GET /api/v1/alerts`。页面可按状态、级别筛选，选全部不传。摄像头编号填在「摄像头」里，点「筛选」后请求带 `cameraCode`，按编号精确匹配；空白或点「清除」则不传。地址栏 `?cameraCode=` 同样生效。值班棚详情带入的 `shedCode` 传给同一列表接口；`alertId` 只高亮该行，不是新的查询参数。侧栏再打开 `/alerts` 时不带这几项。列表里的标题链到 `/alerts/:id`。当前有摄像头筛选时，这条链接和详情页的「返回告警列表」带上同一个 `cameraCode`。
 
 `GET /api/v1/alerts/:id` 返回这一条（棚区、摄像头、级别、状态、标题、说明、指标、当前值、阈值、发生时间、认领人、关闭原因）。查看人员可读自己棚内的告警；棚外 403；没有这条 404。详情页用中文标签显示这些字段。手工新建的告警没有指标时，指标、当前值、阈值显示为「—」。
 
@@ -145,6 +145,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 `make demo-ack-one-alert` 确认这条待确认的温度过高告警，再读详情和 `status=acked` 的列表。已经是已确认、没有待确认时命令失败，不改这条告警。`make demo-close-one-alert` 关闭这条未闭合告警（待确认或已确认），再读详情和 `status=closed` 的列表。没有未闭合告警时，先按 `make demo-one-alert` 的方式补一条识别再关闭。两个命令都不改样例文件，也不改 `make demo-one-alert`。步骤见 [`DEMO_ACK_CLOSE_ALERT.md`](DEMO_ACK_CLOSE_ALERT.md)。
 
 `make demo-threshold-alert` 用 `PATCH /api/v1/alert-rules/:id` 把规则「演示二氧化碳过高」的阈值从 1500 改成 1000（没有这条规则时先 `POST` 一条，级别一般，棚区 S01）。再把样例识别的摄像头改成 `CAM-THRESH-01`、CO₂ 改成 1200，POST 一次。`GET /api/v1/alerts` 的待确认列表里有标题「CO₂过高告警」，说明里写着 1200 和阈值 1000。种子规则「二氧化碳过高」仍是 2000。样例文件里的 CO₂ 900 不改，已有演示报文不超过 1000。这台摄像头上同规则的未闭合告警会先关闭，其他摄像头的告警不动。步骤见 [`DEMO_THRESHOLD_ALERT.md`](DEMO_THRESHOLD_ALERT.md)。
+
+`make demo-alert-camera-filter` 用 `POST /api/v1/alerts` 留下两条未闭合告警：棚区 S01 的 `CAM-FILTER-01`（标题「东侧过道告警」）和 `CAM-FILTER-02`（标题「西侧过道告警」）。同摄像头、同标题已有未闭合告警则沿用，不新建。然后 `GET /api/v1/alerts?cameraCode=CAM-FILTER-02` 只含这台摄像头，`GET /api/v1/alerts/:id` 仍能打开它；不带 `cameraCode` 的列表里两条都在。不发识别，不改阈值规则，不确认或关闭其他告警。登录后在 `/alerts` 填写摄像头编号并点「筛选」，点标题进详情，点「清除」回到多摄像头列表。步骤见 [`DEMO_ALERT_CAMERA_FILTER.md`](DEMO_ALERT_CAMERA_FILTER.md)。
 
 | 动作 | 接口 | 结果 |
 |------|------|------|

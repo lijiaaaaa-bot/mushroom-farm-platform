@@ -45,6 +45,12 @@ const alertId = computed(() => {
   return typeof value === 'string' ? value : '';
 });
 
+const listReturn = computed(() => {
+  const camera =
+    typeof route.query.cameraCode === 'string' ? route.query.cameraCode.trim() : '';
+  return camera ? { path: '/alerts', query: { cameraCode: camera } } : '/alerts';
+});
+
 function metricOf(value: string | null): AlertMetric | null {
   return value && isAlertMetric(value) ? value : null;
 }
@@ -153,7 +159,7 @@ watch(alertId, () => {
 <template>
   <div class="ops-page space-y-4">
     <p class="text-sm">
-      <router-link class="text-accent" to="/alerts" data-testid="alert-back">返回告警列表</router-link>
+      <router-link class="text-accent" :to="listReturn" data-testid="alert-back">返回告警列表</router-link>
     </p>
     <p v-if="loading" class="text-mist">加载中…</p>
     <p v-else-if="error" class="text-sm text-danger" data-testid="alert-detail-error">{{ error }}</p>

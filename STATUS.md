@@ -61,6 +61,7 @@
 - 一条温度过高告警：`make demo-one-alert` 把样例识别的摄像头改成 `CAM-ALERT-01`、温度改成 30，POST 一次。种子规则「温度过高」（阈值 28）留下未闭合告警。`GET /api/v1/alerts/:id` 与 `/alerts/:id` 显示标题、说明、级别、状态、棚区、摄像头、时间和阈值。列表标题点进详情。样例文件里的 `CAM-DEMO-01` 不改。步骤见 `docs/DEMO_ONE_ALERT.md`。PR #99。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/99
 - 待确认告警可确认或关闭：告警列表与详情对值班人员提供「确认」「关闭」。点下去后重新读取，刷新页面状态仍是已确认或已关闭。`make demo-ack-one-alert` 确认 `make demo-one-alert` 留下的待确认温度过高告警并再读一次；`make demo-close-one-alert` 关闭这条未闭合告警并再读一次。不改 `make demo-one-alert` 与样例文件。步骤见 `docs/DEMO_ACK_CLOSE_ALERT.md`。PR #100。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/100
 - 改阈值后超限识别进入告警列表：`make demo-threshold-alert` 把规则「演示二氧化碳过高」的阈值从 1500 改成 1000，再 POST 一条摄像头 `CAM-THRESH-01`、CO₂ 1200 的识别。待确认列表出现「CO₂过高告警」，说明里是 1200 和阈值 1000。种子规则「二氧化碳过高」仍是 2000。不改样例文件，不改 `make demo-one-alert` 与确认/关闭命令。步骤见 `docs/DEMO_THRESHOLD_ALERT.md`。PR #101。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/101
+- 告警列表可按摄像头编号筛选：`GET /api/v1/alerts` 接受 `cameraCode`，精确匹配；空白不传。`/alerts` 填编号后点「筛选」，只显示该摄像头；标题仍进 `/alerts/:id`；点「清除」回到多摄像头列表。`make demo-alert-camera-filter` 留下 `CAM-FILTER-01` 与 `CAM-FILTER-02` 两条告警，并核对筛选、详情和清除。不发识别，不改已有演示命令。步骤见 `docs/DEMO_ALERT_CAMERA_FILTER.md`。
 
 ## 进行中
 - 无
