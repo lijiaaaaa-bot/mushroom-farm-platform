@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import {
   ALERT_LEVEL_LABEL,
   ALERT_LEVELS,
@@ -30,8 +30,11 @@ interface EditableRule extends Rule {
 }
 
 const route = useRoute();
+const router = useRouter();
 const rows = ref<EditableRule[]>([]);
 const error = ref('');
+const notice = ref('');
+const noticeRuleId = ref('');
 const loading = ref(true);
 const metrics = ALERT_METRICS;
 const levels = ALERT_LEVELS;
@@ -57,23 +60,43 @@ function withDraft(rule: Rule): EditableRule {
   };
 }
 
+function ruleSummary(verb: string, row: EditableRule) {
+  const level = ALERT_LEVEL_LABEL[row.level];
+  const enabled = row.enabled ? '是' : '否';
+  return `${verb}「${row.name}」。阈值 ${row.threshold}，等级 ${level}，窗口分钟 ${row.windowMinutes}，启用 ${enabled}。`;
+}
+
 async function load() {
   loading.value = true;
   error.value = '';
   try {
     const response = await http.get<Rule[]>('/alert-rules');
     rows.value = response.data.map(withDraft);
+    return true;
   } catch (cause) {
     error.value = errorText(cause);
+    return false;
   } finally {
     loading.value = false;
   }
 }
 
+async function focusRule(id: string) {
+  if (highlightId.value === id) return;
+  await router.replace({ path: '/alert-rules', query: { ruleId: id } });
+}
+
+function showSaved(verb: string, row: EditableRule) {
+  notice.value = ruleSummary(verb, row);
+  noticeRuleId.value = row.id;
+}
+
 async function createRule() {
   error.value = '';
+  notice.value = '';
+  noticeRuleId.value = '';
   try {
-    await http.post('/alert-rules', {
+    const response = await http.post<Rule>('/alert-rules', {
       name: form.value.name.trim(),
       metric: form.value.metric,
       threshold: Number(form.value.threshold),
@@ -81,7 +104,16 @@ async function createRule() {
       windowMinutes: Number(form.value.windowMinutes),
     });
     form.value.name = '';
-    await load();
+    const ok = await load();
+    if (!ok) return;
+    const created = rows.value.find((row) => row.id === response.data.id);
+    if (!created) {
+      error.value = '新建后列表里没有这条规则。';
+      return;
+    }
+    showSaved('已新建', created);
+    notice.value = `${notice.value}下方列表有这一行。`;
+    await focusRule(created.id);
   } catch (cause) {
     error.value = errorText(cause);
   }
@@ -89,9 +121,19 @@ async function createRule() {
 
 async function patchRule(id: string, body: Record<string, unknown>) {
   error.value = '';
+  notice.value = '';
+  noticeRuleId.value = '';
   try {
     await http.patch(`/alert-rules/${id}`, body);
-    await load();
+    const ok = await load();
+    if (!ok) return;
+    const saved = rows.value.find((row) => row.id === id);
+    if (!saved) {
+      error.value = '保存后列表里没有这条规则。';
+      return;
+    }
+    showSaved('已保存', saved);
+    await focusRule(id);
   } catch (cause) {
     error.value = errorText(cause);
   }
@@ -118,8 +160,9 @@ onMounted(load);
 
 <template>
   <div class="space-y-4">
-    <form v-if="canWrite" class="panel grid gap-3 md:grid-cols-6" @submit.prevent="createRule">
-      <input v-model="form.name" class="field md:col-span-2" placeholder="规则名称" required />
+    <form v-if="canWrite" class="panel grid gap-3 md:grid-cols-6" data-testid="rule-create-form" @submit.prevent="createRule">
+      <h2 class="text-lg md:col-span-6">新建规则</h2>
+      <input v-model="form.name" class="field md:col-span-2" placeholder="规则名称" aria-label="规则名称" required />
       <select v-model="form.metric" class="field" aria-label="指标">
         <option v-for="metric in metrics" :key="metric" :value="metric">{{ ALERT_METRIC_LABEL[metric] }}</option>
       </select>
@@ -128,9 +171,18 @@ onMounted(load);
         <option v-for="level in levels" :key="level" :value="level">{{ ALERT_LEVEL_LABEL[level] }}</option>
       </select>
       <input v-model.number="form.windowMinutes" class="field" type="number" min="1" step="1" placeholder="窗口分钟" aria-label="新建窗口分钟" required />
-      <button class="btn-primary" type="submit">新建规则</button>
+      <button class="btn-primary" type="submit" data-testid="rule-create">新建规则</button>
     </form>
     <p v-else class="text-sm text-mist">当前角色只能查看阈值规则。</p>
+    <p v-if="notice" class="text-sm" data-testid="rule-notice">
+      {{ notice }}
+      <router-link
+        v-if="noticeRuleId"
+        class="text-accent"
+        :to="`/alert-rules/${noticeRuleId}`"
+        data-testid="rule-notice-detail"
+      >打开详情</router-link>
+    </p>
     <p v-if="error" class="text-sm text-danger">{{ error }}</p>
     <section class="panel overflow-x-auto">
       <h2 class="mb-3 text-lg">阈值规则</h2>

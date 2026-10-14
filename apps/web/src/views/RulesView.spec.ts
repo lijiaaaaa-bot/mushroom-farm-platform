@@ -103,6 +103,11 @@ describe('RulesView', () => {
     expect(wrapper.text()).toContain('温度过高');
     expect(wrapper.get('[data-field="shed"]').text()).toBe('全场');
     expect(wrapper.get('[data-testid="rule-open"]').attributes('href')).toBe('/alert-rules/rule-1');
+    expect(wrapper.get('[data-testid="rule-notice"]').text()).toContain('已新建「高温规则」');
+    expect(wrapper.get('[data-testid="rule-notice"]').text()).toContain('阈值 30');
+    expect(wrapper.get('[data-testid="rule-notice"]').text()).toContain('下方列表有这一行');
+    expect(wrapper.get('[data-testid="rule-notice-detail"]').attributes('href')).toBe('/alert-rules/rule-1');
+    expect(wrapper.get('tr[data-rule-id="rule-1"]').attributes('data-highlight')).toBe('true');
     expect(wrapper.text()).not.toContain('暂无阈值规则');
     wrapper.unmount();
 
@@ -128,6 +133,8 @@ describe('RulesView', () => {
     expect(httpPatch).toHaveBeenCalledWith('/alert-rules/rule-1', { enabled: true });
     expect(wrapper.text()).toContain('是');
     expect(wrapper.text()).toContain('停用');
+    expect(wrapper.get('[data-testid="rule-notice"]').text()).toContain('已保存「高温规则」');
+    expect(wrapper.get('[data-testid="rule-notice"]').text()).toContain('启用 是');
     wrapper.unmount();
   });
 
@@ -149,6 +156,12 @@ describe('RulesView', () => {
       windowMinutes: 60,
     });
     expect((wrapper.get('input[aria-label="高温规则 阈值"]').element as HTMLInputElement).value).toBe('41');
+    expect(wrapper.get('[data-testid="rule-notice"]').text()).toContain('已保存「高温规则」');
+    expect(wrapper.get('[data-testid="rule-notice"]').text()).toContain('阈值 41');
+    expect(wrapper.get('[data-testid="rule-notice"]').text()).toContain('等级 一般');
+    expect(wrapper.get('[data-testid="rule-notice"]').text()).toContain('窗口分钟 60');
+    expect(wrapper.get('tr[data-rule-id="rule-1"]').attributes('data-highlight')).toBe('true');
+    expect(wrapper.get('[data-testid="rule-notice-detail"]').attributes('href')).toBe('/alert-rules/rule-1');
     wrapper.unmount();
   });
 
