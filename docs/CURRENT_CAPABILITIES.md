@@ -128,6 +128,10 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 `make demo-camera-list` 用同一条 `POST /api/v1/devices` 保证镜头码 `CAM-ALERT-01` 在设备列表里（棚区 `S01`，新建时名称温度告警镜头，备注镜头码对照告警）。编码已存在则不改原档案。然后读设备页同一份 `GET /api/v1/devices?pageSize=100`。`/devices` 摄像头行的镜头码与编号相同，并链到 `/alerts?cameraCode=` 和 `/recognitions?cameraCode=`。传感器和 AI 盒的镜头码显示为「—」。不发识别，不发心跳，不改 `CAM-REG-02`。步骤见 [`DEMO_CAMERA_LIST.md`](DEMO_CAMERA_LIST.md)。
 
+`GET /api/v1/devices/:id` 返回这一台（编号、名称、类型、棚区、在线状态、备注、最近心跳）。没有这条是 404，棚外是 403。`/devices` 摄像头的镜头码链到 `/devices/:id`，同一行「相关」里也有「详情」。详情页列出镜头码、编号、名称、类型、棚区、状态、备注、最近心跳，并读 `GET /api/v1/alerts?cameraCode=&pageSize=100` 作为相关告警。告警加载失败时不把空表写成没有告警。标题进入 `/alerts/:id`。
+
+`make demo-camera-detail` 用与列表演示相同的 `POST /api/v1/devices` 保证 `CAM-ALERT-01`，已存在则不改档案。再读 `GET /api/v1/devices/:id`，字段必须和列表这一行一致。相关告警沿用标题「镜头详情告警」；没有则 `POST /api/v1/alerts`（一般、待确认）。不发识别，不发心跳，不确认、不关闭已有告警。步骤见 [`DEMO_CAMERA_DETAIL.md`](DEMO_CAMERA_DETAIL.md)。
+
 识别 `/recognitions`。`GET /api/v1/ingest/recognitions`，可按摄像头、上海日筛选。有图时打开已存抓拍。
 
 环境 `/environment`。`GET /api/v1/ingest/environment-readings` 列出最近读数（温度、湿度、CO₂、基质含水率）。`GET /api/v1/ingest/environment-readings/latest` 按棚区和传感器各留观测时间最新的一条，可加 `sensorCode`、`shedCode`。`GET /api/v1/ingest/environment-readings/:id` 返回这一条；没有这条是 404，棚外是 403。页面「最新值」点传感器进入 `/environment/:id`。数据来自环境报文，不用识别报文里的温湿度充数。

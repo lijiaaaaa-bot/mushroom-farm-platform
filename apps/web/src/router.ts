@@ -9,6 +9,7 @@ import DutyScreenView from './views/DutyScreenView.vue';
 import DutyShedDetailView from './views/DutyShedDetailView.vue';
 import DashboardView from './views/DashboardView.vue';
 import DiseasesView from './views/DiseasesView.vue';
+import DeviceDetailView from './views/DeviceDetailView.vue';
 import DevicesView from './views/DevicesView.vue';
 import EnvironmentView from './views/EnvironmentView.vue';
 import EnvironmentReadingView from './views/EnvironmentReadingView.vue';
@@ -40,6 +41,7 @@ const router = createRouter({
       children: [
         { path: '', component: DashboardView, meta: { title: '总览' } },
         { path: 'devices', component: DevicesView, meta: { title: '设备' } },
+        { path: 'devices/:id', component: DeviceDetailView, meta: { title: '镜头详情' } },
         { path: 'recognitions', component: RecognitionsView, meta: { title: '识别记录' } },
         { path: 'environment', component: EnvironmentView, meta: { title: '环境读数' } },
         { path: 'environment/:id', component: EnvironmentReadingView, meta: { title: '环境读数详情' } },

@@ -182,6 +182,8 @@ describe('DevicesView batch import', () => {
     expect(wrapper.text()).toContain('最近心跳');
     const listed = wrapper.findAll('tbody tr');
     expect(listed[0].get('[data-field="lens-code"]').text()).toBe('CAM-S01');
+    expect(listed[0].get('[data-field="detail-link"]').attributes('href')).toBe('/devices/device-1');
+    expect(listed[0].get('[data-field="detail-entry"]').attributes('href')).toBe('/devices/device-1');
     expect(listed[0].get('[data-field="code"]').text()).toBe('CAM-S01');
     expect(listed[0].get('[data-field="name"]').text()).toBe('东摄像头');
     expect(listed[0].get('[data-field="type"]').text()).toBe('摄像头');
@@ -195,6 +197,8 @@ describe('DevicesView batch import', () => {
     );
     expect(listed[1].get('[data-field="lens-code"]').text()).toBe('—');
     expect(listed[1].get('[data-field="code"]').text()).toBe('BOX-S02');
+    expect(listed[1].find('[data-field="detail-link"]').exists()).toBe(false);
+    expect(listed[1].find('[data-field="detail-entry"]').exists()).toBe(false);
     expect(listed[1].find('[data-field="alert-link"]').exists()).toBe(false);
     expect(wrapper.html()).toContain('text-accent');
     expect(wrapper.html()).toContain('bg-canvas');

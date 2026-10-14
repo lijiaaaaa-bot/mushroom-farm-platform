@@ -266,6 +266,54 @@ describe('camera registration', () => {
     );
   });
 
+  it('reads one camera by id and keeps other sheds out', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/devices')
+      .set('x-test-role', 'production_admin')
+      .send({
+        code: 'CAM-ALERT-01',
+        name: '温度告警镜头',
+        type: 'camera',
+        shedCode: 'S01',
+        note: '镜头码对照告警',
+      });
+    expect(created.status).toBe(201);
+
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'viewer');
+    expect(detail.status).toBe(200);
+    expect(detail.body).toMatchObject({
+      id: created.body.id,
+      code: 'CAM-ALERT-01',
+      name: '温度告警镜头',
+      type: 'camera',
+      shedCode: 'S01',
+      note: '镜头码对照告警',
+      onlineStatus: 'offline',
+    });
+
+    const missing = await request(app.getHttpServer())
+      .get('/api/v1/devices/missing-device')
+      .set('x-test-role', 'viewer');
+    expect(missing.status).toBe(404);
+
+    const other = await request(app.getHttpServer())
+      .post('/api/v1/devices')
+      .set('x-test-role', 'production_admin')
+      .send({
+        code: 'CAM-S02-01',
+        name: '二棚镜头',
+        type: 'camera',
+        shedCode: 'S02',
+      });
+    expect(other.status).toBe(201);
+    const blocked = await request(app.getHttpServer())
+      .get(`/api/v1/devices/${other.body.id}`)
+      .set('x-test-role', 'shed_manager');
+    expect(blocked.status).toBe(403);
+  });
+
   it('rejects a duplicate code and blocks roles that cannot register', async () => {
     await request(app.getHttpServer())
       .post('/api/v1/devices')
