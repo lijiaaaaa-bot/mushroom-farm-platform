@@ -12,6 +12,7 @@ import AdminLayout from './layouts/AdminLayout.vue';
 import router from './router';
 import AlertDetailView from './views/AlertDetailView.vue';
 import AlertsView from './views/AlertsView.vue';
+import DeviceDetailView from './views/DeviceDetailView.vue';
 import DevicesView from './views/DevicesView.vue';
 import EnvironmentView from './views/EnvironmentView.vue';
 import EnvironmentReadingView from './views/EnvironmentReadingView.vue';
@@ -64,6 +65,19 @@ describe('admin list routes', () => {
       const record = router.currentRoute.value.matched.find((item) => item.path === page.path);
       expect(record?.components?.default).toBe(page.component);
     }
+  });
+
+  it('opens a camera detail page inside the admin shell', async () => {
+    localStorage.setItem('token', 'test-token');
+    const route = router.getRoutes().find((record) => record.path === '/devices/:id');
+    expect(route?.components?.default).toBe(DeviceDetailView);
+    expect(route?.meta.title).toBe('镜头详情');
+    await router.push('/devices/dev-1');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/devices/dev-1');
+    const matched = router.currentRoute.value.matched.map((record) => record.path);
+    expect(matched).toContain('/');
+    expect(matched).toContain('/devices/:id');
   });
 
   it('opens an environment reading detail page inside the admin shell', async () => {

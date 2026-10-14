@@ -75,6 +75,13 @@ export class DevicesService {
     return { items, total, page: page.page, pageSize: page.pageSize };
   }
 
+  async get(user: AuthUser, id: string) {
+    const device = await this.devices.findOne({ where: { id } });
+    if (!device) throw new NotFoundException('设备不存在');
+    ShedScope.fromUser(user).assert(device.shedCode);
+    return device;
+  }
+
   async create(
     user: AuthUser,
     input: {

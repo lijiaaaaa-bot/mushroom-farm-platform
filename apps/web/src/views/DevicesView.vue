@@ -158,6 +158,10 @@ function lensCode(row: DeviceRow): string {
   return row.type === 'camera' ? row.code : '—';
 }
 
+function detailHref(id: string): string {
+  return `/devices/${encodeURIComponent(id)}`;
+}
+
 function alertHref(code: string): string {
   return `/alerts?cameraCode=${encodeURIComponent(code)}`;
 }
@@ -248,7 +252,7 @@ onMounted(load);
     <section class="panel overflow-x-auto">
       <h2 class="mb-3 text-lg">摄像头 / AI 盒 / 传感器</h2>
       <p class="mb-3 text-sm text-mist">
-        摄像头这一行的镜头码与编号相同。告警列表按这个镜头码筛选，识别记录也按它打开。传感器和 AI 盒的镜头码是「—」。
+        摄像头这一行的镜头码与编号相同。点镜头码进入这台摄像头的详情。告警列表按这个镜头码筛选，识别记录也按它打开。传感器和 AI 盒的镜头码是「—」。
       </p>
       <p v-if="loading" class="text-mist">加载中…</p>
       <p v-else-if="error" class="text-danger">{{ error }}</p>
@@ -261,7 +265,15 @@ onMounted(load);
         </thead>
         <tbody>
           <tr v-for="row in rows" :key="row.id" :data-code="row.code">
-            <td class="font-mono" data-field="lens-code">{{ lensCode(row) }}</td>
+            <td class="font-mono" data-field="lens-code">
+              <a
+                v-if="row.type === 'camera'"
+                class="text-accent"
+                :href="detailHref(row.id)"
+                data-field="detail-link"
+              >{{ lensCode(row) }}</a>
+              <template v-else>{{ lensCode(row) }}</template>
+            </td>
             <td class="font-mono" data-field="code">{{ row.code }}</td>
             <td data-field="name">{{ row.name }}</td>
             <td data-field="type">{{ DEVICE_TYPE_LABEL[row.type] }}</td>
@@ -294,7 +306,8 @@ onMounted(load);
             <td class="font-mono text-xs" data-field="heartbeat">{{ heartbeatText(row) }}</td>
             <td data-field="correlate">
               <template v-if="row.type === 'camera'">
-                <a class="text-accent" :href="alertHref(row.code)" data-field="alert-link">告警</a>
+                <a class="text-accent" :href="detailHref(row.id)" data-field="detail-entry">详情</a>
+                <a class="ml-2 text-accent" :href="alertHref(row.code)" data-field="alert-link">告警</a>
                 <a class="ml-2 text-accent" :href="recognitionHref(row.code)" data-field="recognition-link">识别</a>
               </template>
               <span v-else>—</span>

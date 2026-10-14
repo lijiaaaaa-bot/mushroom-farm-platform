@@ -88,6 +88,11 @@ export class DevicesController {
     return this.devices.list(user, query);
   }
 
+  @Get(':id')
+  getOne(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.devices.get(user, id);
+  }
+
   @Post()
   @Roles('super_admin', 'production_admin')
   async create(
