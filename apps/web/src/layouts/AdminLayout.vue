@@ -2,30 +2,14 @@
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ROLE_LABEL, type Role } from '@mushroom/contracts';
-import { currentUser, logout } from '../auth';
+import { currentUser, logout, readSessionRole } from '../auth';
 import AlertInbox from '../components/AlertInbox.vue';
+import { visibleNav } from '../nav';
 
 const route = useRoute();
 const router = useRouter();
 const open = ref(false);
-const links: Array<{ to: string; label: string }> = [
-  { to: '/', label: '总览' },
-  { to: '/big-screen', label: '基地大屏' },
-  { to: '/duty-screen', label: '值班看板' },
-  { to: '/devices', label: '设备' },
-  { to: '/recognitions', label: '识别记录' },
-  { to: '/environment', label: '环境读数' },
-  { to: '/ingest-observability', label: '接入观测' },
-  { to: '/diseases', label: '病害' },
-  { to: '/alerts', label: '告警' },
-  { to: '/alert-rules', label: '阈值规则' },
-  { to: '/harvest', label: '采摘' },
-  { to: '/growth-trends', label: '生长趋势' },
-  { to: '/batches', label: '出菇批次' },
-  { to: '/reports', label: '报表' },
-  { to: '/sheds', label: '棚区' },
-  { to: '/audit', label: '审计' },
-];
+const links = computed(() => visibleNav(currentUser.value?.role ?? readSessionRole()));
 const roleLabel = computed(() => {
   const role = currentUser.value?.role;
   return role ? ROLE_LABEL[role as Role] : '';

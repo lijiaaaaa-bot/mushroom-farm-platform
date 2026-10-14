@@ -81,6 +81,8 @@
 - 镜头可删除：`make demo-camera-delete` 登记 `CAM-DEL-01`（棚区 S01，名称可删除镜头，备注删除前）。已存在则不改名称和心跳。列表能看到后，`PATCH` 备注为「删除前已改」，再 `DELETE`。列表不再有这一台，`GET /api/v1/devices/:id` 是 404「设备不存在」。没有软删除列。告警和识别仍按镜头码留着。`/devices` 与 `/devices/:id` 可删除。不发识别，不发心跳，不改已有演示命令。步骤见 `docs/DEMO_CAMERA_DELETE.md`。
 - 心跳超时后设备离线并留下告警：`make demo-heartbeat-offline-alert` 登记 `CAM-HB-OFF-01`（棚区 S01，名称心跳超时镜头，备注心跳超时演示）。已存在则不改档案。再 POST 一次在线心跳。API 以 `DEVICE_OFFLINE_AFTER_MS=2000` 启动时，扫描间隔约 1 秒，这一行变为离线，并留下未闭合的「设备离线」告警。`/devices` 与 `/alerts/:id`。默认仍是 5 分钟，命令不空等。不发识别，不改 `heartbeat.http.json`，不改已有演示命令。步骤见 `docs/DEMO_HEARTBEAT_OFFLINE_ALERT.md`。PR #119。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/119
 
+- 超管与查看登录后菜单不同：`make demo-rbac` 保证 `admin` / `Admin@123456` 与 `viewer` / `Viewer@123456`（棚号 S01）。侧栏「审计」只给超管和生产管理员，「用户」只给超管；查看打开 `/audit` 或 `/users` 回到总览。`GET /api/v1/users`、`/audit-logs`、`/login-logs` 对查看是 403。查看的棚列表含 S01、不含 S02。已有 `viewer` 且请求带 `resetPassword: true` 时重设密码和棚号，不另建一行。不发识别，不发心跳，不改告警。步骤见 `docs/DEMO_RBAC.md`。
+
 ## 进行中
 - 无
 

@@ -1,7 +1,15 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  ConflictException,
+  Controller,
+  Get,
+  Post,
+  Req,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
   IsArray,
+  IsBoolean,
   IsIn,
   IsOptional,
   IsString,
@@ -34,6 +42,11 @@ class CreateUserDto {
   @IsOptional()
   @IsArray()
   shedCodes?: string[];
+
+  /** 用户名已存在时，超管显式要求才重设密码和角色。 */
+  @IsOptional()
+  @IsBoolean()
+  resetPassword?: boolean;
 }
 
 @Controller('users')
@@ -66,19 +79,35 @@ export class UsersController {
     @Req() request: Request,
   ) {
     if (!isRole(body.role)) return { message: '角色无效' };
-    const user = await this.users.save(
-      this.users.create({
-        username: body.username.trim(),
-        passwordHash: await bcrypt.hash(body.password, 10),
-        displayName: body.displayName,
-        role: body.role,
-        shedCodes: body.shedCodes ?? [],
-        enabled: true,
-      }),
-    );
+    const username = body.username.trim();
+    const existing = await this.users.findOne({ where: { username } });
+    if (existing && !body.resetPassword) {
+      throw new ConflictException('用户名已存在');
+    }
+    const passwordHash = await bcrypt.hash(body.password, 10);
+    const user = existing
+      ? await this.users.save(
+          Object.assign(existing, {
+            passwordHash,
+            displayName: body.displayName,
+            role: body.role,
+            shedCodes: body.shedCodes ?? [],
+            enabled: true,
+          }),
+        )
+      : await this.users.save(
+          this.users.create({
+            username,
+            passwordHash,
+            displayName: body.displayName,
+            role: body.role,
+            shedCodes: body.shedCodes ?? [],
+            enabled: true,
+          }),
+        );
     await this.audit.write({
       user: actor,
-      action: 'user.create',
+      action: existing ? 'user.update' : 'user.create',
       resource: `user:${user.id}`,
       detail: {
         username: user.username,

@@ -22,6 +22,18 @@ import RecognitionsView from './views/RecognitionsView.vue';
 import ReportsView from './views/ReportsView.vue';
 import RulesView from './views/RulesView.vue';
 import ShedsView from './views/ShedsView.vue';
+import UsersView from './views/UsersView.vue';
+import { readSessionRole } from './auth';
+import { navRoles, roleCanOpen } from './nav';
+import type { Role } from '@mushroom/contracts';
+
+declare module 'vue-router' {
+  interface RouteMeta {
+    public?: boolean;
+    title?: string;
+    roles?: Role[];
+  }
+}
 
 const router = createRouter({
   history: createWebHistory(),
@@ -56,7 +68,8 @@ const router = createRouter({
         { path: 'batches', component: BatchesView, meta: { title: '出菇批次' } },
         { path: 'reports', component: ReportsView, meta: { title: '报表' } },
         { path: 'sheds', component: ShedsView, meta: { title: '棚区' } },
-        { path: 'audit', component: AuditView, meta: { title: '审计' } },
+        { path: 'audit', component: AuditView, meta: { title: '审计', roles: navRoles('/audit') } },
+        { path: 'users', component: UsersView, meta: { title: '用户', roles: navRoles('/users') } },
         { path: 'phase2/big-screen', redirect: '/big-screen' },
       ],
     },
@@ -66,6 +79,7 @@ const router = createRouter({
 router.beforeEach((to) => {
   if (to.meta.public) return true;
   if (!localStorage.getItem('token')) return { path: '/login', query: { redirect: to.fullPath } };
+  if (!roleCanOpen(readSessionRole(), to.path)) return { path: '/' };
   return true;
 });
 
