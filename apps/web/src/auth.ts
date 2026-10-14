@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import type { Role } from '@mushroom/contracts';
+import { isRole, type Role } from '@mushroom/contracts';
 import { http } from './api';
 
 export interface SessionUser {
@@ -27,6 +27,17 @@ export function logout() {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
   currentUser.value = null;
+}
+
+export function readSessionRole(): Role | null {
+  const raw = localStorage.getItem('user');
+  if (!raw) return null;
+  try {
+    const role = (JSON.parse(raw) as { role?: unknown }).role;
+    return typeof role === 'string' && isRole(role) ? role : null;
+  } catch {
+    return null;
+  }
 }
 
 export function canOperate(role: Role | undefined) {

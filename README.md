@@ -14,6 +14,7 @@ make web      # http://127.0.0.1:43123
 ```
 
 开发登录：`admin` / `Admin@123456`  
+两个角色登录后菜单不同：[`docs/DEMO_RBAC.md`](docs/DEMO_RBAC.md)（`make demo-rbac`）。  
 接入令牌请求头：`X-Ingest-Token: dev-ingest-token`
 
 联调可用 `make smoke` 或 `scripts/edge-simulator.mjs` 发送样例报文。  

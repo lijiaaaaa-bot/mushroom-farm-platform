@@ -1,0 +1,19 @@
+[
+  { "to": "/", "label": "总览" },
+  { "to": "/big-screen", "label": "基地大屏" },
+  { "to": "/duty-screen", "label": "值班看板" },
+  { "to": "/devices", "label": "设备" },
+  { "to": "/recognitions", "label": "识别记录" },
+  { "to": "/environment", "label": "环境读数" },
+  { "to": "/ingest-observability", "label": "接入观测" },
+  { "to": "/diseases", "label": "病害" },
+  { "to": "/alerts", "label": "告警" },
+  { "to": "/alert-rules", "label": "阈值规则" },
+  { "to": "/harvest", "label": "采摘" },
+  { "to": "/growth-trends", "label": "生长趋势" },
+  { "to": "/batches", "label": "出菇批次" },
+  { "to": "/reports", "label": "报表" },
+  { "to": "/sheds", "label": "棚区" },
+  { "to": "/audit", "label": "审计", "roles": ["super_admin", "production_admin"] },
+  { "to": "/users", "label": "用户", "roles": ["super_admin"] }
+]

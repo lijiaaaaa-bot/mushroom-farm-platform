@@ -66,9 +66,12 @@ describe('farm-ops light admin theme', () => {
     }
     expect(css).toContain('border-radius: var(--radius-card)');
     expect(css).toContain('border: 1px solid var(--line)');
+    const nav = readFileSync('src/admin-nav.json', 'utf8');
     expect(layout).toContain('bg-sidebar');
     expect(layout).toContain('data-theme="farm-ops-light"');
-    expect(layout).toContain("label: '基地大屏'");
+    expect(layout).toContain('visibleNav');
+    expect(nav).toContain('"label": "基地大屏"');
+    expect(layout).toContain('基地大屏');
     expect(layout).not.toContain('二期槽位');
     expect(css).toContain('.tb-board');
     expect(css).toContain('.tb-floor');
