@@ -37,7 +37,7 @@
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
-| 2026-10-14 | 识别列表按摄像头和时间窗过滤。页面 `/recognitions` 可查询并深链。`make demo-recognition-history` 发四条识别并核对窗口。上海日 `from`/`to` 与棚区保留。不改已有演示命令 | 待 `make test` 与 `make gates` | 草稿不合并 |
+| 2026-10-14 | 识别列表按摄像头和时间窗过滤。页面 `/recognitions` 可查询并深链。`make demo-recognition-history` 发四条识别并核对窗口。上海日 `from`/`to` 与棚区保留。不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 178，API jest 154，web vitest 185）；`make gates` 退出码 0。PR #118 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/recognitions`。草稿不合并 |
 | 2026-10-14 | `make demo-telemetry-history`：写入 `SENSOR-HIST-01` 的 16.5℃（窗外）、18.4℃ 与 23.1℃（近 30 分钟）以及 `SENSOR-HIST-02` 的 21℃。`GET /ingest/environment-readings` 按 `sensorCode` 或 `deviceCode` 加 `from`/`to` 只返回窗口内这台设备的读数。`/environment` 可查询「历史读数」。小时桶仍在入库时写入。不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 172，API jest 153，web vitest 183）；`make gates` 退出码 0。PR #117 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/environment`。草稿不合并 |
 | 2026-10-14 | `make demo-camera-delete`：登记 `CAM-DEL-01`，列表可见后 PATCH 备注「删除前已改」，再 DELETE。列表没有这一台，详情 404「设备不存在」。查看员和棚区负责人 403。同一编码可再登记。页面删除后列表重新读取，详情回到 `/devices`。不发识别，不发心跳，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 166，API jest 152，web vitest 179）；`make gates` 退出码 0。PR #116 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。草稿不合并 |
 | 2026-10-14 | `make demo-camera-stop`：登记 `CAM-STOP-01`，再 PATCH `enabled: false`。列表与详情启用都是停用，档案仍在。`enabled` 不是布尔时 400。页面停用后重新读取。心跳不把停用改回启用。不发识别，不发心跳，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 159，API jest 151，web vitest 177）；`make gates` 退出码 0。PR #115 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。草稿不合并 |
