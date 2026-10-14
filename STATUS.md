@@ -88,7 +88,7 @@
 
 - 告警列表可确认再关闭：`make demo-alert-ack` 留下 `CAM-ACK-01`（待确认操作告警，保持待确认）、`CAM-ACK-02`（已确认操作告警，只确认）和 `CAM-ACK-03`（已关闭操作告警，先确认再关闭，确认备注仍是「已确认」）。`/alerts` 状态下拉保持全部。待确认那一行点「确认」变为已确认，再点「关闭」变为已关闭。不发识别，不改 `make demo-one-alert`、`make demo-ack-one-alert`、`make demo-close-one-alert` 与 `make demo-alert-status-filter`。步骤见 `docs/DEMO_ALERT_ACK.md`。PR #126。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/126
 
-- 单条告警详情：`make demo-alert-detail` 用与 `make demo-one-alert` 相同的识别留下或沿用棚区 S01、摄像头 `CAM-ALERT-01` 的「温度过高告警」（当前值 30℃，阈值 28℃）。终端打印详情地址 `/alerts/<id>`。`/alerts/:id` 显示标题、说明、级别、状态、棚区、摄像头、发生时间、指标、当前值、阈值，以及认领人、认领时间、确认人、确认时间、关闭原因、关闭人、关闭时间。不确认、不关闭，不改已有演示命令。步骤见 `docs/DEMO_ALERT_DETAIL.md`。
+- 单条告警详情：`make demo-alert-detail` 用与 `make demo-one-alert` 相同的识别留下或沿用棚区 S01、摄像头 `CAM-ALERT-01` 的「温度过高告警」（当前值 30℃，阈值 28℃）。终端打印详情地址 `/alerts/<id>`。`/alerts/:id` 显示标题、说明、级别、状态、棚区、摄像头、发生时间、指标、当前值、阈值，以及认领人、认领时间、确认人、确认时间、关闭原因、关闭人、关闭时间。不确认、不关闭，不改已有演示命令。步骤见 `docs/DEMO_ALERT_DETAIL.md`。PR #127。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/127
 
 ## 进行中
 - 无
