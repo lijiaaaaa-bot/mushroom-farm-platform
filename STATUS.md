@@ -82,6 +82,7 @@
 - 心跳超时后设备离线并留下告警：`make demo-heartbeat-offline-alert` 登记 `CAM-HB-OFF-01`（棚区 S01，名称心跳超时镜头，备注心跳超时演示）。已存在则不改档案。再 POST 一次在线心跳。API 以 `DEVICE_OFFLINE_AFTER_MS=2000` 启动时，扫描间隔约 1 秒，这一行变为离线，并留下未闭合的「设备离线」告警。`/devices` 与 `/alerts/:id`。默认仍是 5 分钟，命令不空等。不发识别，不改 `heartbeat.http.json`，不改已有演示命令。步骤见 `docs/DEMO_HEARTBEAT_OFFLINE_ALERT.md`。PR #119。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/119
 
 - 超管与查看登录后菜单不同：`make demo-rbac` 保证 `admin` / `Admin@123456` 与 `viewer` / `Viewer@123456`（棚号 S01）。侧栏「审计」只给超管和生产管理员，「用户」只给超管；查看打开 `/audit` 或 `/users` 回到总览。`GET /api/v1/users`、`/audit-logs`、`/login-logs` 对查看是 403。查看的棚列表含 S01、不含 S02。已有 `viewer` 且请求带 `resetPassword: true` 时重设密码和棚号，不另建一行。不发识别，不发心跳，不改告警。步骤见 `docs/DEMO_RBAC.md`。PR #121。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/121
+- 审计页能看到登录和操作记录：`make demo-audit-log` 用 `admin` / `Admin@123456` 登录（User-Agent `audit-log-demo/1`），再对不存在的用户 `audit-demo` 做一次失败登录。`/audit` 上方有 `audit-demo` 失败和 `admin` 成功；下方有「登录失败」（明细 `audit-demo`）和 `admin` 的「登录成功」。`GET /api/v1/login-logs` 与 `GET /api/v1/audit-logs` 对超管是 200，查看 `viewer` / `Viewer@123456` 仍是 403，打开 `/audit` 回到总览。不发识别，不发心跳，不改告警。步骤见 `docs/DEMO_AUDIT_LOG.md`。PR #123。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/123
 
 ## 进行中
 - 无

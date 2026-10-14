@@ -292,6 +292,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 `make demo-rbac` 用 `admin` / `Admin@123456` 登录，把 `viewer` / `Viewer@123456` 写成查看、棚号 S01，再核对：超管菜单含审计和用户，查看菜单没有这两项；用户、审计、登录日志对查看是 403；查看的棚列表含 S01、不含 S02。不发识别，不发心跳，不改告警。
 
+`make demo-audit-log` 用同一对账号。超管登录的 User-Agent 是 `audit-log-demo/1`，再对不存在的用户 `audit-demo` 做一次失败登录。`/audit` 上方登录日志有 `audit-demo` 失败和 `admin` 成功，User-Agent 都是 `audit-log-demo/1`。下方操作审计有「登录失败」（接口动作 `auth.login_failed`，明细 `audit-demo`）和 `admin` 的「登录成功」（`auth.login`）。`GET /api/v1/login-logs` 与 `GET /api/v1/audit-logs` 对超管是 200，第一页含这些行；查看仍是 403，打开 `/audit` 回到总览。已有 `viewer` 时重设密码，不另建一行。不发识别，不发心跳，不改告警。步骤见 [`DEMO_AUDIT_LOG.md`](DEMO_AUDIT_LOG.md)。
+
 ## 存储
 
 | 组件 | 现状 |
