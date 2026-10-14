@@ -140,7 +140,7 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 `make demo-camera-delete` 先 `POST /api/v1/devices` 登记镜头码 `CAM-DEL-01`（棚区 `S01`，名称可删除镜头，备注删除前）。编码已存在则不改名称和心跳。再读 `GET /api/v1/devices?pageSize=100`，然后 `PATCH /api/v1/devices/:id`，请求体只有 `{"note":"删除前已改"}`。名称、在线状态、启用和最近心跳不变。然后 `DELETE /api/v1/devices/:id`。同一份列表不再有 `CAM-DEL-01`，别的设备还在。`GET /api/v1/devices/:id` 是 404「设备不存在」。`/devices` 这一行和 `/devices/:id` 可以删除，删除后回到列表时这一台没有了。不发识别，不发心跳，不新建告警，不改 `CAM-NEW-01`、`CAM-EDIT-01`、`CAM-STOP-01`、`CAM-ALERT-01` 与 `CAM-REG-02`。步骤见 [`DEMO_CAMERA_DELETE.md`](DEMO_CAMERA_DELETE.md)。
 
-识别 `/recognitions`。`GET /api/v1/ingest/recognitions`，可按摄像头、上海日筛选。有图时打开已存抓拍。
+识别 `/recognitions`。`GET /api/v1/ingest/recognitions` 可按摄像头编号（`cameraCode`）和 `from` / `to` 查询，识别时间从新到旧。空白不传。地址栏 `?cameraCode=&from=&to=` 同样生效，大屏按上海日带上的 `from`、`to` 和 `shedCode` 仍有效。点「清除」回到最近记录。时间填不开时写「时间筛选无效」，不把空列表当成没有记录。没有符合条件的行时写「没有符合条件的识别记录。」有图时打开已存抓拍。`make demo-recognition-history` 读取 `recognition.demo-history.json`，写入 `CAM-HIST-01` 的总数 7（三小时前）、总数 9（八分钟前）、总数 12（当前），以及 `CAM-HIST-02` 的总数 11。窗口是当前时刻前 30 分钟到后 1 分钟，列表里有总数 9 和总数 12，没有总数 7 和另一台摄像头。步骤见 [`DEMO_RECOGNITION_HISTORY.md`](DEMO_RECOGNITION_HISTORY.md)。
 
 环境 `/environment`。`GET /api/v1/ingest/environment-readings` 列出读数（温度、湿度、CO₂、基质含水率），可按传感器编号和观测时间筛选。`GET /api/v1/ingest/environment-readings/latest` 按棚区和传感器各留观测时间最新的一条，可加 `sensorCode`、`shedCode`。`GET /api/v1/ingest/environment-readings/:id` 返回这一条；没有这条是 404，棚外是 403。页面「最新值」点传感器进入 `/environment/:id`。数据来自环境报文，不用识别报文里的温湿度充数。
 

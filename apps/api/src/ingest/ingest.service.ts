@@ -472,10 +472,9 @@ export class IngestService {
     }
     if (query.shedCode)
       qb.andWhere('r.shedCode = :shedCode', { shedCode: query.shedCode });
-    if (query.cameraCode) {
-      qb.andWhere('r.cameraCode = :cameraCode', {
-        cameraCode: query.cameraCode,
-      });
+    const cameraCode = query.cameraCode?.trim();
+    if (cameraCode) {
+      qb.andWhere('r.cameraCode = :cameraCode', { cameraCode });
     }
     if (query.from)
       qb.andWhere('r.recognizedAt >= :from', { from: new Date(query.from) });
