@@ -33,8 +33,14 @@ const listReturn = computed(() => {
   const query: Record<string, string> = {};
   const date = plainQuery('date');
   const camera = plainQuery('cameraCode');
+  const shed = plainQuery('shedCode');
+  const from = plainQuery('from');
+  const to = plainQuery('to');
   if (/^\d{4}-\d{2}-\d{2}$/.test(date)) query.date = date;
   if (camera) query.cameraCode = camera;
+  if (shed) query.shedCode = shed;
+  if (from) query.from = from;
+  if (to) query.to = to;
   if (!Object.keys(query).length) return '/harvest';
   return { path: '/harvest', query };
 });

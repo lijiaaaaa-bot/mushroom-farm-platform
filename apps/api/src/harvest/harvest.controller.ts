@@ -128,8 +128,11 @@ export class HarvestController {
     @CurrentUser() user: AuthUser,
     @Query('date') date?: string,
     @Query('cameraCode') cameraCode?: string,
+    @Query('shedCode') shedCode?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
-    return this.harvest.daily(user, date, cameraCode);
+    return this.harvest.daily(user, { date, cameraCode, shedCode, from, to });
   }
 
   @Get('daily/list')
@@ -137,8 +140,17 @@ export class HarvestController {
     @CurrentUser() user: AuthUser,
     @Query('date') date?: string,
     @Query('cameraCode') cameraCode?: string,
+    @Query('shedCode') shedCode?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
-    const result = await this.harvest.daily(user, date, cameraCode);
+    const result = await this.harvest.daily(user, {
+      date,
+      cameraCode,
+      shedCode,
+      from,
+      to,
+    });
     return { date: result.date, items: result.items };
   }
 

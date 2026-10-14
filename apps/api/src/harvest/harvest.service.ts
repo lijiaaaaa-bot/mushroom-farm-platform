@@ -97,19 +97,39 @@ export class HarvestService {
     }
   }
 
-  async daily(user: AuthUser, date?: string, cameraCode?: string) {
-    const day = date || todayShanghai();
-    const camera = cameraCode?.trim() || '';
-    let items = await this.latestPerCamera(user, day);
+  async daily(
+    user: AuthUser,
+    query: {
+      date?: string;
+      cameraCode?: string;
+      shedCode?: string;
+      from?: string;
+      to?: string;
+    } = {},
+  ) {
+    const window = harvestWindow(query);
+    const camera = query.cameraCode?.trim() || '';
+    const shed = query.shedCode?.trim() || '';
+    const scope = ShedScope.fromUser(user);
+    if (shed) scope.assert(shed);
+    let items = await this.latestBetween(scope, window.start, window.end);
     if (camera) items = items.filter((item) => item.cameraCode === camera);
+    if (shed) items = items.filter((item) => item.shedCode === shed);
     const summary = {
-      date: day,
+      date: window.date,
       cameraCount: items.length,
       harvestableCameras: items.filter((item) => item.matureCount > 0).length,
       mushroomCount: items.reduce((sum, item) => sum + item.mushroomCount, 0),
       matureCount: items.reduce((sum, item) => sum + item.matureCount, 0),
     };
-    return { date: day, summary, items };
+    return {
+      date: window.date,
+      from: window.from,
+      to: window.to,
+      shedCode: shed || null,
+      summary,
+      items,
+    };
   }
 
   async getOne(user: AuthUser, id: string): Promise<HarvestItem> {
@@ -128,6 +148,15 @@ export class HarvestService {
     date: string,
   ): Promise<HarvestItem[]> {
     const { start, end } = shanghaiDayRange(date);
+    return this.latestBetween(scope, start, end);
+  }
+
+  /** 每个摄像头在 [start, end) 内只留最新一条。棚隔离在 SQL 里。 */
+  private async latestBetween(
+    scope: ShedScope,
+    start: Date,
+    end: Date,
+  ): Promise<HarvestItem[]> {
     const rows = await this.records.query(
       `
       SELECT DISTINCT ON (camera_code)
@@ -414,6 +443,49 @@ function assertDay(date: string): string {
     throw new BadRequestException('日期格式应为 YYYY-MM-DD');
   }
   return date;
+}
+
+/** 不传 from/to 时仍是上海自然日 [start, end)。两端都传时改用识别时间窗口，含两端。 */
+function harvestWindow(query: { date?: string; from?: string; to?: string }): {
+  date: string;
+  start: Date;
+  end: Date;
+  from: string | null;
+  to: string | null;
+} {
+  const dayText = query.date?.trim() || '';
+  const day = dayText ? assertDay(dayText) : todayShanghai();
+  const fromText = query.from?.trim() || '';
+  const toText = query.to?.trim() || '';
+  if (!fromText && !toText) {
+    const range = shanghaiDayRange(day);
+    return {
+      date: day,
+      start: range.start,
+      end: range.end,
+      from: null,
+      to: null,
+    };
+  }
+  if (!fromText || !toText) {
+    throw new BadRequestException('时间筛选无效');
+  }
+  const from = new Date(fromText);
+  const to = new Date(toText);
+  if (
+    Number.isNaN(from.getTime()) ||
+    Number.isNaN(to.getTime()) ||
+    from.getTime() > to.getTime()
+  ) {
+    throw new BadRequestException('时间筛选无效');
+  }
+  return {
+    date: day,
+    start: from,
+    end: new Date(to.getTime() + 1),
+    from: from.toISOString(),
+    to: to.toISOString(),
+  };
 }
 
 function parseShift(value: string | null): HarvestShift | null {

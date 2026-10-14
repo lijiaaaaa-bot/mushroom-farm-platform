@@ -46,6 +46,7 @@ make web      # http://127.0.0.1:43123
 报表页 `/reports` 预览园区生长并下载 xlsx：[`docs/DEMO_REPORT_XLSX.md`](docs/DEMO_REPORT_XLSX.md)（`make demo-report-xlsx`）。  
 病害记录可查可见：[`docs/DEMO_DISEASE_LIST.md`](docs/DEMO_DISEASE_LIST.md)（`make demo-disease-list`）。  
 采摘记录可查可见：[`docs/DEMO_HARVEST_LIST.md`](docs/DEMO_HARVEST_LIST.md)（`make demo-harvest-list`）。  
+按棚区和时间窗筛选采摘记录：[`docs/DEMO_HARVEST_FILTER.md`](docs/DEMO_HARVEST_FILTER.md)（`make demo-harvest-filter`）。  
 发一条超阈值环境遥测，告警列表和详情出现这条告警：[`docs/DEMO_TELEMETRY_THRESHOLD_ALERT.md`](docs/DEMO_TELEMETRY_THRESHOLD_ALERT.md)（`make demo-telemetry-threshold-alert`）。  
 新增一台镜头，设备列表和镜头详情都能看到：[`docs/DEMO_CAMERA_CREATE.md`](docs/DEMO_CAMERA_CREATE.md)（`make demo-camera-create`）。  
 改一台镜头的备注和状态，列表和详情都能看到：[`docs/DEMO_CAMERA_EDIT.md`](docs/DEMO_CAMERA_EDIT.md)（`make demo-camera-edit`）。  

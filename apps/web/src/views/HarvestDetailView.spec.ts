@@ -63,6 +63,20 @@ describe('HarvestDetailView', () => {
     wrapper.unmount();
   });
 
+  it('returns to the shed and time window', async () => {
+    httpGet.mockResolvedValue({ data: row });
+    const { wrapper } = await mountView('rec-1', {
+      shedCode: 'S01',
+      from: '2026-10-14T00:00:00.000Z',
+      to: '2026-10-14T05:00:00.000Z',
+    });
+
+    expect(wrapper.get('[data-testid="harvest-back"]').attributes('href')).toBe(
+      '/harvest?shedCode=S01&from=2026-10-14T00:00:00.000Z&to=2026-10-14T05:00:00.000Z',
+    );
+    wrapper.unmount();
+  });
+
   it('writes a dash when the cap diameter is missing', async () => {
     httpGet.mockResolvedValue({ data: { ...row, avgCapDiameter: null } });
     const { wrapper } = await mountView();
