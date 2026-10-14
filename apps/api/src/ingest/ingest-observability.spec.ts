@@ -134,6 +134,7 @@ function memoryDevices() {
           onlineStatus: 'offline' as const,
           lastSeenAt: null,
           lastHeartbeatAt: null,
+          enabled: true,
           meta: {},
           ...item,
           id: item.id ?? `device-${rows.length + 1}`,

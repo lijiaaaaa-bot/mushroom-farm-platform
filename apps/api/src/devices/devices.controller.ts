@@ -12,6 +12,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { Transform } from 'class-transformer';
 import {
   IsBoolean,
   IsIn,
@@ -81,6 +82,7 @@ class UpdateDeviceDto {
   onlineStatus?: 'online' | 'offline';
 
   @IsOptional()
+  @Transform(({ obj }) => obj.enabled)
   @IsBoolean()
   enabled?: boolean;
 }

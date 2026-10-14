@@ -303,7 +303,7 @@ describe('device offline push failure', () => {
               devices.find((row) => row.code === where.code) ?? null,
             create: (input: Partial<Device>) => input,
             save: async (input: Partial<Device>) => {
-              const row = { ...input, id: 'device-1' } as Device;
+              const row = { enabled: true, ...input, id: 'device-1' } as Device;
               devices.splice(0, devices.length, row);
               return row;
             },

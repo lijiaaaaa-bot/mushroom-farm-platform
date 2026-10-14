@@ -43,6 +43,7 @@ function memoryDevices() {
           lastSeenAt: null,
           lastHeartbeatAt: null,
           note: null,
+          enabled: true,
           meta: {},
           ...item,
           id: item.id ?? `device-${rows.length + 1}`,
