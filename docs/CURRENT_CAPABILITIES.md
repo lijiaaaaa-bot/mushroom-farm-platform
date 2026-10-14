@@ -243,6 +243,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 | `GET /api/v1/harvest/yield-estimate` | 近 30 个上海自然日，各摄像头当日最新成熟数之和，按日序线性外推未来 3 日 | 不满连续 30 天：只返回说明，`days` 为空 |
 | `GET /api/v1/harvest/bucket-forecast` | 近 7 个上海自然日、棚级成熟日桶，用首尾差除以间隔天数得到增速，外推未来 3 日 | 少于 2 个相隔不少于 1 天的成熟日桶：只返回说明，`days` 为空 |
 
+`make demo-yield-forecast` 读取 `recognition.demo-yield-forecast.json`，写入 `CAM-YF-01`（棚区 S01）三天：前 6 日蘑菇 12、成熟 4；前 3 日蘑菇 18、成熟 8；当日蘑菇 24、成熟 12。同一上海日的幂等键已在则不另建一行。病害数量 0，温度 22.5℃，成熟占比低于种子规则「成熟占比一般」的 0.6。页面 `/harvest` 的「近 2–3 日成熟估计（日桶增速）」写出「估计」和未来 3 日成熟数。不满连续 30 天时，30 日线性那一块只写说明，`days` 为空。步骤见 [`DEMO_YIELD_FORECAST.md`](DEMO_YIELD_FORECAST.md)。
+
 ## 出菇批次
 
 页面 `/batches`。表 `flush_batches`、`flush_phase_events`。

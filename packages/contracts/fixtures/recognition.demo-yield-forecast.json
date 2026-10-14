@@ -1,0 +1,35 @@
+{
+  "clock": "2026-10-14T01:02:03.004Z",
+  "expect": "ok",
+  "shedCode": "S01",
+  "cameraCode": "CAM-YF-01",
+  "temperature": 22.5,
+  "humidity": 88,
+  "co2": 900,
+  "substrateMoisture": 70,
+  "diseaseCount": 0,
+  "diseaseLevel": 0,
+  "capDiameter": 3.2,
+  "snapshotBase64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAAAP/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8Af//Z",
+  "body": {
+    "idempotencyKey": "demo-yield-forecast-CAM-YF-01-2026-10-14",
+    "shedCode": "S01",
+    "cameraCode": "CAM-YF-01",
+    "recognizedAt": "2026-10-14T01:02:03.004Z",
+    "mushroomCount": 24,
+    "matureCount": 12,
+    "capDiameters": [3.2],
+    "diseaseCount": 0,
+    "diseaseLevel": 0,
+    "snapshotBase64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAAAP/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8Af//Z",
+    "temperature": 22.5,
+    "humidity": 88,
+    "co2": 900,
+    "substrateMoisture": 70
+  },
+  "points": [
+    { "offsetDays": 6, "mushroomCount": 12, "matureCount": 4 },
+    { "offsetDays": 3, "mushroomCount": 18, "matureCount": 8 },
+    { "offsetDays": 0, "mushroomCount": 24, "matureCount": 12 }
+  ]
+}
