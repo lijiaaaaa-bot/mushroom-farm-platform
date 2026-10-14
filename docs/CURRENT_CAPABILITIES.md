@@ -224,7 +224,7 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 页面 `/harvest`。查看人员只读；超管、生产管理员、棚区负责人可改。
 
-当日清单：`GET /api/v1/harvest/daily`（`/daily/list` 同一份数据）。`PATCH /api/v1/harvest/daily/:id` 修正成熟数与蘑菇数，写回识别记录，并记审计（谁、何时、旧值到新值、棚、摄像头）。成熟数不能大于蘑菇数。汇总随修正更新。他棚 403。
+当日清单：`GET /api/v1/harvest/daily`（`/daily/list` 同一份数据）。可按上海日期 `date` 和摄像头 `cameraCode` 收窄；空白不传摄像头。`GET /api/v1/harvest/daily/:id` 返回这一条；没有这条是 404，棚外是 403。页面 `/harvest` 写出棚区、摄像头、成熟数、蘑菇数和识别时间，点「打开」进入 `/harvest/:id`。详情用中文标签显示时间、棚区、摄像头、成熟数、蘑菇数、菌盖直径；没有直径时写「—」。没有符合摄像头条件的行时写「没有符合条件的采摘记录。」。日期不是 `YYYY-MM-DD` 时写「日期无效」。`PATCH /api/v1/harvest/daily/:id` 修正成熟数与蘑菇数，写回识别记录，并记审计（谁、何时、旧值到新值、棚、摄像头）。成熟数不能大于蘑菇数。汇总随修正更新。他棚 403。`make demo-harvest-list` 读取 `recognition.demo-one.json`，本次请求改为摄像头 `CAM-HAR-01`，成熟数 5、蘑菇数 12 仍用样例，只 POST 一次。样例文件不改。列表有这一行，详情菌盖直径 4.7，`cameraCode=CAM-HAR-NONE` 的对照列表为空。步骤见 [`DEMO_HARVEST_LIST.md`](DEMO_HARVEST_LIST.md)。
 
 任务清单与排班：`GET /api/v1/harvest/tasks?date=`，`POST /api/v1/harvest/tasks/generate`，`PATCH /api/v1/harvest/tasks/:id`。生成规则：当日成熟数大于 0 的摄像头进入清单；已有任务只更新数量，保留人员和班次；不再成熟、且仍是未排的待采任务才从清单去掉。排班字段：人员、班次 `morning` / `afternoon`、状态 `open` / `scheduled` / `done`。页面给出上午、下午、未排条数。
 

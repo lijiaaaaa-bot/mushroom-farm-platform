@@ -124,14 +124,27 @@ export class HarvestController {
   }
 
   @Get('daily')
-  daily(@CurrentUser() user: AuthUser, @Query('date') date?: string) {
-    return this.harvest.daily(user, date);
+  daily(
+    @CurrentUser() user: AuthUser,
+    @Query('date') date?: string,
+    @Query('cameraCode') cameraCode?: string,
+  ) {
+    return this.harvest.daily(user, date, cameraCode);
   }
 
   @Get('daily/list')
-  async list(@CurrentUser() user: AuthUser, @Query('date') date?: string) {
-    const result = await this.harvest.daily(user, date);
+  async list(
+    @CurrentUser() user: AuthUser,
+    @Query('date') date?: string,
+    @Query('cameraCode') cameraCode?: string,
+  ) {
+    const result = await this.harvest.daily(user, date, cameraCode);
     return { date: result.date, items: result.items };
+  }
+
+  @Get('daily/:id')
+  one(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.harvest.getOne(user, id);
   }
 
   @Patch('daily/:id')

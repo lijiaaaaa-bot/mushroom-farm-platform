@@ -1,5 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils';
+import { createMemoryHistory, createRouter } from 'vue-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { shanghaiStamp } from '../disease-level';
 import { currentUser, type SessionUser } from '../auth';
 import HarvestView from './HarvestView.vue';
 
@@ -119,8 +121,17 @@ function routeGets(
   });
 }
 
-async function mountView() {
-  const wrapper = mount(HarvestView);
+async function mountView(query: Record<string, string> = {}) {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/harvest', component: HarvestView },
+      { path: '/harvest/:id', component: { template: '<div />' } },
+    ],
+  });
+  await router.push({ path: '/harvest', query });
+  await router.isReady();
+  const wrapper = mount(HarvestView, { global: { plugins: [router] } });
   await flushPromises();
   return wrapper;
 }
@@ -311,6 +322,39 @@ describe('HarvestView correction', () => {
     expect(wrapper.text()).toContain('CAM-S01');
     expect(wrapper.text()).not.toContain('当日无识别记录');
     expect(wrapper.find('table').exists()).toBe(true);
+    wrapper.unmount();
+  });
+
+  it('opens one harvest row and keeps the camera filter on the link', async () => {
+    asUser('viewer');
+    routeGets([daily()]);
+    const wrapper = await mountView({ date: '2026-09-23', cameraCode: 'CAM-S01' });
+
+    expect(httpGet).toHaveBeenCalledWith('/harvest/daily', {
+      params: { date: '2026-09-23', cameraCode: 'CAM-S01' },
+    });
+    const row = wrapper.get('[data-testid="harvest-list"] tr[data-id="rec-1"]');
+    expect(row.get('[data-field="shed"]').text()).toBe('S01');
+    expect(row.get('[data-field="camera"]').text()).toBe('CAM-S01');
+    expect(row.get('[data-field="time"]').text()).toBe(shanghaiStamp(harvestItem.recognizedAt));
+    expect(row.text()).toContain('4');
+    expect(row.text()).toContain('10');
+    const open = row.get('[data-testid="harvest-open"]');
+    expect(open.text()).toBe('打开');
+    expect(open.attributes('href')).toBe('/harvest/rec-1?date=2026-09-23&cameraCode=CAM-S01');
+    wrapper.unmount();
+  });
+
+  it('shows the empty contrast when the camera filter matches nothing', async () => {
+    asUser('viewer');
+    routeGets([
+      daily({ matureCount: 0, mushroomCount: 0, harvestableCameras: 0 }, []),
+    ]);
+    const wrapper = await mountView({ date: '2026-09-23', cameraCode: 'CAM-HAR-NONE' });
+
+    expect(wrapper.get('[data-testid="harvest-empty"]').text()).toBe('没有符合条件的采摘记录。');
+    expect(wrapper.find('[data-testid="harvest-list"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('当日无识别记录');
     wrapper.unmount();
   });
 });

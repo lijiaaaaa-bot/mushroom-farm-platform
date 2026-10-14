@@ -335,4 +335,101 @@ describe('harvest correction HTTP', () => {
     expect(records.rows[0].matureCount).toBe(4);
     expect(logs.rows).toHaveLength(0);
   });
+
+  it('returns one harvest row and hides another shed', async () => {
+    records.rows.push(
+      sample({
+        id: 'rec-1',
+        shedCode: 'S01',
+        cameraCode: 'CAM-HAR-01',
+        matureCount: 5,
+        mushroomCount: 12,
+        avgCapDiameter: 4.7,
+      }),
+      sample({
+        id: 'rec-s02',
+        shedCode: 'S02',
+        cameraCode: 'CAM-HAR-02',
+        matureCount: 3,
+        mushroomCount: 8,
+      }),
+    );
+
+    const opened = await request(app.getHttpServer())
+      .get('/api/v1/harvest/daily/rec-1')
+      .set('x-test-role', 'viewer');
+
+    expect(opened.status).toBe(200);
+    expect(opened.body).toMatchObject({
+      id: 'rec-1',
+      shedCode: 'S01',
+      cameraCode: 'CAM-HAR-01',
+      matureCount: 5,
+      mushroomCount: 12,
+      avgCapDiameter: 4.7,
+    });
+
+    const denied = await request(app.getHttpServer())
+      .get('/api/v1/harvest/daily/rec-s02')
+      .set('x-test-role', 'shed_manager');
+    expect(denied.status).toBe(403);
+
+    const missing = await request(app.getHttpServer())
+      .get('/api/v1/harvest/daily/missing')
+      .set('x-test-role', 'super_admin');
+    expect(missing.status).toBe(404);
+  });
+
+  it('filters the daily list by camera and leaves an unknown camera empty', async () => {
+    const day = todayShanghai();
+    records.rows.push(
+      sample({
+        id: 'rec-1',
+        shedCode: 'S01',
+        cameraCode: 'CAM-HAR-01',
+        matureCount: 5,
+        mushroomCount: 12,
+      }),
+      sample({
+        id: 'rec-2',
+        shedCode: 'S01',
+        cameraCode: 'CAM-OTHER',
+        matureCount: 2,
+        mushroomCount: 4,
+      }),
+    );
+
+    const listed = await request(app.getHttpServer())
+      .get('/api/v1/harvest/daily')
+      .query({ date: day, cameraCode: 'CAM-HAR-01' })
+      .set('x-test-role', 'super_admin');
+
+    expect(listed.status).toBe(200);
+    expect(listed.body.items).toEqual([
+      expect.objectContaining({
+        id: 'rec-1',
+        cameraCode: 'CAM-HAR-01',
+        matureCount: 5,
+        mushroomCount: 12,
+      }),
+    ]);
+    expect(listed.body.summary).toMatchObject({
+      matureCount: 5,
+      mushroomCount: 12,
+      harvestableCameras: 1,
+    });
+
+    const contrast = await request(app.getHttpServer())
+      .get('/api/v1/harvest/daily')
+      .query({ date: day, cameraCode: 'CAM-HAR-NONE' })
+      .set('x-test-role', 'super_admin');
+
+    expect(contrast.status).toBe(200);
+    expect(contrast.body.items).toEqual([]);
+    expect(contrast.body.summary).toMatchObject({
+      matureCount: 0,
+      mushroomCount: 0,
+      harvestableCameras: 0,
+    });
+  });
 });

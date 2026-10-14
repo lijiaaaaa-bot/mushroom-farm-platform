@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { canCorrectHarvest, currentUser } from '../auth';
 import { errorText, http } from '../api';
+import { shanghaiStamp } from '../disease-level';
 
 interface Item {
   id: string;
@@ -70,7 +72,25 @@ interface TaskList {
   items: HarvestTaskRow[];
 }
 
-const date = ref(new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date()));
+const route = useRoute();
+const router = useRouter();
+
+function todayShanghai() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Shanghai' }).format(new Date());
+}
+
+function queryValue(key: string) {
+  const value = route.query[key];
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function validDay(value: string) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value);
+}
+
+const date = ref(validDay(queryValue('date')) ? queryValue('date') : todayShanghai());
+const cameraDraft = ref(queryValue('cameraCode'));
+const dateError = ref('');
 const data = ref<Daily | null>(null);
 const error = ref('');
 const loading = ref(false);
@@ -83,6 +103,25 @@ const forecastError = ref('');
 const tasks = ref<TaskList | null>(null);
 const taskError = ref('');
 const canCorrect = computed(() => canCorrectHarvest(currentUser.value?.role));
+const cameraFilter = computed(() => queryValue('cameraCode'));
+
+function detailTo(item: { id: string }) {
+  const query: Record<string, string> = {};
+  if (validDay(date.value)) query.date = date.value;
+  if (cameraFilter.value) query.cameraCode = cameraFilter.value;
+  return { path: `/harvest/${item.id}`, query };
+}
+
+function syncDrafts() {
+  const nextDate = queryValue('date');
+  dateError.value = '';
+  if (nextDate && !validDay(nextDate)) {
+    dateError.value = '日期无效';
+    return;
+  }
+  if (nextDate) date.value = nextDate;
+  cameraDraft.value = queryValue('cameraCode');
+}
 
 const STATUS_LABEL: Record<string, string> = {
   open: '待采',
@@ -186,15 +225,40 @@ async function reloadDay() {
   await loadTasks();
 }
 
+async function applyFilters() {
+  if (!validDay(date.value)) {
+    dateError.value = '日期无效';
+    data.value = null;
+    tasks.value = null;
+    return;
+  }
+  const query: Record<string, string> = { date: date.value };
+  const camera = cameraDraft.value.trim();
+  if (camera) query.cameraCode = camera;
+  const same = queryValue('date') === query.date && queryValue('cameraCode') === (query.cameraCode ?? '');
+  if (same) {
+    await reloadDay();
+    return;
+  }
+  await router.replace({ path: '/harvest', query });
+}
+
 async function load() {
+  if (dateError.value) {
+    data.value = null;
+    loading.value = false;
+    return;
+  }
   loading.value = true;
   error.value = '';
   try {
+    const params: Record<string, string> = { date: date.value };
+    if (cameraFilter.value) params.cameraCode = cameraFilter.value;
     const response = await http.get<{
       date: string;
       summary: Daily['summary'];
       items: Item[];
-    }>('/harvest/daily', { params: { date: date.value } });
+    }>('/harvest/daily', { params });
     data.value = {
       ...response.data,
       items: response.data.items.map(withDraft),
@@ -232,7 +296,21 @@ async function saveRow(item: EditableItem) {
   }
 }
 
+watch(
+  () => [route.query.date, route.query.cameraCode],
+  () => {
+    syncDrafts();
+    if (dateError.value) {
+      data.value = null;
+      tasks.value = null;
+      return;
+    }
+    void reloadDay();
+  },
+);
+
 onMounted(() => {
+  syncDrafts();
   void load();
   void loadEstimate();
   void loadForecast();
@@ -338,13 +416,17 @@ onMounted(() => {
         </table>
       </template>
     </section>
-    <form class="flex flex-wrap items-end gap-3" @submit.prevent="reloadDay">
+    <form class="flex flex-wrap items-end gap-3" @submit.prevent="applyFilters">
       <label class="text-sm">日期
-        <input v-model="date" class="field mt-1" type="date" />
+        <input v-model="date" class="field mt-1" type="date" data-testid="harvest-date" />
       </label>
-      <button class="btn-primary" type="submit">查询</button>
+      <label class="text-sm">摄像头
+        <input v-model="cameraDraft" class="field mt-1" aria-label="摄像头" data-testid="harvest-camera" />
+      </label>
+      <button class="btn-primary" type="submit" data-testid="harvest-apply">查询</button>
     </form>
-    <p v-if="loading" class="text-mist">加载中…</p>
+    <p v-if="dateError" class="text-danger" data-testid="harvest-date-error">{{ dateError }}</p>
+    <p v-else-if="loading" class="text-mist">加载中…</p>
     <p v-else-if="error && !data" class="text-danger">{{ error }}</p>
     <template v-else-if="data">
       <p v-if="!canCorrect" class="text-sm text-mist">当前角色不能修正采摘清单。</p>
@@ -355,8 +437,11 @@ onMounted(() => {
         <article class="panel"><p class="text-mist">蘑菇数量</p><p class="font-mono text-3xl">{{ data.summary.mushroomCount }}</p></article>
       </div>
       <div class="panel overflow-x-auto">
-        <p v-if="!data.items.length" class="text-mist">当日无识别记录。</p>
-        <table v-else class="data-table">
+        <h2 class="mb-2 text-lg">当日采摘记录</h2>
+        <p v-if="!data.items.length" class="text-mist" data-testid="harvest-empty">
+          {{ cameraFilter ? '没有符合条件的采摘记录。' : '当日无识别记录。' }}
+        </p>
+        <table v-else class="data-table" data-testid="harvest-list">
           <thead>
             <tr>
               <th>棚区</th>
@@ -365,12 +450,13 @@ onMounted(() => {
               <th>总数</th>
               <th>最近识别</th>
               <th v-if="canCorrect"></th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in data.items" :key="item.id">
-              <td>{{ item.shedCode }}</td>
-              <td class="font-mono">{{ item.cameraCode }}</td>
+            <tr v-for="item in data.items" :key="item.id" :data-id="item.id">
+              <td class="font-mono" data-field="shed">{{ item.shedCode }}</td>
+              <td class="font-mono" data-field="camera">{{ item.cameraCode }}</td>
               <td>
                 <input
                   v-if="canCorrect"
@@ -395,7 +481,7 @@ onMounted(() => {
                 />
                 <span v-else>{{ item.mushroomCount }}</span>
               </td>
-              <td class="font-mono text-xs">{{ new Date(item.recognizedAt).toLocaleString('zh-CN') }}</td>
+              <td class="font-mono text-xs" data-field="time">{{ shanghaiStamp(item.recognizedAt) }}</td>
               <td v-if="canCorrect">
                 <button
                   class="btn-ghost"
@@ -403,6 +489,9 @@ onMounted(() => {
                   :disabled="savingId === item.id"
                   @click="saveRow(item)"
                 >保存</button>
+              </td>
+              <td>
+                <router-link class="text-accent" :to="detailTo(item)" data-testid="harvest-open">打开</router-link>
               </td>
             </tr>
           </tbody>
