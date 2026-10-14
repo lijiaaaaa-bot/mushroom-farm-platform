@@ -259,6 +259,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 已知限制：阶段由人调用 `POST /api/v1/batches/:id/phases` 记录，不从识别结果自动推进。原始需求要自动记阶段，但没有切换条件；未确认前不发明阈值。可选口径写在 [`docs/OPS_STORAGE_BACKUP.md`](OPS_STORAGE_BACKUP.md)。回放不读摄像头级桶。
 
+`/batches?batchCode=` 打开该批次的阶段和回放。`make demo-fruiting-batch` 读取 `recognition.demo-fruiting-batch.json`，写入 `CAM-FB-01`（棚区 S01）三天：蘑菇 11、18、27，成熟 2、6、11。批次 `FB-DEMO-01` 记下出菇、快速生长、成熟。列表当前阶段是成熟。回放读该棚棚级日桶，窗口里至少两天有蘑菇数、成熟数和菌盖。同一上海日再跑不另建识别，阶段已齐则不再追加。样例 `recognition.demo-one.json` 不改。不改 `make demo-harvest-task`、`make demo-harvest-list` 与 `make demo-harvest-filter`。不估计产量。步骤见 [`DEMO_FRUITING_BATCH.md`](DEMO_FRUITING_BATCH.md)。
+
 ## 报表
 
 页面 `/reports`。登录后可用，按棚隔离。没有登录后的浏览器端到端测试；页面行为由 vitest 覆盖。

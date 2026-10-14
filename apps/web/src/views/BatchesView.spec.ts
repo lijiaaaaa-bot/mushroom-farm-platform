@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils';
+import { createMemoryHistory, createRouter } from 'vue-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { currentUser, type SessionUser } from '../auth';
 import BatchesView from './BatchesView.vue';
@@ -34,6 +35,28 @@ const batch = {
   note: null,
 };
 
+const replayBody = {
+  batch,
+  phases: [
+    { id: 'e1', phase: 'flush', occurredAt: '2026-09-01T00:00:00.000Z', note: null, recordedBy: 'admin' },
+    { id: 'e2', phase: 'fast_growth', occurredAt: '2026-09-05T00:00:00.000Z', note: null, recordedBy: 'admin' },
+    { id: 'e3', phase: 'mature', occurredAt: '2026-09-12T00:00:00.000Z', note: null, recordedBy: 'admin' },
+  ],
+  curve: [{ day: '2026-09-03', mushroomCount: 40, matureCount: 8, capDiameterMean: 3.2 }],
+};
+
+async function mountView(query: Record<string, string> = {}) {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: '/batches', component: BatchesView }],
+  });
+  await router.push({ path: '/batches', query });
+  await router.isReady();
+  const wrapper = mount(BatchesView, { global: { plugins: [router] } });
+  await flushPromises();
+  return wrapper;
+}
+
 describe('BatchesView', () => {
   beforeEach(() => {
     currentUser.value = null;
@@ -45,23 +68,12 @@ describe('BatchesView', () => {
     asUser('production_admin');
     httpGet.mockImplementation((url: string) => {
       if (String(url).includes('/replay')) {
-        return Promise.resolve({
-          data: {
-            batch,
-            phases: [
-              { id: 'e1', phase: 'flush', occurredAt: '2026-09-01T00:00:00.000Z', note: null, recordedBy: 'admin' },
-              { id: 'e2', phase: 'fast_growth', occurredAt: '2026-09-05T00:00:00.000Z', note: null, recordedBy: 'admin' },
-              { id: 'e3', phase: 'mature', occurredAt: '2026-09-12T00:00:00.000Z', note: null, recordedBy: 'admin' },
-            ],
-            curve: [{ day: '2026-09-03', mushroomCount: 40, matureCount: 8, capDiameterMean: 3.2 }],
-          },
-        });
+        return Promise.resolve({ data: replayBody });
       }
       return Promise.resolve({ data: { items: [batch] } });
     });
     httpPost.mockResolvedValue({ data: { batch } });
-    const wrapper = mount(BatchesView);
-    await flushPromises();
+    const wrapper = await mountView();
 
     await wrapper.get('input[required]').setValue('B-0901');
     await wrapper.get('form').trigger('submit');
@@ -81,14 +93,29 @@ describe('BatchesView', () => {
     expect(replay.text()).toContain('成熟');
     expect(wrapper.get('[data-testid="batch-curve"]').text()).toContain('2026-09-03');
     expect(wrapper.get('[data-testid="batch-curve"]').text()).toContain('40');
+    expect(wrapper.get('[data-testid="batch-phases"]').text()).toContain('出菇');
+    expect(wrapper.get('[data-testid="batch-window"]').text()).toContain('回放 2026-09-03 至 2026-09-03，共 1 天');
+    wrapper.unmount();
+  });
+
+  it('opens the named batch replay from the address bar', async () => {
+    asUser('production_admin');
+    httpGet.mockImplementation((url: string) => {
+      if (String(url).includes('/replay')) return Promise.resolve({ data: replayBody });
+      return Promise.resolve({ data: { items: [batch] } });
+    });
+    const wrapper = await mountView({ batchCode: 'B-0901' });
+    expect(httpGet).toHaveBeenCalledWith('/batches/batch-1/replay');
+    expect(wrapper.get('[data-batch-code="B-0901"]').text()).toContain('成熟');
+    expect(wrapper.get('[data-testid="batch-phases"]').text()).toContain('快速生长');
+    expect(wrapper.get('[data-testid="batch-curve"]').text()).toContain('40');
     wrapper.unmount();
   });
 
   it('shows the error and no empty table when the list fails', async () => {
     asUser('viewer');
     httpGet.mockRejectedValue(new Error('down'));
-    const wrapper = mount(BatchesView);
-    await flushPromises();
+    const wrapper = await mountView();
     expect(wrapper.text()).toContain('请求失败');
     expect(wrapper.text()).not.toContain('还没有批次');
     expect(wrapper.find('table').exists()).toBe(false);

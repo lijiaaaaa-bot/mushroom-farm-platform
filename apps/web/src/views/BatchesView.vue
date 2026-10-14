@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import { canCorrectHarvest, currentUser } from '../auth';
 import { errorText, http } from '../api';
+import { shanghaiStamp } from '../disease-level';
 
 type Phase = 'flush' | 'fast_growth' | 'mature';
 
@@ -42,6 +44,7 @@ const PHASE_LABEL: Record<Phase, string> = {
   mature: '成熟',
 };
 
+const route = useRoute();
 const canWrite = () => canCorrectHarvest(currentUser.value?.role);
 const shedCode = ref('S01');
 const batchCode = ref('');
@@ -52,12 +55,20 @@ const replay = ref<Replay | null>(null);
 const error = ref('');
 const loading = ref(false);
 
+function queriedBatchCode() {
+  const value = route.query.batchCode;
+  return typeof value === 'string' ? value.trim() : '';
+}
+
 async function load() {
   loading.value = true;
   error.value = '';
   try {
     const response = await http.get<{ items: BatchRow[] }>('/batches');
     items.value = response.data.items;
+    const code = queriedBatchCode();
+    const row = code ? items.value.find((item) => item.batchCode === code) : undefined;
+    if (row) await openReplay(row.id);
   } catch (cause) {
     items.value = [];
     error.value = errorText(cause);
@@ -156,11 +167,11 @@ onMounted(() => {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="item in items" :key="item.id">
+          <tr v-for="item in items" :key="item.id" :data-batch-code="item.batchCode">
             <td>{{ item.shedCode }}</td>
             <td class="font-mono">{{ item.batchCode }}</td>
             <td>{{ PHASE_LABEL[item.phase] }}</td>
-            <td class="font-mono text-xs">{{ item.startedAt.slice(0, 10) }}</td>
+            <td class="font-mono text-xs">{{ shanghaiStamp(item.startedAt).slice(0, 10) }}</td>
             <td>
               <button class="btn-ghost" type="button" @click="openReplay(item.id)">回放</button>
             </td>
@@ -170,20 +181,26 @@ onMounted(() => {
     </section>
     <section v-if="replay" class="panel space-y-3" data-testid="batch-replay">
       <h2 class="text-lg">全周期回放 {{ replay.batch.batchCode }}</h2>
+      <p class="text-sm">当前阶段 {{ PHASE_LABEL[replay.batch.phase] }}</p>
       <div v-if="canWrite() && !replay.batch.closedAt" class="flex flex-wrap gap-2">
         <button class="btn-ghost" type="button" @click="recordPhase('flush')">记出菇</button>
         <button class="btn-ghost" type="button" @click="recordPhase('fast_growth')">记快速生长</button>
         <button class="btn-ghost" type="button" @click="recordPhase('mature')">记成熟</button>
         <button class="btn-ghost" type="button" @click="closeBatch">结束批次</button>
       </div>
-      <ol class="space-y-1 text-sm">
+      <h3 class="text-base">阶段</h3>
+      <ol class="space-y-1 text-sm" data-testid="batch-phases">
         <li v-for="phase in replay.phases" :key="phase.id">
-          {{ PHASE_LABEL[phase.phase] }} · {{ phase.occurredAt.slice(0, 16).replace('T', ' ') }}
+          {{ PHASE_LABEL[phase.phase] }} · {{ shanghaiStamp(phase.occurredAt) }}
           <span v-if="phase.recordedBy" class="text-mist">{{ phase.recordedBy }}</span>
         </li>
       </ol>
       <p v-if="!replay.curve.length" class="text-sm text-mist">该时间窗内没有棚级日桶。</p>
-      <table v-else class="data-table" data-testid="batch-curve">
+      <p v-else class="text-sm" data-testid="batch-window">
+        回放 {{ replay.curve[0].day }} 至 {{ replay.curve[replay.curve.length - 1].day }}，共 {{ replay.curve.length }} 天
+      </p>
+      <h3 v-if="replay.curve.length" class="text-base">棚级日桶</h3>
+      <table v-if="replay.curve.length" class="data-table" data-testid="batch-curve">
         <thead>
           <tr>
             <th>日期</th>
