@@ -529,7 +529,8 @@ describe('AlertsView', () => {
 
     await wrapper.get('[data-testid="alert-camera-clear"]').trigger('click');
     await flushPromises();
-    const last = httpGet.mock.calls.at(-1);
+    const calls = httpGet.mock.calls;
+    const last = calls[calls.length - 1];
     expect(last?.[0]).toBe('/alerts');
     expect(last?.[1].params.cameraCode).toBeUndefined();
     expect(last?.[1].params.status).toBe('open');
