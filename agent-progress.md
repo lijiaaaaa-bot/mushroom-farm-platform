@@ -3,6 +3,7 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
+- 2026-10-14：待确认告警可确认或关闭。列表与详情点「确认」或「关闭」后重新读取，刷新后状态仍是已确认或已关闭。`make demo-ack-one-alert`、`make demo-close-one-alert`。步骤 `docs/DEMO_ACK_CLOSE_ALERT.md`。不改 `make demo-one-alert`。分支 `cursor/alert-ack-close-9acd`。
 - 2026-10-14：一条温度过高告警 `make demo-one-alert`。识别摄像头 `CAM-ALERT-01`、温度 30，种子规则阈值 28。列表标题进入 `/alerts/:id`。`GET /api/v1/alerts/:id`。步骤 `docs/DEMO_ONE_ALERT.md`。分支 `cursor/demo-one-alert-6c94`。
 - 2026-10-14：登记 `CAM-REG-02` 再发一条心跳。`make demo-register-and-heartbeat` 先 `POST /api/v1/devices`，编码已存在则不改档案，再 POST 一次心跳（设备类型 `camera`，心跳时间为当前时刻）。设备列表要求在线且 `lastHeartbeatAt` 有值。页面 `/devices` 与 `/duty-screen/S01`。步骤 `docs/DEMO_REGISTER_AND_HEARTBEAT.md`。不改 `heartbeat.http.json`，不发识别。分支 `cursor/camera-heartbeat-online-217b`。
 - 2026-10-14：登记 `CAM-REG-02` 再发一条识别。`make demo-register-and-ingest` 先 `POST /api/v1/devices`，编码已存在则不改档案，再 POST 一次识别（摄像头编号 `CAM-REG-02`，识别时间为当前时刻）。页面 `/recognitions?cameraCode=CAM-REG-02`。步骤 `docs/DEMO_REGISTER_AND_INGEST.md`。不改 `make demo-one-ingest` 与样例文件里的 `CAM-DEMO-01`。分支 `cursor/demo-register-and-ingest-5cf6`。
@@ -18,6 +19,7 @@
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
+| 2026-10-14 | 告警列表与详情：待确认可点「确认」，未关闭可点「关闭」，成功后重新请求列表或详情。`make demo-ack-one-alert` 确认温度过高告警并再读 `status=acked`；`make demo-close-one-alert` 关闭并再读 `status=closed`。步骤 `docs/DEMO_ACK_CLOSE_ALERT.md`。不改 `make demo-one-alert` | 待 `make test` 与 `make gates` | 登录后的页面走查待本轮 |
 | 2026-10-14 | `make demo-one-alert`：样例识别改摄像头 `CAM-ALERT-01`、温度 30，POST 一次。未闭合温度过高告警已在则沿用。`GET /api/v1/alerts/:id`。告警列表标题进入 `/alerts/:id`，详情用中文标签 | `make test` 退出码 0（contracts 10，脚本 node:test 64，API jest 123，web vitest 134）；`make gates` 退出码 0。本机 Postgres 16 上 `make migrate`、`MQTT_ENABLED=false` 的 `make api`、`make web` 后 `make demo-one-alert` 退出码 0，第二次打印「沿用未闭合」且 id 不变。Chrome 登录后 `/alerts` 只有「温度过高告警」，点进详情可见严重、待确认、S01、CAM-ALERT-01、30℃、28℃，返回列表仍在。截图 `docs/evidence/demo-one-alert/`。PR #99 | 本环境无 Docker，未跑 `make up` |
 | 2026-10-14 | `make demo-register-and-heartbeat`：`POST /api/v1/devices` 登记 `CAM-REG-02`（409 时不改档案），再 POST 一次心跳（设备类型 `camera`，`online` 为 true，心跳时间为当前时刻）。设备列表要求 `online` 且 `lastHeartbeatAt` 有值。页面 `/devices` 与 `/duty-screen/S01`。步骤 `docs/DEMO_REGISTER_AND_HEARTBEAT.md`。不改 `heartbeat.http.json`，不发识别 | `make test` 退出码 0（contracts 10，脚本 node:test 59，API jest 122，web vitest 130）；`make gates` 退出码 0。PR #98 | 本环境无 Docker，未打开登录后的页面。不合并 |
 | 2026-10-14 | `make demo-register-and-ingest`：`POST /api/v1/devices` 登记 `CAM-REG-02`（409 时不改档案），再把样例识别的摄像头编号改成 `CAM-REG-02` 并 POST 一次，抓拍读回样例 JPEG。步骤 `docs/DEMO_REGISTER_AND_INGEST.md`。不改 `recognition.demo-one.json` 与 `make demo-one-ingest` | `make test` 退出码 0（contracts 10，脚本 node:test 49，API jest 122，web vitest 130）；`make gates` 退出码 0。PR #97 | CI 待看。未在本机打开登录后的页面 |

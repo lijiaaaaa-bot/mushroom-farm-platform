@@ -1,4 +1,4 @@
-.PHONY: up api web test smoke smoke-evidence migrate contracts lint gates gates-selftest backup object-tier demo-one-ingest demo-register-and-ingest demo-register-and-heartbeat demo-one-alert
+.PHONY: up api web test smoke smoke-evidence migrate contracts lint gates gates-selftest backup object-tier demo-one-ingest demo-register-and-ingest demo-register-and-heartbeat demo-one-alert demo-ack-one-alert demo-close-one-alert
 
 contracts:
 	npm --prefix packages/contracts install
@@ -27,7 +27,7 @@ lint:
 
 test: contracts lint
 	npm --prefix packages/contracts test
-	node --test scripts/boundaries.spec.mjs scripts/evidence.spec.mjs scripts/edge-simulator.spec.mjs scripts/demo-one-http-recognition.spec.mjs scripts/demo-register-and-ingest.spec.mjs scripts/demo-register-and-heartbeat.spec.mjs scripts/demo-one-alert.spec.mjs scripts/object-lifecycle.spec.mjs scripts/object-tier.spec.mjs scripts/backup-postgres.spec.mjs scripts/compose-minio-image.spec.mjs
+	node --test scripts/boundaries.spec.mjs scripts/evidence.spec.mjs scripts/edge-simulator.spec.mjs scripts/demo-one-http-recognition.spec.mjs scripts/demo-register-and-ingest.spec.mjs scripts/demo-register-and-heartbeat.spec.mjs scripts/demo-one-alert.spec.mjs scripts/demo-ack-close-alert.spec.mjs scripts/object-lifecycle.spec.mjs scripts/object-tier.spec.mjs scripts/backup-postgres.spec.mjs scripts/compose-minio-image.spec.mjs
 	npm --prefix apps/api test
 	npm --prefix apps/web run typecheck
 	npm --prefix apps/web test
@@ -64,6 +64,14 @@ demo-register-and-heartbeat: contracts
 # 发一条超阈值识别，留下一条温度过高告警。步骤见 docs/DEMO_ONE_ALERT.md。
 demo-one-alert: contracts
 	node scripts/demo-one-alert.mjs
+
+# 确认这条待确认告警，再读一次。步骤见 docs/DEMO_ACK_CLOSE_ALERT.md。
+demo-ack-one-alert: contracts
+	node scripts/demo-ack-close-alert.mjs ack
+
+# 关闭这条未闭合告警，再读一次。步骤见 docs/DEMO_ACK_CLOSE_ALERT.md。
+demo-close-one-alert: contracts
+	node scripts/demo-ack-close-alert.mjs close
 
 backup:
 	node scripts/backup-postgres.mjs

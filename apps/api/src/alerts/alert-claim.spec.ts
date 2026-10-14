@@ -360,4 +360,112 @@ describe('alert claim and false-positive close', () => {
       .set(auth('shed_manager', 'shed-s02', 'S02'));
     expect(outsider.status).toBe(403);
   });
+
+  it('acks a pending alert and a later read still shows acked', async () => {
+    const created = await createAlert('S01', '温度过高告警');
+    const ack = await request(app.getHttpServer())
+      .post(`/api/v1/alerts/${created.id}/ack`)
+      .set(auth('shed_manager', 'shed-a', 'S01'))
+      .send({ note: '已确认' });
+    expect(ack.status).toBe(201);
+    expect(ack.body).toMatchObject({
+      id: created.id,
+      status: 'acked',
+      ackedBy: 'shed-a',
+      ackNote: '已确认',
+    });
+    expect(auditWrite).toHaveBeenCalledWith(
+      expect.objectContaining({
+        action: 'alert.ack',
+        resource: `alert:${created.id}`,
+        detail: { note: '已确认' },
+      }),
+    );
+
+    const listed = await request(app.getHttpServer())
+      .get('/api/v1/alerts?status=acked&pageSize=50')
+      .set(auth('shed_manager', 'shed-b', 'S01'));
+    expect(listed.status).toBe(200);
+    expect(listed.body.items).toEqual([
+      expect.objectContaining({
+        id: created.id,
+        status: 'acked',
+        ackNote: '已确认',
+      }),
+    ]);
+
+    const stillOpen = await request(app.getHttpServer())
+      .get('/api/v1/alerts?status=open&pageSize=50')
+      .set(auth('shed_manager', 'shed-b', 'S01'));
+    expect(stillOpen.body.items).toEqual([]);
+
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/alerts/${created.id}`)
+      .set(auth('viewer', 'viewer-s01', 'S01'));
+    expect(detail.status).toBe(200);
+    expect(detail.body.status).toBe('acked');
+
+    const again = await request(app.getHttpServer())
+      .post(`/api/v1/alerts/${created.id}/ack`)
+      .set(auth('shed_manager', 'shed-a', 'S01'))
+      .send({ note: '再确认一次' });
+    expect(again.status).toBe(400);
+    expect(alerts.rows[0].status).toBe('acked');
+    expect(alerts.rows[0].ackNote).toBe('已确认');
+  });
+
+  it('closes a pending alert and a later read still shows closed', async () => {
+    const created = await createAlert('S01', '温度过高告警');
+    const closed = await request(app.getHttpServer())
+      .post(`/api/v1/alerts/${created.id}/close`)
+      .set(auth('production_admin', 'producer'))
+      .send({ note: '已关闭' });
+    expect(closed.status).toBe(201);
+    expect(closed.body).toMatchObject({
+      id: created.id,
+      status: 'closed',
+      closeReason: 'resolved',
+      closeNote: '已关闭',
+      closedBy: 'producer',
+    });
+
+    const listed = await request(app.getHttpServer())
+      .get('/api/v1/alerts?status=closed&pageSize=50')
+      .set(auth('super_admin', 'id-super'));
+    expect(listed.status).toBe(200);
+    expect(listed.body.items).toEqual([
+      expect.objectContaining({
+        id: created.id,
+        status: 'closed',
+        closeReason: 'resolved',
+        closeNote: '已关闭',
+      }),
+    ]);
+
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/alerts/${created.id}`)
+      .set(auth('super_admin', 'id-super'));
+    expect(detail.body).toMatchObject({
+      status: 'closed',
+      closeReason: 'resolved',
+      closeNote: '已关闭',
+    });
+
+    const open = await request(app.getHttpServer())
+      .get('/api/v1/alerts?status=open&pageSize=50')
+      .set(auth('super_admin', 'id-super'));
+    expect(open.body.items).toEqual([]);
+  });
+
+  it('forbids a viewer from confirming a pending alert', async () => {
+    const created = await createAlert();
+    auditWrite.mockClear();
+    const ack = await request(app.getHttpServer())
+      .post(`/api/v1/alerts/${created.id}/ack`)
+      .set(auth('viewer', 'viewer-s01', 'S01'))
+      .send({ note: '已确认' });
+    expect(ack.status).toBe(403);
+    expect(alerts.rows[0].status).toBe('open');
+    expect(auditWrite).not.toHaveBeenCalled();
+  });
 });
