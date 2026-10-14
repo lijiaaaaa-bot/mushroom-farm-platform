@@ -198,7 +198,7 @@ onMounted(load);
             :data-highlight="row.id === highlightId ? 'true' : undefined"
           >
             <td>{{ ALERT_LEVEL_LABEL[row.level] }}</td>
-            <td>
+            <td data-testid="alert-status">
               {{ ALERT_STATUS_LABEL[row.status] }}
               <span v-if="row.claimedBy && row.status !== 'closed'"> · 已认领</span>
             </td>
@@ -217,9 +217,9 @@ onMounted(load);
             </td>
             <td class="font-mono text-xs">{{ new Date(row.createdAt).toLocaleString('zh-CN') }}</td>
             <td class="space-x-2 whitespace-nowrap" v-if="canOperate(currentUser?.role)">
-              <button v-if="row.status === 'open'" class="btn-ghost" type="button" @click="act(row.id, 'ack')">确认</button>
+              <button v-if="row.status === 'open'" class="btn-ghost" type="button" data-testid="alert-ack" @click="act(row.id, 'ack')">确认</button>
               <button v-if="row.status !== 'closed'" class="btn-ghost" type="button" @click="act(row.id, 'claim')">认领</button>
-              <button v-if="row.status !== 'closed'" class="btn-ghost" type="button" @click="act(row.id, 'close')">关闭</button>
+              <button v-if="row.status !== 'closed'" class="btn-ghost" type="button" data-testid="alert-close" @click="act(row.id, 'close')">关闭</button>
               <button
                 v-if="row.status !== 'closed'"
                 class="btn-ghost"

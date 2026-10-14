@@ -1,12 +1,14 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { createMemoryHistory, createRouter } from 'vue-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { currentUser, type SessionUser } from '../auth';
 import AlertDetailView from './AlertDetailView.vue';
 
 const httpGet = vi.hoisted(() => vi.fn());
+const httpPost = vi.hoisted(() => vi.fn());
 
 vi.mock('../api', () => ({
-  http: { get: httpGet },
+  http: { get: httpGet, post: httpPost },
   errorText: () => '请求失败',
 }));
 
@@ -44,9 +46,22 @@ async function mountDetail(id = 'alert-1') {
   return wrapper;
 }
 
+function asUser(role: SessionUser['role']) {
+  currentUser.value = {
+    id: 'user-1',
+    username: role === 'shed_manager' ? 'shed-a' : role,
+    displayName: role,
+    role,
+    shedCodes: ['S01'],
+  };
+}
+
 describe('AlertDetailView', () => {
   beforeEach(() => {
+    localStorage.clear();
     httpGet.mockReset();
+    httpPost.mockReset();
+    currentUser.value = null;
   });
 
   it('shows the fields a duty person reads from GET /alerts/:id', async () => {
@@ -103,6 +118,97 @@ describe('AlertDetailView', () => {
     expect(wrapper.get('[data-field="closeReason"]').text()).toBe('误报');
     expect(wrapper.get('[data-field="closeNote"]').text()).toBe('现场无异常');
     expect(wrapper.get('[data-field="claimedBy"]').text()).toBe('shed-a');
+    expect(wrapper.find('[data-testid="alert-actions"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('confirms a pending alert and still shows 已确认 after refresh', async () => {
+    asUser('shed_manager');
+    httpGet.mockResolvedValueOnce({ data: alert });
+    const wrapper = await mountDetail();
+
+    expect(wrapper.get('[data-field="status"]').text()).toBe('待确认');
+    expect(wrapper.get('[data-testid="alert-ack"]').text()).toBe('确认');
+    const acked = { ...alert, status: 'acked' as const, ackNote: '已确认' };
+    httpPost.mockResolvedValue({ data: acked });
+    httpGet.mockResolvedValueOnce({ data: acked });
+    await wrapper.get('[data-testid="alert-ack"]').trigger('click');
+    await flushPromises();
+
+    expect(httpPost).toHaveBeenCalledWith('/alerts/alert-1/ack', { note: '已确认' });
+    expect(httpGet).toHaveBeenLastCalledWith('/alerts/alert-1');
+    expect(wrapper.get('[data-field="status"]').text()).toBe('已确认');
+    expect(wrapper.get('[data-field="ackNote"]').text()).toBe('已确认');
+    expect(wrapper.find('[data-testid="alert-ack"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="alert-close"]').text()).toBe('关闭');
+    wrapper.unmount();
+
+    httpGet.mockResolvedValue({ data: acked });
+    const refreshed = await mountDetail();
+    expect(refreshed.get('[data-field="status"]').text()).toBe('已确认');
+    expect(refreshed.get('[data-field="ackNote"]').text()).toBe('已确认');
+    expect(refreshed.find('[data-testid="alert-ack"]').exists()).toBe(false);
+    refreshed.unmount();
+  });
+
+  it('closes a pending alert and still shows 已关闭 after refresh', async () => {
+    asUser('production_admin');
+    httpGet.mockResolvedValueOnce({ data: alert });
+    const wrapper = await mountDetail();
+    const closed = {
+      ...alert,
+      status: 'closed' as const,
+      closeReason: 'resolved' as const,
+      closeNote: '已关闭',
+      ackNote: '关闭时自动确认',
+    };
+    httpPost.mockResolvedValue({ data: closed });
+    httpGet.mockResolvedValueOnce({ data: closed });
+    await wrapper.get('[data-testid="alert-close"]').trigger('click');
+    await flushPromises();
+
+    expect(httpPost).toHaveBeenCalledWith('/alerts/alert-1/close', { note: '已关闭' });
+    expect(wrapper.get('[data-field="status"]').text()).toBe('已关闭');
+    expect(wrapper.get('[data-field="closeReason"]').text()).toBe('正常关闭');
+    expect(wrapper.get('[data-field="closeNote"]').text()).toBe('已关闭');
+    expect(wrapper.find('[data-testid="alert-actions"]').exists()).toBe(false);
+    wrapper.unmount();
+
+    httpGet.mockResolvedValue({ data: closed });
+    const refreshed = await mountDetail();
+    expect(refreshed.get('[data-field="status"]').text()).toBe('已关闭');
+    expect(refreshed.get('[data-field="closeReason"]').text()).toBe('正常关闭');
+    expect(refreshed.find('[data-testid="alert-ack"]').exists()).toBe(false);
+    expect(refreshed.find('[data-testid="alert-close"]').exists()).toBe(false);
+    refreshed.unmount();
+  });
+
+  it('keeps the pending alert on screen when confirm fails', async () => {
+    asUser('shed_manager');
+    httpGet.mockResolvedValue({ data: alert });
+    httpPost.mockRejectedValue(new Error('down'));
+    const wrapper = await mountDetail();
+    const reads = httpGet.mock.calls.length;
+
+    await wrapper.get('[data-testid="alert-ack"]').trigger('click');
+    await flushPromises();
+
+    expect(httpGet.mock.calls.length).toBe(reads);
+    expect(wrapper.get('[data-testid="alert-action-error"]').text()).toBe('请求失败');
+    expect(wrapper.get('[data-field="status"]').text()).toBe('待确认');
+    expect(wrapper.get('[data-testid="alert-ack"]').text()).toBe('确认');
+    wrapper.unmount();
+  });
+
+  it('hides confirm and close for a viewer', async () => {
+    asUser('viewer');
+    httpGet.mockResolvedValue({ data: alert });
+    const wrapper = await mountDetail();
+
+    expect(wrapper.get('[data-field="status"]').text()).toBe('待确认');
+    expect(wrapper.find('[data-testid="alert-actions"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="alert-ack"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="alert-close"]').exists()).toBe(false);
     wrapper.unmount();
   });
 });

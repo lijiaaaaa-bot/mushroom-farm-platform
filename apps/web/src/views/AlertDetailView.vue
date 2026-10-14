@@ -12,6 +12,7 @@ import {
   type AlertMetric,
   type AlertStatus,
 } from '@mushroom/contracts';
+import { canOperate, currentUser } from '../auth';
 import { errorText, http } from '../api';
 
 interface AlertDetail {
@@ -37,6 +38,7 @@ const route = useRoute();
 const row = ref<AlertDetail | null>(null);
 const loading = ref(true);
 const error = ref('');
+const actionError = ref('');
 
 const alertId = computed(() => {
   const value = route.params.id;
@@ -107,10 +109,25 @@ const fields = computed(() => {
   ];
 });
 
+async function act(action: 'ack' | 'close') {
+  const id = row.value?.id;
+  if (!id) return;
+  actionError.value = '';
+  try {
+    await http.post(`/alerts/${id}/${action}`, {
+      note: action === 'ack' ? '已确认' : '已关闭',
+    });
+    await load();
+  } catch (cause) {
+    actionError.value = errorText(cause);
+  }
+}
+
 async function load() {
   const id = alertId.value;
   loading.value = true;
   error.value = '';
+  actionError.value = '';
   row.value = null;
   if (!id) {
     error.value = '告警不存在';
@@ -148,6 +165,21 @@ watch(alertId, () => {
           <dd :data-field="field.key">{{ field.value }}</dd>
         </div>
       </dl>
+      <p v-if="actionError" class="mt-3 text-sm text-danger" data-testid="alert-action-error">{{ actionError }}</p>
+      <div
+        v-if="canOperate(currentUser?.role) && row.status !== 'closed'"
+        class="mt-4 flex flex-wrap gap-2"
+        data-testid="alert-actions"
+      >
+        <button
+          v-if="row.status === 'open'"
+          class="btn-ghost"
+          type="button"
+          data-testid="alert-ack"
+          @click="act('ack')"
+        >确认</button>
+        <button class="btn-ghost" type="button" data-testid="alert-close" @click="act('close')">关闭</button>
+      </div>
     </section>
   </div>
 </template>

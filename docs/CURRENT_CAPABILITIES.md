@@ -140,6 +140,10 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 `make demo-one-alert` 读取 `recognition.demo-one.json`，把本次请求的摄像头改成 `CAM-ALERT-01`、温度改成 30，只 POST 一次识别。样例文件里的 `CAM-DEMO-01` 与温度 22.5 不改。种子规则「温度过高」（阈值 28，严重）因此留下一条未闭合告警。同一摄像头已有未闭合的温度过高告警时不再新建，命令仍打印该条 id。登录后打开 `/alerts`，点标题进入 `/alerts/:id`。步骤见 [`DEMO_ONE_ALERT.md`](DEMO_ONE_ALERT.md)。
 
+待确认的行可以点「确认」，未关闭的行可以点「关闭」。列表点下去后重新请求 `GET /api/v1/alerts`。详情页同样两个按钮：确认备注为「已确认」，关闭备注为「已关闭」，然后重新请求 `GET /api/v1/alerts/:id`。刷新页面后状态仍是这次写入的结果。查看人员没有这两个按钮。列表上的「处置备注」默认是「已确认」，确认和关闭都带上这个备注。
+
+`make demo-ack-one-alert` 确认这条待确认的温度过高告警，再读详情和 `status=acked` 的列表。已经是已确认、没有待确认时命令失败，不改这条告警。`make demo-close-one-alert` 关闭这条未闭合告警（待确认或已确认），再读详情和 `status=closed` 的列表。没有未闭合告警时，先按 `make demo-one-alert` 的方式补一条识别再关闭。两个命令都不改样例文件，也不改 `make demo-one-alert`。步骤见 [`DEMO_ACK_CLOSE_ALERT.md`](DEMO_ACK_CLOSE_ALERT.md)。
+
 | 动作 | 接口 | 结果 |
 |------|------|------|
 | 确认 | `POST /api/v1/alerts/:id/ack` | 状态 `acked` |

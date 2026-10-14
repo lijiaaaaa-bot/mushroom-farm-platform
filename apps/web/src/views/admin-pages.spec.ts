@@ -288,6 +288,81 @@ describe('AlertsView', () => {
     wrapper.unmount();
   });
 
+  it('confirms a pending alert and still shows 已确认 after refresh', async () => {
+    asUser('shed_manager');
+    const open = {
+      ...alert,
+      title: '温度过高告警',
+      cameraCode: 'CAM-ALERT-01',
+      status: 'open' as const,
+    };
+    const acked = { ...open, status: 'acked' as const };
+    httpGet.mockResolvedValueOnce({ data: { items: [open], total: 1 } });
+    httpPost.mockResolvedValue({ data: acked });
+    const wrapper = await mountView(AlertsView);
+
+    expect(wrapper.get('[data-testid="alert-status"]').text()).toBe('待确认');
+    expect(wrapper.get('[data-testid="alert-ack"]').text()).toBe('确认');
+    httpGet.mockResolvedValue({ data: { items: [acked], total: 1 } });
+    await wrapper.get('[data-testid="alert-ack"]').trigger('click');
+    await flushPromises();
+
+    expect(httpPost).toHaveBeenCalledWith('/alerts/alert-1/ack', { note: '已确认' });
+    expect(wrapper.get('[data-testid="alert-status"]').text()).toBe('已确认');
+    expect(wrapper.find('[data-testid="alert-ack"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="alert-close"]').text()).toBe('关闭');
+    wrapper.unmount();
+
+    httpGet.mockResolvedValue({ data: { items: [acked], total: 1 } });
+    const refreshed = await mountView(AlertsView);
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: undefined, level: undefined },
+    });
+    expect(refreshed.get('[data-testid="alert-status"]').text()).toBe('已确认');
+    expect(refreshed.find('[data-testid="alert-ack"]').exists()).toBe(false);
+    expect(refreshed.get('[data-testid="alert-close"]').text()).toBe('关闭');
+    refreshed.unmount();
+  });
+
+  it('closes a pending alert and still shows 已关闭 after refresh', async () => {
+    asUser('production_admin');
+    const open = {
+      ...alert,
+      title: '温度过高告警',
+      status: 'open' as const,
+    };
+    const closed = {
+      ...open,
+      status: 'closed' as const,
+      closeReason: 'resolved' as const,
+      closeNote: '已确认',
+    };
+    httpGet.mockResolvedValueOnce({ data: { items: [open], total: 1 } });
+    httpPost.mockResolvedValue({ data: closed });
+    const wrapper = await mountView(AlertsView);
+
+    expect(wrapper.get('[data-testid="alert-status"]').text()).toBe('待确认');
+    httpGet.mockResolvedValue({ data: { items: [closed], total: 1 } });
+    await wrapper.get('[data-testid="alert-close"]').trigger('click');
+    await flushPromises();
+
+    expect(httpPost).toHaveBeenCalledWith('/alerts/alert-1/close', { note: '已确认' });
+    expect(wrapper.get('[data-testid="alert-status"]').text()).toBe('已关闭');
+    expect(wrapper.text()).toContain('正常关闭');
+    expect(wrapper.text()).toContain('关闭备注 已确认');
+    expect(wrapper.find('[data-testid="alert-ack"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="alert-close"]').exists()).toBe(false);
+    wrapper.unmount();
+
+    httpGet.mockResolvedValue({ data: { items: [closed], total: 1 } });
+    const refreshed = await mountView(AlertsView);
+    expect(refreshed.get('[data-testid="alert-status"]').text()).toBe('已关闭');
+    expect(refreshed.text()).toContain('正常关闭');
+    expect(refreshed.find('[data-testid="alert-ack"]').exists()).toBe(false);
+    expect(refreshed.find('[data-testid="alert-close"]').exists()).toBe(false);
+    refreshed.unmount();
+  });
+
   it('sends status and level when selected and omits both when set back to 全部', async () => {
     httpGet.mockResolvedValue({ data: { items: [alert], total: 1 } });
     const wrapper = await mountView(AlertsView);
