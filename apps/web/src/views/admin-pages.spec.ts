@@ -614,13 +614,20 @@ describe('AlertsView', () => {
     wrapper.unmount();
   });
 
-  it('filters by status, keeps the detail link, and shows both rows again for 全部', async () => {
+  it('filters by status, keeps the detail link, and shows all three rows again for 全部', async () => {
     const pending = {
       ...alert,
       id: 'alert-open',
       cameraCode: 'CAM-STATUS-01',
       status: 'open' as const,
       title: '待确认筛选告警',
+    };
+    const confirmed = {
+      ...alert,
+      id: 'alert-acked',
+      cameraCode: 'CAM-STATUS-03',
+      status: 'acked' as const,
+      title: '已确认筛选告警',
     };
     const closed = {
       ...alert,
@@ -629,15 +636,17 @@ describe('AlertsView', () => {
       status: 'closed' as const,
       title: '已关闭筛选告警',
     };
+    const seeded = [pending, confirmed, closed];
     httpGet.mockImplementation((_url: string, config?: { params?: { status?: string } }) => {
       const status = config?.params?.status;
-      const items = [pending, closed].filter((row) => !status || row.status === status);
+      const items = seeded.filter((row) => !status || row.status === status);
       return Promise.resolve({ data: { items, total: items.length } });
     });
     const wrapper = await mountView(AlertsView);
 
     expect(wrapper.findAll('[data-testid="alert-detail-link"]').map((node) => node.text())).toEqual([
       '待确认筛选告警',
+      '已确认筛选告警',
       '已关闭筛选告警',
     ]);
 
@@ -651,9 +660,26 @@ describe('AlertsView', () => {
       '待确认筛选告警',
     ]);
     expect(wrapper.findAll('[data-testid="alert-status"]').map((node) => node.text())).toEqual(['待确认']);
+    expect(wrapper.text()).not.toContain('已确认筛选告警');
     expect(wrapper.text()).not.toContain('已关闭筛选告警');
     expect(wrapper.get('[data-testid="alert-detail-link"]').attributes('href')).toBe(
       '/alerts/alert-open?status=open',
+    );
+
+    await wrapper.get('[data-testid="alert-status-filter"]').setValue('acked');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: 'acked', level: undefined },
+    });
+    expect(memoryRouter.currentRoute.value.fullPath).toBe('/alerts?status=acked');
+    expect(wrapper.findAll('[data-testid="alert-detail-link"]').map((node) => node.text())).toEqual([
+      '已确认筛选告警',
+    ]);
+    expect(wrapper.findAll('[data-testid="alert-status"]').map((node) => node.text())).toEqual(['已确认']);
+    expect(wrapper.text()).not.toContain('待确认筛选告警');
+    expect(wrapper.text()).not.toContain('已关闭筛选告警');
+    expect(wrapper.get('[data-testid="alert-detail-link"]').attributes('href')).toBe(
+      '/alerts/alert-acked?status=acked',
     );
 
     await wrapper.get('[data-testid="alert-status-filter"]').setValue('closed');
@@ -668,6 +694,7 @@ describe('AlertsView', () => {
     ]);
     expect(wrapper.findAll('[data-testid="alert-status"]').map((node) => node.text())).toEqual(['已关闭']);
     expect(wrapper.text()).not.toContain('待确认筛选告警');
+    expect(wrapper.text()).not.toContain('已确认筛选告警');
     expect(wrapper.get('[data-testid="alert-detail-link"]').attributes('href')).toBe(
       '/alerts/alert-closed?status=closed',
     );
@@ -681,8 +708,36 @@ describe('AlertsView', () => {
     expect(memoryRouter.currentRoute.value.query.status).toBeUndefined();
     expect(wrapper.findAll('[data-testid="alert-detail-link"]').map((node) => node.text())).toEqual([
       '待确认筛选告警',
+      '已确认筛选告警',
       '已关闭筛选告警',
     ]);
+    wrapper.unmount();
+  });
+
+  it('shows 暂无告警 when the selected status matches nothing', async () => {
+    const pending = {
+      ...alert,
+      id: 'alert-open',
+      status: 'open' as const,
+      title: '待确认筛选告警',
+    };
+    httpGet.mockImplementation((_url: string, config?: { params?: { status?: string } }) => {
+      const status = config?.params?.status;
+      const items = status ? [] : [pending];
+      return Promise.resolve({ data: { items, total: items.length } });
+    });
+    const wrapper = await mountView(AlertsView);
+    expect(wrapper.text()).toContain('待确认筛选告警');
+
+    await wrapper.get('[data-testid="alert-status-filter"]').setValue('acked');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: 'acked', level: undefined },
+    });
+    expect(memoryRouter.currentRoute.value.fullPath).toBe('/alerts?status=acked');
+    expect(wrapper.text()).toContain('暂无告警');
+    expect(wrapper.text()).not.toContain('待确认筛选告警');
+    expect(wrapper.find('[data-testid="alert-detail-link"]').exists()).toBe(false);
     wrapper.unmount();
   });
 

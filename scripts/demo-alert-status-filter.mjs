@@ -1,23 +1,27 @@
 #!/usr/bin/env node
 /**
- * 留下一条待确认告警和一条已关闭告警，再按状态筛选。
- * status=open 只有待确认；status=closed 只有已关闭；不带 status 时两条都在。
- * 关闭沿用 demo-close-one-alert 的备注「已关闭」，不改那条温度过高告警。
+ * 留下待确认、已确认、已关闭各一条告警，再按状态筛选。
+ * status=open 只有待确认；status=acked 只有已确认；status=closed 只有已关闭。
+ * 不带 status 时三条都在。
+ * 确认备注是「已确认」，关闭备注是「已关闭」，与 demo-ack-close-alert 相同。
+ * 不改那条温度过高告警。
  */
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { apiBase, repoRoot } from './lib/ingest-wire.mjs';
 import { webOriginFromEnv } from './demo-one-http-recognition.mjs';
-import { CLOSE_NOTE } from './demo-ack-close-alert.mjs';
+import { ACK_NOTE, CLOSE_NOTE } from './demo-ack-close-alert.mjs';
 
 const require = createRequire(import.meta.url);
 
 export const STATUS_SHED = 'S01';
 export const STATUS_LEVEL = 'warning';
 export const OPEN_CAMERA = 'CAM-STATUS-01';
+export const ACKED_CAMERA = 'CAM-STATUS-03';
 export const CLOSED_CAMERA = 'CAM-STATUS-02';
 export const OPEN_STATUS = 'open';
+export const ACKED_STATUS = 'acked';
 export const CLOSED_STATUS = 'closed';
 
 export const STATUS_ROWS = [
@@ -25,6 +29,11 @@ export const STATUS_ROWS = [
     cameraCode: OPEN_CAMERA,
     title: '待确认筛选告警',
     status: OPEN_STATUS,
+  },
+  {
+    cameraCode: ACKED_CAMERA,
+    title: '已确认筛选告警',
+    status: ACKED_STATUS,
   },
   {
     cameraCode: CLOSED_CAMERA,
@@ -35,6 +44,12 @@ export const STATUS_ROWS = [
 
 function contracts() {
   return require(join(repoRoot(), 'packages/contracts/dist/index.js'));
+}
+
+function specFor(status) {
+  const spec = STATUS_ROWS.find((row) => row.status === status);
+  if (!spec) throw new Error(`没有状态 ${status} 的演示告警`);
+  return spec;
 }
 
 export function alertMessage(cameraCode) {
@@ -51,38 +66,52 @@ export function sameIdentity(row, spec) {
 }
 
 export function pickOpen(items) {
-  const spec = STATUS_ROWS[0];
+  const spec = specFor(OPEN_STATUS);
+  return items.find((row) => sameIdentity(row, spec) && row.status === OPEN_STATUS) || null;
+}
+
+export function pickAcked(items) {
+  const spec = specFor(ACKED_STATUS);
+  return items.find((row) => sameIdentity(row, spec) && row.status === ACKED_STATUS) || null;
+}
+
+export function pickAckable(items) {
+  const spec = specFor(ACKED_STATUS);
   return items.find((row) => sameIdentity(row, spec) && row.status === OPEN_STATUS) || null;
 }
 
 export function pickClosed(items) {
-  const spec = STATUS_ROWS[1];
+  const spec = specFor(CLOSED_STATUS);
   return items.find((row) => sameIdentity(row, spec) && row.status === CLOSED_STATUS) || null;
 }
 
 export function pickClosable(items) {
-  const spec = STATUS_ROWS[1];
+  const spec = specFor(CLOSED_STATUS);
   return (
     items.find(
       (row) =>
-        sameIdentity(row, spec) && (row.status === OPEN_STATUS || row.status === 'acked'),
+        sameIdentity(row, spec) && (row.status === OPEN_STATUS || row.status === ACKED_STATUS),
     ) || null
   );
 }
 
 function statusLabel(status) {
   if (status === OPEN_STATUS) return '待确认';
+  if (status === ACKED_STATUS) return '已确认';
   if (status === CLOSED_STATUS) return '已关闭';
   return status;
 }
 
 export function assertOnlyStatus(items, status, requiredId, forbiddenId) {
   const label = statusLabel(status);
+  const forbidden = forbiddenId == null ? [] : [].concat(forbiddenId);
   if (!items.some((row) => row.id === requiredId && row.status === status)) {
     throw new Error(`筛选${label}后没有告警 ${requiredId}`);
   }
-  if (forbiddenId && items.some((row) => row.id === forbiddenId)) {
-    throw new Error(`筛选${label}后仍有另一条演示告警 ${forbiddenId}`);
+  for (const id of forbidden) {
+    if (items.some((row) => row.id === id)) {
+      throw new Error(`筛选${label}后仍有另一条演示告警 ${id}`);
+    }
   }
   const other = items.filter((row) => row.status !== status);
   if (other.length) {
@@ -193,6 +222,30 @@ async function createAlert(token, spec) {
   return body;
 }
 
+async function ackAlert(token, id) {
+  let response;
+  try {
+    response = await fetch(`${apiBase()}/alerts/${encodeURIComponent(id)}/ack`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${token}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({ note: ACK_NOTE }),
+    });
+  } catch (error) {
+    throw new Error(`API 连不上（${apiBase()}）。先执行 make up、make migrate、make api。${error.message}`);
+  }
+  const body = await readJson(response);
+  if (!response.ok) {
+    throw new Error(`确认失败 ${response.status} ${messageText(body) || JSON.stringify(body)}`);
+  }
+  if (body.status !== ACKED_STATUS || body.ackNote !== ACK_NOTE) {
+    throw new Error(`确认后状态是 ${body.status || '空'}，备注是 ${body.ackNote || '空'}`);
+  }
+  return body;
+}
+
 async function closeAlert(token, id) {
   let response;
   try {
@@ -245,8 +298,7 @@ export function alertListUrl(webOrigin = webOriginFromEnv()) {
 }
 
 export function statusListUrl(status, webOrigin = webOriginFromEnv()) {
-  const origin = String(webOrigin).replace(/\/$/, '');
-  return `${origin}/alerts?status=${encodeURIComponent(status)}`;
+  return `${alertListUrl(webOrigin)}?status=${encodeURIComponent(status)}`;
 }
 
 export function alertDetailUrl(id, status, webOrigin = webOriginFromEnv()) {
@@ -256,105 +308,134 @@ export function alertDetailUrl(id, status, webOrigin = webOriginFromEnv()) {
 
 function howLabel(row) {
   if (row.how === 'created' && row.status === CLOSED_STATUS) return '新建并关闭';
+  if (row.how === 'created' && row.status === ACKED_STATUS) return '新建并确认';
   if (row.how === 'created') return '新建';
+  if (row.how === 'acked') return '确认';
   if (row.how === 'closed') return '关闭';
   return '沿用';
 }
 
 export function formatStatusProof({
   openRow,
+  ackedRow,
   closedRow,
   openCount,
+  ackedCount,
   closedCount,
   openDetail,
+  ackedDetail,
   closedDetail,
   webOrigin = webOriginFromEnv(),
 }) {
   const labels = contracts();
   const lines = [
-    '留下 2 条告警',
+    '留下 3 条告警',
     `待确认: ${howLabel(openRow)} ${openRow.id}`,
+    `已确认: ${howLabel(ackedRow)} ${ackedRow.id}`,
     `已关闭: ${howLabel(closedRow)} ${closedRow.id}`,
     `筛选待确认条数: ${openCount}`,
+    '筛选后已确认: 无',
     '筛选后已关闭: 无',
     '待确认详情可打开: 是',
     `待确认详情状态: ${labels.ALERT_STATUS_LABEL[openDetail.status] || openDetail.status}`,
+    `筛选已确认条数: ${ackedCount}`,
+    '筛选后待确认: 无',
+    '筛选后已关闭: 无',
+    '已确认详情可打开: 是',
+    `已确认详情状态: ${labels.ALERT_STATUS_LABEL[ackedDetail.status] || ackedDetail.status}`,
     `筛选已关闭条数: ${closedCount}`,
     '筛选后待确认: 无',
+    '筛选后已确认: 无',
     '已关闭详情可打开: 是',
     `已关闭详情状态: ${labels.ALERT_STATUS_LABEL[closedDetail.status] || closedDetail.status}`,
-    '全部仍含这两条: 是',
+    '全部仍含这三条: 是',
     '登录: admin / Admin@123456',
     `告警列表: ${alertListUrl(webOrigin)}`,
     `待确认: ${statusListUrl(OPEN_STATUS, webOrigin)}`,
+    `已确认: ${statusListUrl(ACKED_STATUS, webOrigin)}`,
     `已关闭: ${statusListUrl(CLOSED_STATUS, webOrigin)}`,
     `待确认详情: ${alertDetailUrl(openDetail.id, OPEN_STATUS, webOrigin)}`,
+    `已确认详情: ${alertDetailUrl(ackedDetail.id, ACKED_STATUS, webOrigin)}`,
     `已关闭详情: ${alertDetailUrl(closedDetail.id, CLOSED_STATUS, webOrigin)}`,
   ];
   return lines.join('\n');
 }
 
+async function ensureOpen(token) {
+  const spec = specFor(OPEN_STATUS);
+  const listed = await listAllAlerts(token, {
+    shedCode: STATUS_SHED,
+    cameraCode: spec.cameraCode,
+  });
+  const existing = pickOpen(listed.items);
+  if (existing) return { ...spec, id: existing.id, how: 'reused' };
+  const created = await createAlert(token, spec);
+  return { ...spec, id: created.id, how: 'created' };
+}
+
+async function ensureAcked(token) {
+  const spec = specFor(ACKED_STATUS);
+  const listed = await listAllAlerts(token, {
+    shedCode: STATUS_SHED,
+    cameraCode: spec.cameraCode,
+  });
+  const existing = pickAcked(listed.items);
+  if (existing) return { ...spec, id: existing.id, how: 'reused' };
+  const ackable = pickAckable(listed.items);
+  const target = ackable || (await createAlert(token, spec));
+  const acked = await ackAlert(token, target.id);
+  return { ...spec, id: acked.id, how: ackable ? 'acked' : 'created' };
+}
+
+async function ensureClosed(token) {
+  const spec = specFor(CLOSED_STATUS);
+  const listed = await listAllAlerts(token, {
+    shedCode: STATUS_SHED,
+    cameraCode: spec.cameraCode,
+  });
+  const existing = pickClosed(listed.items);
+  if (existing) return { ...spec, id: existing.id, how: 'reused' };
+  const closable = pickClosable(listed.items);
+  const target = closable || (await createAlert(token, spec));
+  const closed = await closeAlert(token, target.id);
+  return { ...spec, id: closed.id, how: closable ? 'closed' : 'created' };
+}
+
 export async function sendStatusFilterDemo() {
   const token = await login();
-  const openSpec = STATUS_ROWS[0];
-  const closedSpec = STATUS_ROWS[1];
-
-  const openListed = await listAllAlerts(token, {
-    shedCode: STATUS_SHED,
-    cameraCode: openSpec.cameraCode,
-  });
-  const existingOpen = pickOpen(openListed.items);
-  let openRow;
-  if (existingOpen) {
-    openRow = {
-      ...openSpec,
-      id: existingOpen.id,
-      how: 'reused',
-    };
-  } else {
-    const created = await createAlert(token, openSpec);
-    openRow = { ...openSpec, id: created.id, how: 'created' };
-  }
-
-  const closedListed = await listAllAlerts(token, {
-    shedCode: STATUS_SHED,
-    cameraCode: closedSpec.cameraCode,
-  });
-  const existingClosed = pickClosed(closedListed.items);
-  let closedRow;
-  if (existingClosed) {
-    closedRow = { ...closedSpec, id: existingClosed.id, how: 'reused' };
-  } else {
-    const closable = pickClosable(closedListed.items);
-    const target = closable || (await createAlert(token, closedSpec));
-    const closed = await closeAlert(token, target.id);
-    closedRow = {
-      ...closedSpec,
-      id: closed.id,
-      how: closable ? 'closed' : 'created',
-    };
-  }
-
+  const openRow = await ensureOpen(token);
+  const ackedRow = await ensureAcked(token);
+  const closedRow = await ensureClosed(token);
+  const others = {
+    [OPEN_STATUS]: [ackedRow.id, closedRow.id],
+    [ACKED_STATUS]: [openRow.id, closedRow.id],
+    [CLOSED_STATUS]: [openRow.id, ackedRow.id],
+  };
   const openList = await listAllAlerts(token, { status: OPEN_STATUS });
-  assertOnlyStatus(openList.items, OPEN_STATUS, openRow.id, closedRow.id);
+  assertOnlyStatus(openList.items, OPEN_STATUS, openRow.id, others[OPEN_STATUS]);
+  const ackedList = await listAllAlerts(token, { status: ACKED_STATUS });
+  assertOnlyStatus(ackedList.items, ACKED_STATUS, ackedRow.id, others[ACKED_STATUS]);
   const closedList = await listAllAlerts(token, { status: CLOSED_STATUS });
-  assertOnlyStatus(closedList.items, CLOSED_STATUS, closedRow.id, openRow.id);
+  assertOnlyStatus(closedList.items, CLOSED_STATUS, closedRow.id, others[CLOSED_STATUS]);
   const openDetail = assertDetail(await readAlert(token, openRow.id), openRow);
+  const ackedDetail = assertDetail(await readAlert(token, ackedRow.id), ackedRow);
   const closedDetail = assertDetail(await readAlert(token, closedRow.id), closedRow);
   const all = await listAllAlerts(token, { shedCode: STATUS_SHED });
-  assertBothPresent(all.items, [openRow.id, closedRow.id]);
-  const seen = new Set(
-    all.items.filter((row) => row.id === openRow.id || row.id === closedRow.id).map((row) => row.status),
-  );
-  if (!seen.has(OPEN_STATUS) || !seen.has(CLOSED_STATUS)) {
-    throw new Error('全部列表没有同时留下待确认和已关闭');
+  const ids = [openRow.id, ackedRow.id, closedRow.id];
+  assertBothPresent(all.items, ids);
+  const seen = new Set(all.items.filter((row) => ids.includes(row.id)).map((row) => row.status));
+  if (!seen.has(OPEN_STATUS) || !seen.has(ACKED_STATUS) || !seen.has(CLOSED_STATUS)) {
+    throw new Error('全部列表没有同时留下待确认、已确认和已关闭');
   }
   return {
     openRow,
+    ackedRow,
     closedRow,
     openCount: openList.total,
+    ackedCount: ackedList.total,
     closedCount: closedList.total,
     openDetail,
+    ackedDetail,
     closedDetail,
   };
 }
@@ -363,7 +444,7 @@ function usage() {
   return `用法:
   node scripts/demo-alert-status-filter.mjs
 
-留下一条待确认和一条已关闭告警，并按状态筛选。步骤见 docs/DEMO_ALERT_STATUS_FILTER.md。`;
+留下待确认、已确认、已关闭各一条告警，并按状态筛选。步骤见 docs/DEMO_ALERT_STATUS_FILTER.md。`;
 }
 
 async function main() {
