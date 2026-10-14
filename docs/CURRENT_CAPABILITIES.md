@@ -122,6 +122,10 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 `make demo-register-and-ingest` 用同一条 `POST /api/v1/devices` 登记 `CAM-REG-02`（棚区 `S01`，名称西侧过道，备注演示登记）。编码已存在则不改原档案。然后读取 `recognition.demo-one.json`，把本次请求的摄像头编号改成 `CAM-REG-02`，识别时间改成当前时刻，幂等键改成 `demo-reg-02-<毫秒>`，只 POST 一次 `POST /api/v1/ingest/recognition`。样例文件里的 `CAM-DEMO-01` 不改。成功时终端打印 id 和抓拍对象键，并且 `GET /api/v1/ingest/recognitions/<id>/snapshot` 读回样例 JPEG。登录后打开 `/devices` 能看到这台摄像头，打开 `/recognitions?cameraCode=CAM-REG-02` 能看到这一条（成熟 5，总数 12，病害 1）。步骤见 [`DEMO_REGISTER_AND_INGEST.md`](DEMO_REGISTER_AND_INGEST.md)。`make demo-one-ingest` 仍发 `CAM-DEMO-01`。
 
+### 登记后发一条心跳
+
+`make demo-register-and-heartbeat` 用同一条 `POST /api/v1/devices` 登记 `CAM-REG-02`（棚区 `S01`，名称西侧过道，备注演示登记）。编码已存在则不改原档案。然后只 POST 一次 `POST /api/v1/ingest/heartbeat`，请求头 `X-Ingest-Token`。报文体是棚区 `S01`、设备编号 `CAM-REG-02`、设备类型 `camera`、`online` 为 true、心跳时间为当前时刻。形状参考 `heartbeat.http.json`，该文件仍是 `EDGE-SIM-BOX` / `ai_box`，命令不改文件。成功时再读 `GET /api/v1/devices?type=camera&shedCode=S01`，这一行的 `onlineStatus` 必须是 `online`，并且 `lastHeartbeatAt` 有值。登录后打开 `/devices`，这一行状态是在线。打开 `/duty-screen/S01`，编码 `CAM-REG-02` 的状态是在线，最近心跳有时间。`/duty-screen` 的 S01 卡把这台计入在线摄像头。不发识别。步骤见 [`DEMO_REGISTER_AND_HEARTBEAT.md`](DEMO_REGISTER_AND_HEARTBEAT.md)。
+
 识别 `/recognitions`。`GET /api/v1/ingest/recognitions`，可按摄像头、上海日筛选。有图时打开已存抓拍。
 
 环境 `/environment`。`GET /api/v1/ingest/environment-readings` 列出最近读数（温度、湿度、CO₂、基质含水率）。数据来自环境报文，不用识别报文里的温湿度充数。

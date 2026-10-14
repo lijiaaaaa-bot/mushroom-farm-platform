@@ -1,4 +1,4 @@
-.PHONY: up api web test smoke smoke-evidence migrate contracts lint gates gates-selftest backup object-tier demo-one-ingest demo-register-and-ingest
+.PHONY: up api web test smoke smoke-evidence migrate contracts lint gates gates-selftest backup object-tier demo-one-ingest demo-register-and-ingest demo-register-and-heartbeat
 
 contracts:
 	npm --prefix packages/contracts install
@@ -27,7 +27,7 @@ lint:
 
 test: contracts lint
 	npm --prefix packages/contracts test
-	node --test scripts/boundaries.spec.mjs scripts/evidence.spec.mjs scripts/edge-simulator.spec.mjs scripts/demo-one-http-recognition.spec.mjs scripts/demo-register-and-ingest.spec.mjs scripts/object-lifecycle.spec.mjs scripts/object-tier.spec.mjs scripts/backup-postgres.spec.mjs scripts/compose-minio-image.spec.mjs
+	node --test scripts/boundaries.spec.mjs scripts/evidence.spec.mjs scripts/edge-simulator.spec.mjs scripts/demo-one-http-recognition.spec.mjs scripts/demo-register-and-ingest.spec.mjs scripts/demo-register-and-heartbeat.spec.mjs scripts/object-lifecycle.spec.mjs scripts/object-tier.spec.mjs scripts/backup-postgres.spec.mjs scripts/compose-minio-image.spec.mjs
 	npm --prefix apps/api test
 	npm --prefix apps/web run typecheck
 	npm --prefix apps/web test
@@ -56,6 +56,10 @@ demo-one-ingest: contracts
 # 登记 CAM-REG-02，再给这台摄像头发一条识别。步骤见 docs/DEMO_REGISTER_AND_INGEST.md。
 demo-register-and-ingest: contracts
 	node scripts/demo-register-and-ingest.mjs
+
+# 登记 CAM-REG-02，再发一条心跳。设备页与值班棚详情显示在线。步骤见 docs/DEMO_REGISTER_AND_HEARTBEAT.md。
+demo-register-and-heartbeat: contracts
+	node scripts/demo-register-and-heartbeat.mjs
 
 backup:
 	node scripts/backup-postgres.mjs
