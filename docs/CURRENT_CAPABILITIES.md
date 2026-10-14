@@ -142,9 +142,11 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 识别 `/recognitions`。`GET /api/v1/ingest/recognitions`，可按摄像头、上海日筛选。有图时打开已存抓拍。
 
-环境 `/environment`。`GET /api/v1/ingest/environment-readings` 列出最近读数（温度、湿度、CO₂、基质含水率）。`GET /api/v1/ingest/environment-readings/latest` 按棚区和传感器各留观测时间最新的一条，可加 `sensorCode`、`shedCode`。`GET /api/v1/ingest/environment-readings/:id` 返回这一条；没有这条是 404，棚外是 403。页面「最新值」点传感器进入 `/environment/:id`。数据来自环境报文，不用识别报文里的温湿度充数。
+环境 `/environment`。`GET /api/v1/ingest/environment-readings` 列出读数（温度、湿度、CO₂、基质含水率），可按传感器编号和观测时间筛选。`GET /api/v1/ingest/environment-readings/latest` 按棚区和传感器各留观测时间最新的一条，可加 `sensorCode`、`shedCode`。`GET /api/v1/ingest/environment-readings/:id` 返回这一条；没有这条是 404，棚外是 403。页面「最新值」点传感器进入 `/environment/:id`。数据来自环境报文，不用识别报文里的温湿度充数。
 
 `make demo-telemetry-latest` 读取 `environment.demo-latest.json`，先 POST 较早一条（温度 19.2℃），再 POST 当前时刻的一条（传感器 `SENSOR-LATEST-01`，棚区 S01，温度 24.6℃，湿度 85%，CO₂ 760，基质含水率 72%）。`GET /api/v1/ingest/environment-readings/latest?sensorCode=SENSOR-LATEST-01` 只返回后一条。详情是同一条。登录后 `/environment` 的「最新值」是 24.6℃，点进 `/environment/:id`。`environment.golden.json` 不改。MQTT 用 `node scripts/demo-telemetry-latest.mjs --channel mqtt`，主题 `mushroom/S01/SENSOR-LATEST-01/environment`。步骤见 [`DEMO_TELEMETRY_LATEST.md`](DEMO_TELEMETRY_LATEST.md)。
+
+`/environment` 的「历史读数」读 `environment_readings`。可按传感器编号（`sensorCode`，也可传 `deviceCode`）和 `from` / `to` 查询，观测时间从新到旧。空白不传。地址栏 `?sensorCode=&from=&to=` 同样生效。点「清除」回到最近读数。时间填不开时写「时间筛选无效」，不把空表当成没有读数。没有符合条件的行时写「没有符合条件的环境读数。」小时均值仍读入库时写入的环境小时桶，历史列表不再对明细做汇总。`make demo-telemetry-history` 读取 `environment.demo-history.json`，写入 `SENSOR-HIST-01` 的 16.5℃（三小时前）、18.4℃（八分钟前）、23.1℃（当前），以及 `SENSOR-HIST-02` 的 21℃。窗口是当前时刻前 30 分钟到后 1 分钟，列表里有 18.4℃ 和 23.1℃，没有 16.5℃ 和另一台传感器。步骤见 [`DEMO_TELEMETRY_HISTORY.md`](DEMO_TELEMETRY_HISTORY.md)。
 
 环境读数入库后，按已启用的阈值规则判断温度过高、温度过低、湿度过高、湿度过低、CO₂过高、基质偏干。超过阈值就写入一条告警：`sensorCode` 是传感器编号，`cameraCode` 为空，说明写成「棚区 … 传感器 …」。同一规则、同一传感器已有未闭合告警则不再新建。识别报文仍按摄像头另走一条，不因为这次环境判断改掉。`make demo-telemetry-threshold-alert` 读取 `environment.demo-telemetry-threshold.json`，把观测时间改成当前时刻，POST 一次传感器 `SENSOR-TELEM-01`、温度 32℃、湿度 88%、CO₂ 900、基质含水率 70%。种子规则「温度过高」阈值仍是 28。待确认列表出现「温度过高告警」，`GET /api/v1/alerts/:id` 的当前值是 32、阈值是 28。这台传感器上已有未闭合告警会先关闭，备注「遥测样例重发前关闭」，其他告警不动。步骤见 [`DEMO_TELEMETRY_THRESHOLD_ALERT.md`](DEMO_TELEMETRY_THRESHOLD_ALERT.md)。
 

@@ -17,6 +17,8 @@ export interface ListQuery {
   shedCode?: string;
   cameraCode?: string;
   sensorCode?: string;
+  /** 与 sensorCode 相同，按环境读数上的设备编号精确匹配。 */
+  deviceCode?: string;
   status?: string;
   level?: string;
   type?: string;

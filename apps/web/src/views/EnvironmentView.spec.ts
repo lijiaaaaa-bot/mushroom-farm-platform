@@ -32,7 +32,7 @@ const older = {
   substrateMoisture: 64,
 };
 
-async function mountView() {
+async function mountView(query?: Record<string, string>) {
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -40,9 +40,10 @@ async function mountView() {
       { path: '/environment/:id', component: { template: '<div />' } },
     ],
   });
+  if (query) await router.push({ path: '/', query });
   const wrapper = mount(EnvironmentView, { global: { plugins: [router] } });
   await flushPromises();
-  return wrapper;
+  return { wrapper, router };
 }
 
 describe('EnvironmentView', () => {
@@ -52,10 +53,12 @@ describe('EnvironmentView', () => {
 
   it('renders recent readings from GET /ingest/environment-readings', async () => {
     httpGet.mockResolvedValue({ data: { items: [reading], total: 1 } });
-    const wrapper = await mountView();
+    const { wrapper } = await mountView();
 
     expect(httpGet).toHaveBeenCalledWith('/ingest/environment-readings/latest');
-    expect(httpGet).toHaveBeenCalledWith('/ingest/environment-readings?pageSize=50');
+    expect(httpGet).toHaveBeenCalledWith('/ingest/environment-readings', {
+      params: { pageSize: '50' },
+    });
     expect(wrapper.text()).toContain('S01');
     expect(wrapper.text()).toContain('SENSOR-S01');
     expect(wrapper.text()).toContain('22.5℃');
@@ -83,7 +86,7 @@ describe('EnvironmentView', () => {
       }
       return Promise.resolve({ data: { items: [latest, older], total: 2 } });
     });
-    const wrapper = await mountView();
+    const { wrapper } = await mountView();
     const latestTable = wrapper.get('[data-testid="env-latest"]');
 
     expect(latestTable.text()).toContain('24.6℃');
@@ -115,7 +118,7 @@ describe('EnvironmentView', () => {
       }
       return Promise.resolve({ data: { items: [reading], total: 1 } });
     });
-    const wrapper = await mountView();
+    const { wrapper } = await mountView();
     expect(httpGet).toHaveBeenCalledWith('/growth-trends/environment', {
       params: { hours: 24 },
     });
@@ -126,7 +129,7 @@ describe('EnvironmentView', () => {
 
   it('shows empty copy when there are no readings', async () => {
     httpGet.mockResolvedValue({ data: { items: [], total: 0 } });
-    const wrapper = await mountView();
+    const { wrapper } = await mountView();
 
     expect(wrapper.text()).toContain('暂无环境读数。');
     expect(wrapper.find('table').exists()).toBe(false);
@@ -135,11 +138,112 @@ describe('EnvironmentView', () => {
 
   it('shows error text without the empty table when the list fails', async () => {
     httpGet.mockRejectedValue(new Error('down'));
-    const wrapper = await mountView();
+    const { wrapper } = await mountView();
 
     expect(wrapper.text()).toContain('请求失败');
     expect(wrapper.text()).not.toContain('暂无环境读数');
     expect(wrapper.find('table').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('loads history for one sensor and a time window from the address', async () => {
+    const newer = {
+      ...reading,
+      id: 'env-new',
+      sensorCode: 'SENSOR-HIST-01',
+      observedAt: '2026-10-14T01:30:00.000Z',
+      temperature: 23.1,
+      humidity: 80,
+      co2: 740,
+      substrateMoisture: 71,
+    };
+    const earlier = {
+      ...newer,
+      id: 'env-old',
+      observedAt: '2026-10-14T01:22:00.000Z',
+      temperature: 18.4,
+      humidity: 86,
+      co2: 820,
+      substrateMoisture: 66,
+    };
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/ingest/environment-readings/latest') {
+        return Promise.resolve({ data: { items: [newer], total: 1 } });
+      }
+      if (url === '/growth-trends/environment') {
+        return Promise.resolve({ data: { points: [] } });
+      }
+      return Promise.resolve({ data: { items: [newer, earlier], total: 2 } });
+    });
+    const { wrapper } = await mountView({
+      sensorCode: 'SENSOR-HIST-01',
+      from: '2026-10-14T01:00:00.000Z',
+      to: '2026-10-14T01:40:00.000Z',
+    });
+    const history = wrapper.get('[data-testid="env-history"]');
+
+    expect(httpGet).toHaveBeenCalledWith('/ingest/environment-readings', {
+      params: {
+        pageSize: '50',
+        sensorCode: 'SENSOR-HIST-01',
+        from: '2026-10-14T01:00:00.000Z',
+        to: '2026-10-14T01:40:00.000Z',
+      },
+    });
+    expect(history.text()).toContain('23.1℃');
+    expect(history.text()).toContain('18.4℃');
+    expect(history.text()).toContain('SENSOR-HIST-01');
+    expect(wrapper.get('[data-testid="env-history-scope"]').text()).toContain('SENSOR-HIST-01');
+    expect(wrapper.get('[data-testid="env-latest"]').text()).not.toContain('18.4℃');
+    wrapper.unmount();
+  });
+
+  it('queries history by the sensor and the typed time range', async () => {
+    httpGet.mockResolvedValue({ data: { items: [reading], total: 1 } });
+    const { wrapper, router } = await mountView();
+    await wrapper.get('[data-testid="env-history-sensor"]').setValue('SENSOR-HIST-01');
+    await wrapper.get('[data-testid="env-history-from"]').setValue('2026-10-14T09:00');
+    await wrapper.get('[data-testid="env-history-to"]').setValue('2026-10-14T10:00');
+    await wrapper.get('form').trigger('submit');
+    await flushPromises();
+
+    expect(router.currentRoute.value.query.sensorCode).toBe('SENSOR-HIST-01');
+    expect(router.currentRoute.value.query.from).toBe(new Date('2026-10-14T09:00').toISOString());
+    expect(router.currentRoute.value.query.to).toBe(new Date('2026-10-14T10:00').toISOString());
+    expect(httpGet).toHaveBeenCalledWith('/ingest/environment-readings', {
+      params: {
+        pageSize: '50',
+        sensorCode: 'SENSOR-HIST-01',
+        from: new Date('2026-10-14T09:00').toISOString(),
+        to: new Date('2026-10-14T10:00').toISOString(),
+      },
+    });
+    wrapper.unmount();
+  });
+
+  it('clears the history filter and loads the recent list again', async () => {
+    httpGet.mockResolvedValue({ data: { items: [reading], total: 1 } });
+    const { wrapper, router } = await mountView({ sensorCode: 'SENSOR-HIST-01' });
+    await wrapper.get('[data-testid="env-history-clear"]').trigger('click');
+    await flushPromises();
+
+    expect(router.currentRoute.value.query.sensorCode).toBeUndefined();
+    const historyCalls = httpGet.mock.calls.filter((call) => call[0] === '/ingest/environment-readings');
+    expect(historyCalls[historyCalls.length - 1]?.[1]).toEqual({ params: { pageSize: '50' } });
+    wrapper.unmount();
+  });
+
+  it('shows invalid time copy and does not request history', async () => {
+    httpGet.mockResolvedValue({ data: { items: [reading], total: 1 } });
+    const { wrapper } = await mountView({ from: 'not-a-date' });
+
+    expect(wrapper.text()).toContain('时间筛选无效');
+    expect(wrapper.find('[data-testid="env-history"]').exists()).toBe(false);
+    expect(httpGet).toHaveBeenCalledWith('/ingest/environment-readings/latest');
+    expect(httpGet).not.toHaveBeenCalledWith(
+      '/ingest/environment-readings',
+      expect.anything(),
+    );
     wrapper.unmount();
   });
 });

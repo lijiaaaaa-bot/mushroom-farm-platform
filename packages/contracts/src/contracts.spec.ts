@@ -88,6 +88,7 @@ describe('golden fixtures', () => {
       'environment.golden.json',
       'environment.unknown-field.json',
       'environment.demo-latest.json',
+      'environment.demo-history.json',
       'environment.demo-telemetry-threshold.json',
     ]) {
       const fixture = load(name);
