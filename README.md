@@ -17,7 +17,8 @@ make web      # http://127.0.0.1:43123
 接入令牌请求头：`X-Ingest-Token: dev-ingest-token`
 
 联调可用 `make smoke` 或 `scripts/edge-simulator.mjs` 发送样例报文。  
-发一条样例识别并在识别记录里看到：[`docs/DEMO_ONE_INGEST.md`](docs/DEMO_ONE_INGEST.md)（`make demo-one-ingest`）。
+发一条样例识别并在识别记录里看到：[`docs/DEMO_ONE_INGEST.md`](docs/DEMO_ONE_INGEST.md)（`make demo-one-ingest`）。  
+登记 `CAM-REG-02` 再给这台摄像头发一条识别：[`docs/DEMO_REGISTER_AND_INGEST.md`](docs/DEMO_REGISTER_AND_INGEST.md)（`make demo-register-and-ingest`）。
 
 ## 接入
 

@@ -3,6 +3,7 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
+- 2026-10-14：登记 `CAM-REG-02` 再发一条识别。`make demo-register-and-ingest` 先 `POST /api/v1/devices`，编码已存在则不改档案，再 POST 一次识别（摄像头编号 `CAM-REG-02`，识别时间为当前时刻）。页面 `/recognitions?cameraCode=CAM-REG-02`。步骤 `docs/DEMO_REGISTER_AND_INGEST.md`。不改 `make demo-one-ingest` 与样例文件里的 `CAM-DEMO-01`。分支 `cursor/demo-register-and-ingest-5cf6`。
 - 2026-10-14：设备页登记一台摄像头。编号、棚区、名称、备注。保存备注后刷新仍在。`note` 在 `POST/PATCH /api/v1/devices`。在线状态仍由心跳决定。步骤在 `docs/CURRENT_CAPABILITIES.md`「登记一台摄像头」。分支 `cursor/camera-register-loop-24f7`。
 - 2026-10-14：样例抓拍写入对象存储。`make up` 构建 `mushroom-object-store:20260916`（`infra/object-store`），不拉取 `pgsty/silo`。`make demo-one-ingest` 打印抓拍对象键并读回样例 JPEG。识别列表截图 `docs/evidence/demo-one-ingest/recognitions-cam-demo-01.png`。分支 `cursor/demo-one-snapshot-3215`。
 - 2026-10-14：一条识别样例 `make demo-one-ingest`。样例 `recognition.demo-one.json`，识别时间改为当前时刻，终端打印 id，页面 `/recognitions?cameraCode=CAM-DEMO-01`。步骤 `docs/DEMO_ONE_INGEST.md`。分支 `cursor/demo-one-ingest-6864`。
@@ -15,6 +16,7 @@
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
+| 2026-10-14 | `make demo-register-and-ingest`：`POST /api/v1/devices` 登记 `CAM-REG-02`（409 时不改档案），再把样例识别的摄像头编号改成 `CAM-REG-02` 并 POST 一次，抓拍读回样例 JPEG。步骤 `docs/DEMO_REGISTER_AND_INGEST.md`。不改 `recognition.demo-one.json` 与 `make demo-one-ingest` | `make test` 退出码 0（contracts 10，脚本 node:test 49，API jest 122，web vitest 130）；`make gates` 退出码 0。PR #97 | CI 待看。未在本机打开登录后的页面 |
 | 2026-10-14 | `/devices` 增加「登记摄像头」（编号、棚区、名称、备注）。`devices.note` 迁移 `013_device_note.sql`。`POST` 重复编码 409。`PATCH` 空白备注记 null。心跳不清备注。查看员与棚区负责人不能登记或改备注。不改 `make demo-one-ingest` | `make test` 退出码 0（contracts 10，脚本 node:test 43，API jest 122，web vitest 130）；`make gates` 退出码 0。PR #96 | 未做登录后浏览器走查。CI 待看 |
 | 2026-10-14 | `make up` 改为构建 `mushroom-object-store:20260916`。`make demo-one-ingest` 在识别入库后要求抓拍对象键，并 `GET /ingest/recognitions/:id/snapshot` 读回样例 JPEG。`make smoke` 增加 `demo-one-snapshot`。识别列表截图入库 | 云端 `docker compose up -d --wait` 后对象存储健康；`make demo-one-ingest` 退出码 0，对象键 `snapshots/S01/2026-10-14/CAM-DEMO-01/1791945123898.jpg`。Chrome 打开已登录的 `/recognitions?cameraCode=CAM-DEMO-01`，画面含 S01 · CAM-DEMO-01、成熟 5、总数 12。`make test` 退出码 0（contracts 10，脚本 node:test 43，API jest 119，web vitest 127）；`make gates` 退出码 0。PR #95 | CI ingest-smoke 待看 |
 | 2026-10-13 | 值班棚详情未闭合告警进入 `/alerts`，查询 `shedCode`、`status`、`alertId`。告警页把棚号和合法状态传给已有列表接口，高亮并滚到该条。不改接口，不改 `/big-screen` | `make test` 退出码 0（contracts 9，脚本 node:test 38，API jest 119，web vitest 127）；`make gates` 退出码 0。PR #93 | 未做登录后浏览器走查。CI 待看 |

@@ -215,11 +215,11 @@ async function assertStoredSnapshot(id, body, listed) {
   return { snapshotObjectKey: key, snapshotReadUrl: url };
 }
 
-export async function sendDemo({ channel = 'http', now = new Date() } = {}) {
+export async function sendDemo({ channel = 'http', now = new Date(), body: presetBody } = {}) {
   if (channel !== 'http' && channel !== 'mqtt') {
     throw new Error('channel 只能是 http 或 mqtt');
   }
-  const body = buildDemoPayload(now);
+  const body = presetBody ?? buildDemoPayload(now);
   validateDemoPayload(body, now);
   const rawUtf8 = JSON.stringify(body);
   if (channel === 'mqtt') {
