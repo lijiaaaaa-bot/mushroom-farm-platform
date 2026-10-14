@@ -31,4 +31,6 @@ export interface ListQuery {
   q?: string;
   /** `1` or `true` keeps rows with diseaseCount > 0. */
   diseased?: string;
+  /** 病害等级 0–3。空白不筛选。 */
+  diseaseLevel?: string;
 }

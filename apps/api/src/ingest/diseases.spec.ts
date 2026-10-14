@@ -78,6 +78,8 @@ function memoryRecords(rows: RecognitionRecord[]) {
             filters.push((item) => item.recognizedAt <= to);
           } else if (sql === 'r.diseaseCount > 0') {
             filters.push((item) => item.diseaseCount > 0);
+          } else if (sql === 'r.diseaseLevel = :diseaseLevel') {
+            filters.push((item) => item.diseaseLevel === params?.diseaseLevel);
           } else {
             throw new Error(`unhandled where: ${sql}`);
           }
@@ -267,6 +269,77 @@ describe('disease list and snapshot access', () => {
       ),
     ).toBe(true);
     expect(blank.body.total).toBe(3);
+  });
+
+  it('filters the disease list by shed, camera, time and disease level', async () => {
+    const matched = await request(app.getHttpServer())
+      .get('/api/v1/diseases')
+      .query({
+        shedCode: 'S01',
+        cameraCode: 'CAM-1',
+        diseaseLevel: '1',
+        from: '2026-09-23T01:30:00.000Z',
+        to: '2026-09-23T02:30:00.000Z',
+        pageSize: '50',
+      })
+      .set('x-test-role', 'super_admin');
+    const otherLevel = await request(app.getHttpServer())
+      .get('/api/v1/diseases')
+      .query({ cameraCode: 'CAM-1', diseaseLevel: '3', pageSize: '50' })
+      .set('x-test-role', 'super_admin');
+    const blank = await request(app.getHttpServer())
+      .get('/api/v1/diseases')
+      .query({ diseaseLevel: '   ', pageSize: '50' })
+      .set('x-test-role', 'super_admin');
+    const invalid = await request(app.getHttpServer())
+      .get('/api/v1/diseases')
+      .query({ diseaseLevel: '9' })
+      .set('x-test-role', 'super_admin');
+
+    expect(matched.status).toBe(200);
+    expect(matched.body.items.map((item: { id: string }) => item.id)).toEqual([
+      'd-s01',
+    ]);
+    expect(matched.body.total).toBe(1);
+    expect(otherLevel.status).toBe(200);
+    expect(otherLevel.body.items).toEqual([]);
+    expect(otherLevel.body.total).toBe(0);
+    expect(blank.body.items.map((item: { id: string }) => item.id)).toEqual([
+      'd-s02',
+      'd-s01',
+    ]);
+    expect(invalid.status).toBe(400);
+    expect(JSON.stringify(invalid.body)).toContain('病害等级无效');
+  });
+
+  it('returns one diseased record with time, shed, location and level', async () => {
+    const own = await request(app.getHttpServer())
+      .get('/api/v1/diseases/d-s01')
+      .set('x-test-role', 'super_admin');
+    const healthy = await request(app.getHttpServer())
+      .get('/api/v1/diseases/healthy')
+      .set('x-test-role', 'super_admin');
+    const missing = await request(app.getHttpServer())
+      .get('/api/v1/diseases/missing')
+      .set('x-test-role', 'super_admin');
+    const otherShed = await request(app.getHttpServer())
+      .get('/api/v1/diseases/d-s02')
+      .set('x-test-role', 'shed_manager');
+
+    expect(own.status).toBe(200);
+    expect(own.body.id).toBe('d-s01');
+    expect(own.body.shedCode).toBe('S01');
+    expect(own.body.cameraCode).toBe('CAM-1');
+    expect(own.body.diseaseLevel).toBe(1);
+    expect(own.body.diseaseCount).toBe(2);
+    expect(own.body.recognizedAt).toBe('2026-09-23T02:00:00.000Z');
+    expect(own.body.snapshotObjectKey).toBe(
+      'snapshots/S01/2026-09-23/CAM-1/1.jpg',
+    );
+    expect(healthy.status).toBe(404);
+    expect(healthy.body.message).toBe('病害记录不存在');
+    expect(missing.status).toBe(404);
+    expect(otherShed.status).toBe(403);
   });
 
   it('lists diseased rows from GET /diseases for a super admin', async () => {
