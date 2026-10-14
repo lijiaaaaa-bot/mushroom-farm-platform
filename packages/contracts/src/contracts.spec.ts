@@ -84,7 +84,12 @@ describe('golden fixtures', () => {
   });
 
   it('parses environment fixtures apart from recognition payloads', () => {
-    for (const name of ['environment.golden.json', 'environment.unknown-field.json']) {
+    for (const name of [
+      'environment.golden.json',
+      'environment.unknown-field.json',
+      'environment.demo-latest.json',
+      'environment.demo-telemetry-threshold.json',
+    ]) {
       const fixture = load(name);
       const result = parseEnvironmentIngress(fixture.body, new Date(String(fixture.clock)));
       if (fixture.expect === 'ok') {

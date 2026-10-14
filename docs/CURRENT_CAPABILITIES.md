@@ -132,13 +132,15 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 `make demo-telemetry-latest` 读取 `environment.demo-latest.json`，先 POST 较早一条（温度 19.2℃），再 POST 当前时刻的一条（传感器 `SENSOR-LATEST-01`，棚区 S01，温度 24.6℃，湿度 85%，CO₂ 760，基质含水率 72%）。`GET /api/v1/ingest/environment-readings/latest?sensorCode=SENSOR-LATEST-01` 只返回后一条。详情是同一条。登录后 `/environment` 的「最新值」是 24.6℃，点进 `/environment/:id`。`environment.golden.json` 不改。MQTT 用 `node scripts/demo-telemetry-latest.mjs --channel mqtt`，主题 `mushroom/S01/SENSOR-LATEST-01/environment`。步骤见 [`DEMO_TELEMETRY_LATEST.md`](DEMO_TELEMETRY_LATEST.md)。
 
+环境读数入库后，按已启用的阈值规则判断温度过高、温度过低、湿度过高、湿度过低、CO₂过高、基质偏干。超过阈值就写入一条告警：`sensorCode` 是传感器编号，`cameraCode` 为空，说明写成「棚区 … 传感器 …」。同一规则、同一传感器已有未闭合告警则不再新建。识别报文仍按摄像头另走一条，不因为这次环境判断改掉。`make demo-telemetry-threshold-alert` 读取 `environment.demo-telemetry-threshold.json`，把观测时间改成当前时刻，POST 一次传感器 `SENSOR-TELEM-01`、温度 32℃、湿度 88%、CO₂ 900、基质含水率 70%。种子规则「温度过高」阈值仍是 28。待确认列表出现「温度过高告警」，`GET /api/v1/alerts/:id` 的当前值是 32、阈值是 28。这台传感器上已有未闭合告警会先关闭，备注「遥测样例重发前关闭」，其他告警不动。步骤见 [`DEMO_TELEMETRY_THRESHOLD_ALERT.md`](DEMO_TELEMETRY_THRESHOLD_ALERT.md)。
+
 病害 `/diseases`。`GET /api/v1/diseases` 只列 `diseaseCount>0` 的识别。同屏环境：`GET /api/v1/diseases/:id/environment`，按该识别的棚，取识别时间前后各 30 分钟（`DISEASE_ENV_WINDOW_MINUTES`）的环境读数；无读数返回「该时间窗内无环境读数」。高发：`GET /api/v1/diseases/peaks`，默认小时粒度读 `metric_buckets_hour`，`grain=day` 读日桶；页面在有桶时展示峰值。病害档案仍是识别明细，不是桶。
 
 ## 告警与阈值规则
 
 告警 `/alerts`。`GET /api/v1/alerts`。页面可按状态、级别筛选，选全部不传，地址栏也不再带对应参数。状态下拉改成待确认、已确认或已关闭时，请求带 `status=open|acked|closed`，地址栏同步。摄像头编号填在「摄像头」里，点「筛选」后请求带 `cameraCode`，按编号精确匹配；空白或点「清除」则不传。地址栏 `?cameraCode=` 同样生效。标题关键词填在「标题」里，点「搜索」后请求带 `q`，按标题子串匹配，不区分大小写，不看说明；空白或点「清除搜索」则不传。地址栏 `?q=` 同样生效。值班棚详情带入的 `shedCode` 传给同一列表接口；`alertId` 只高亮该行，不是新的查询参数。侧栏再打开 `/alerts` 时不带这几项。列表里的标题链到 `/alerts/:id`。当前有状态、级别、棚号、摄像头或标题关键词筛选时，这条链接和详情页的「返回告警列表」带上同样的 `status`、`level`、`shedCode`、`cameraCode`、`q`。
 
-`GET /api/v1/alerts/:id` 返回这一条（棚区、摄像头、级别、状态、标题、说明、指标、当前值、阈值、发生时间、认领人、关闭原因）。查看人员可读自己棚内的告警；棚外 403；没有这条 404。详情页用中文标签显示这些字段。手工新建的告警没有指标时，指标、当前值、阈值显示为「—」。
+`GET /api/v1/alerts/:id` 返回这一条（棚区、摄像头、传感器、级别、状态、标题、说明、指标、当前值、阈值、发生时间、认领人、关闭原因）。查看人员可读自己棚内的告警；棚外 403；没有这条 404。详情页用中文标签显示这些字段。没有传感器时不显示「传感器」一行。手工新建的告警没有指标时，指标、当前值、阈值显示为「—」。环境遥测触发的告警在列表标题下写出传感器编号。
 
 `make demo-one-alert` 读取 `recognition.demo-one.json`，把本次请求的摄像头改成 `CAM-ALERT-01`、温度改成 30，只 POST 一次识别。样例文件里的 `CAM-DEMO-01` 与温度 22.5 不改。种子规则「温度过高」（阈值 28，严重）因此留下一条未闭合告警。同一摄像头已有未闭合的温度过高告警时不再新建，命令仍打印该条 id。登录后打开 `/alerts`，点标题进入 `/alerts/:id`。步骤见 [`DEMO_ONE_ALERT.md`](DEMO_ONE_ALERT.md)。
 

@@ -25,6 +25,9 @@ export class Alert {
   @Column({ type: 'varchar', nullable: true })
   cameraCode: string | null;
 
+  @Column({ type: 'varchar', nullable: true })
+  sensorCode: string | null;
+
   @Column({ type: 'varchar' })
   level: AlertLevel;
 

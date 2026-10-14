@@ -280,6 +280,7 @@ export class IngestService {
           `环境读数已入库，传感器心跳未更新：${(error as Error).message}`,
         );
       }
+      await this.alerts.evaluateEnvironment(saved);
       try {
         await this.growth?.applyEnvironment({
           shedCode: saved.shedCode,

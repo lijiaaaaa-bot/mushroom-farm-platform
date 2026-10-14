@@ -140,6 +140,7 @@ describe('AlertsView', () => {
     expect(wrapper.get('a[href="/phase2/wecom"]').text()).toBe('企微/钉钉推送');
     expect(wrapper.text()).toContain('高温');
     expect(wrapper.get('[data-testid="alert-camera"]').text()).toBe('CAM-S01');
+    expect(wrapper.find('[data-testid="alert-sensor"]').exists()).toBe(false);
     expect(wrapper.get('[data-testid="alert-detail-link"]').attributes('href')).toBe('/alerts/alert-1');
     expect(wrapper.find('[data-testid="alert-snapshot-link"]').exists()).toBe(false);
     expect(wrapper.text()).toContain('严重');
@@ -160,6 +161,30 @@ describe('AlertsView', () => {
     expect(wrapper.get('[data-testid="alert-snapshot-link"]').text()).toBe('抓拍');
     expect(wrapper.get('[data-testid="alert-snapshot-link"]').attributes('href')).toBe('/alerts/alert-1');
     expect(wrapper.get('[data-testid="alert-detail-link"]').attributes('href')).toBe('/alerts/alert-1');
+    wrapper.unmount();
+  });
+
+  it('shows the sensor under the title of a telemetry alert', async () => {
+    httpGet.mockResolvedValue({
+      data: {
+        items: [
+          {
+            ...alert,
+            cameraCode: null,
+            sensorCode: 'SENSOR-TELEM-01',
+            title: '温度过高告警',
+            message: '棚区 S01 传感器 SENSOR-TELEM-01 温度过高 32，阈值 28',
+          },
+        ],
+        total: 1,
+      },
+    });
+    const wrapper = await mountView(AlertsView);
+
+    expect(wrapper.get('[data-testid="alert-detail-link"]').text()).toBe('温度过高告警');
+    expect(wrapper.get('[data-testid="alert-sensor"]').text()).toBe('传感器 SENSOR-TELEM-01');
+    expect(wrapper.get('[data-testid="alert-status"]').text()).toContain('待确认');
+    expect(wrapper.text()).toContain('温度过高 32，阈值 28');
     wrapper.unmount();
   });
 

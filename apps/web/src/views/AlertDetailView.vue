@@ -21,6 +21,7 @@ interface AlertDetail {
   id: string;
   shedCode: string;
   cameraCode: string | null;
+  sensorCode?: string | null;
   level: AlertLevel;
   status: AlertStatus;
   title: string;
@@ -136,6 +137,9 @@ const fields = computed(() => {
       : []),
     { key: 'shed', label: '棚区', value: current.shedCode },
     { key: 'camera', label: '摄像头', value: current.cameraCode || '—' },
+    ...(current.sensorCode
+      ? [{ key: 'sensor', label: '传感器', value: current.sensorCode }]
+      : []),
     { key: 'time', label: '发生时间', value: shanghaiStamp(current.createdAt) },
     { key: 'metric', label: '指标', value: metric ? ALERT_METRIC_LABEL[metric] : '—' },
     { key: 'value', label: '当前值', value: quantity(current.metric, current.metricValue) },
