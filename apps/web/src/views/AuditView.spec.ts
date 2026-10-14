@@ -75,6 +75,68 @@ describe('AuditView', () => {
     wrapper.unmount();
   });
 
+  it('shows the demo login failure in both sections', async () => {
+    httpGet.mockImplementation((url: string) => {
+      if (url.startsWith('/login-logs')) {
+        return Promise.resolve({
+          data: {
+            items: [
+              {
+                id: 'login-demo',
+                username: 'audit-demo',
+                result: 'failure',
+                ip: '127.0.0.1',
+                userAgent: 'audit-log-demo/1',
+                createdAt: '2026-10-14T03:00:00.000Z',
+              },
+              {
+                id: 'login-admin',
+                username: 'admin',
+                result: 'success',
+                ip: '127.0.0.1',
+                userAgent: 'audit-log-demo/1',
+                createdAt: '2026-10-14T02:59:00.000Z',
+              },
+            ],
+          },
+        });
+      }
+      return Promise.resolve({
+        data: {
+          items: [
+            {
+              id: 'audit-failed',
+              username: null,
+              action: 'auth.login_failed',
+              resource: 'auth',
+              createdAt: '2026-10-14T03:00:00.000Z',
+              detail: { username: 'audit-demo' },
+            },
+            {
+              id: 'audit-ok',
+              username: 'admin',
+              action: 'auth.login',
+              resource: 'auth',
+              createdAt: '2026-10-14T02:59:00.000Z',
+              detail: null,
+            },
+          ],
+        },
+      });
+    });
+    const wrapper = mount(AuditView);
+    await flushPromises();
+    expect(wrapper.text()).toContain('登录日志');
+    expect(wrapper.text()).toContain('操作审计');
+    expect(wrapper.text()).toContain('audit-demo');
+    expect(wrapper.text()).toContain('失败');
+    expect(wrapper.text()).toContain('audit-log-demo/1');
+    expect(wrapper.text()).toContain('登录失败');
+    expect(wrapper.text()).toContain('登录成功');
+    expect(wrapper.text()).toContain('admin');
+    wrapper.unmount();
+  });
+
   it('keeps the audit table when login logs fail to load', async () => {
     httpGet.mockImplementation((url: string) => {
       if (url.startsWith('/login-logs')) return Promise.reject(new Error('no'));

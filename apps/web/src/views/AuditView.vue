@@ -14,6 +14,7 @@ interface LogRow {
   resource: string;
   createdAt: string;
   detail?: {
+    username?: string;
     shedCode?: string;
     cameraCode?: string;
     changes?: Record<string, CountChange>;
@@ -34,9 +35,19 @@ const FIELD_LABEL: Record<string, string> = {
   mushroomCount: '蘑菇数',
 };
 
+const ACTION_LABEL: Record<string, string> = {
+  'auth.login': '登录成功',
+  'auth.login_failed': '登录失败',
+};
+
+function actionLabel(action: string): string {
+  return ACTION_LABEL[action] ?? action;
+}
+
 function detailText(detail: LogRow['detail']): string {
   if (!detail) return '—';
   const parts: string[] = [];
+  if (detail.username) parts.push(detail.username);
   if (detail.shedCode) parts.push(detail.shedCode);
   if (detail.cameraCode) parts.push(detail.cameraCode);
   for (const [key, value] of Object.entries(detail.changes ?? {})) {
@@ -145,7 +156,7 @@ async function loadAudit() {
         <tr v-for="row in rows" :key="row.id">
           <td class="font-mono text-xs">{{ new Date(row.createdAt).toLocaleString('zh-CN') }}</td>
           <td>{{ row.username || '—' }}</td>
-          <td>{{ row.action }}</td>
+          <td>{{ actionLabel(row.action) }}</td>
           <td class="font-mono text-xs">{{ row.resource }}</td>
           <td>{{ detailText(row.detail) }}</td>
         </tr>
