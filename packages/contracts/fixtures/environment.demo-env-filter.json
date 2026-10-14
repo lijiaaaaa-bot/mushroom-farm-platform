@@ -1,0 +1,34 @@
+{
+  "clock": "2026-10-14T08:00:00.000Z",
+  "expect": "ok",
+  "outside": {
+    "idempotencyKey": "demo-env-filter-outside",
+    "shedCode": "S01",
+    "sensorCode": "SENSOR-ENVF-01",
+    "observedAt": "2026-10-14T05:00:00.000Z",
+    "temperature": 15.2,
+    "humidity": 82,
+    "co2": 910,
+    "substrateMoisture": 66
+  },
+  "older": {
+    "idempotencyKey": "demo-env-filter-older",
+    "shedCode": "S01",
+    "sensorCode": "SENSOR-ENVF-01",
+    "observedAt": "2026-10-14T07:52:00.000Z",
+    "temperature": 19.7,
+    "humidity": 86,
+    "co2": 820,
+    "substrateMoisture": 68
+  },
+  "body": {
+    "idempotencyKey": "demo-env-filter-now",
+    "shedCode": "S01",
+    "sensorCode": "SENSOR-ENVF-01",
+    "observedAt": "2026-10-14T08:00:00.000Z",
+    "temperature": 26.4,
+    "humidity": 80,
+    "co2": 740,
+    "substrateMoisture": 71
+  }
+}

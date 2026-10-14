@@ -42,6 +42,7 @@ make web      # http://127.0.0.1:43123
 告警抓拍写入对象存储，详情页打开这张图：[`docs/DEMO_ALERT_SNAPSHOT_MINIO.md`](docs/DEMO_ALERT_SNAPSHOT_MINIO.md)（`make demo-alert-snapshot-minio`）。  
 发两条环境遥测，最新值出现在环境读数页：[`docs/DEMO_TELEMETRY_LATEST.md`](docs/DEMO_TELEMETRY_LATEST.md)（`make demo-telemetry-latest`）。  
 按传感器和时间窗看环境遥测历史：[`docs/DEMO_TELEMETRY_HISTORY.md`](docs/DEMO_TELEMETRY_HISTORY.md)（`make demo-telemetry-history`）。  
+按起止时间筛选环境读数，宽窗口三条都在，窄窗口少一条窗外读数：[`docs/DEMO_ENV_FILTER.md`](docs/DEMO_ENV_FILTER.md)（`make demo-env-filter`）。  
 按摄像头和时间窗看识别记录：[`docs/DEMO_RECOGNITION_HISTORY.md`](docs/DEMO_RECOGNITION_HISTORY.md)（`make demo-recognition-history`）。  
 报表页 `/reports` 预览园区生长并下载 xlsx：[`docs/DEMO_REPORT_XLSX.md`](docs/DEMO_REPORT_XLSX.md)（`make demo-report-xlsx`）。  
 病害记录可查可见：[`docs/DEMO_DISEASE_LIST.md`](docs/DEMO_DISEASE_LIST.md)（`make demo-disease-list`）。  
