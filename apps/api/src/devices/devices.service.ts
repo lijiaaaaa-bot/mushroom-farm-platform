@@ -132,6 +132,7 @@ export class DevicesService {
       parentCode?: string | null;
       type?: string;
       note?: string | null;
+      onlineStatus?: 'online' | 'offline';
     },
   ) {
     const device = await this.devices.findOne({ where: { id } });
@@ -145,6 +146,12 @@ export class DevicesService {
     if (patch.type !== undefined && isDeviceType(patch.type))
       device.type = patch.type;
     if (patch.note !== undefined) device.note = storedNote(patch.note);
+    if (patch.onlineStatus !== undefined) {
+      if (patch.onlineStatus !== 'online' && patch.onlineStatus !== 'offline') {
+        throw new BadRequestException('状态只能是在线或离线');
+      }
+      device.onlineStatus = patch.onlineStatus;
+    }
     return this.devices.save(device);
   }
 
@@ -345,11 +352,16 @@ export class DevicesService {
     await this.devices.save(device);
   }
 
+  /**
+   * 有心跳或最近出现时间时，超过阈值视为离线。
+   * 两者都空说明状态是手改的，超时任务不把它改回去。
+   */
   private isStale(device: Device, cutoff: number): boolean {
     const beat = device.lastHeartbeatAt?.getTime();
     if (beat !== undefined && beat !== null) return beat < cutoff;
     const seen = device.lastSeenAt?.getTime();
-    return seen === undefined || seen === null || seen < cutoff;
+    if (seen !== undefined && seen !== null) return seen < cutoff;
+    return false;
   }
 
   private heartbeatResult(device: Device, duplicate: boolean): HeartbeatResult {

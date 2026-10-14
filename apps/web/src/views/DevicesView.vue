@@ -15,6 +15,7 @@ interface DeviceRow {
   lastHeartbeatAt?: string | null;
   note: string | null;
   draftNote: string;
+  draftStatus: 'online' | 'offline';
 }
 
 interface ImportMessage {
@@ -53,13 +54,16 @@ async function load() {
   loading.value = true;
   error.value = '';
   try {
-    const response = await http.get<{ items: Omit<DeviceRow, 'draftNote'>[] }>(
+    const response = await http.get<{
+      items: Omit<DeviceRow, 'draftNote' | 'draftStatus'>[];
+    }>(
       '/devices?pageSize=100',
     );
     rows.value = response.data.items.map((row) => ({
       ...row,
       note: row.note ?? null,
       draftNote: row.note ?? '',
+      draftStatus: row.onlineStatus === 'online' ? 'online' : 'offline',
     }));
   } catch (cause) {
     error.value = errorText(cause);
@@ -124,11 +128,14 @@ async function registerCamera() {
   }
 }
 
-async function saveNote(row: DeviceRow) {
+async function saveEdit(row: DeviceRow) {
   formError.value = '';
   savingId.value = row.id;
   try {
-    await http.patch(`/devices/${row.id}`, { note: row.draftNote });
+    await http.patch(`/devices/${row.id}`, {
+      note: row.draftNote,
+      onlineStatus: row.draftStatus,
+    });
     await load();
   } catch (cause) {
     formError.value = errorText(cause);
@@ -225,7 +232,7 @@ onMounted(load);
     <section class="panel space-y-3">
       <h2 class="text-lg">登记摄像头</h2>
       <p v-if="canRegister" class="text-sm text-mist">
-        编号、棚区、名称必填。备注可空。登记后出现在下方列表，镜头码进入详情。在线或离线仍由心跳决定，这里不改。
+        编号、棚区、名称必填。备注可空。登记后出现在下方列表，镜头码进入详情。新建是离线。这一行可以改备注和状态，保存不写心跳。
       </p>
       <p v-else class="text-sm text-mist">当前角色不能登记摄像头。</p>
       <form
@@ -263,7 +270,7 @@ onMounted(load);
     <section class="panel overflow-x-auto">
       <h2 class="mb-3 text-lg">摄像头 / AI 盒 / 传感器</h2>
       <p class="mb-3 text-sm text-mist">
-        摄像头这一行的镜头码与编号相同。点镜头码进入这台摄像头的详情。告警列表按这个镜头码筛选，识别记录也按它打开。传感器和 AI 盒的镜头码是「—」。
+        摄像头这一行的镜头码与编号相同。点镜头码进入这台摄像头的详情。告警列表按这个镜头码筛选，识别记录也按它打开。传感器和 AI 盒的镜头码是「—」。能改档案时，备注和状态下拉在这一行，提交后列表重新读取。
       </p>
       <p v-if="loading" class="text-mist">加载中…</p>
       <p v-else-if="error" class="text-danger">{{ error }}</p>
@@ -298,10 +305,18 @@ onMounted(load);
             <td>
               <form
                 v-if="canRegister"
-                class="flex items-center gap-2"
-                :data-testid="`device-note-${row.code}`"
-                @submit.prevent="saveNote(row)"
+                class="flex flex-wrap items-center gap-2"
+                :data-testid="`device-edit-${row.code}`"
+                @submit.prevent="saveEdit(row)"
               >
+                <select
+                  v-model="row.draftStatus"
+                  class="field w-24"
+                  :aria-label="`状态 ${row.code}`"
+                >
+                  <option value="online">在线</option>
+                  <option value="offline">离线</option>
+                </select>
                 <input
                   v-model="row.draftNote"
                   class="field"

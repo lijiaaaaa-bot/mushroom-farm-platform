@@ -9,6 +9,7 @@ import {
   type AlertStatus,
   type DeviceType,
 } from '@mushroom/contracts';
+import { canRegisterDevices, currentUser } from '../auth';
 import { errorText, http } from '../api';
 
 interface DeviceRow {
@@ -39,6 +40,11 @@ const loading = ref(true);
 const error = ref('');
 const alertsError = ref('');
 const alertsTruncated = ref(false);
+const draftNote = ref('');
+const draftStatus = ref<'online' | 'offline'>('offline');
+const saving = ref(false);
+const formError = ref('');
+const canEdit = computed(() => canRegisterDevices(currentUser.value?.role));
 
 const deviceId = computed(() => {
   const value = route.params.id;
@@ -68,6 +74,31 @@ function lensCode(row: DeviceRow) {
   return row.type === 'camera' ? row.code : '—';
 }
 
+function syncDraft(row: DeviceRow) {
+  draftNote.value = row.note ?? '';
+  draftStatus.value = row.onlineStatus === 'online' ? 'online' : 'offline';
+}
+
+async function saveEdit() {
+  if (!device.value) return;
+  formError.value = '';
+  saving.value = true;
+  const id = device.value.id;
+  try {
+    await http.patch(`/devices/${encodeURIComponent(id)}`, {
+      note: draftNote.value,
+      onlineStatus: draftStatus.value,
+    });
+    const response = await http.get<DeviceRow>(`/devices/${encodeURIComponent(id)}`);
+    device.value = response.data;
+    syncDraft(response.data);
+  } catch (cause) {
+    formError.value = errorText(cause);
+  } finally {
+    saving.value = false;
+  }
+}
+
 watch(
   deviceId,
   async (id) => {
@@ -85,6 +116,7 @@ watch(
     try {
       const response = await http.get<DeviceRow>(`/devices/${encodeURIComponent(id)}`);
       device.value = response.data;
+      syncDraft(response.data);
     } catch (cause) {
       error.value = errorText(cause);
       loading.value = false;
@@ -153,6 +185,29 @@ watch(
           <span class="font-mono" data-field="heartbeat">{{ clock(device.lastHeartbeatAt || device.lastSeenAt) }}</span>
         </div>
       </dl>
+      <form
+        v-if="canEdit"
+        class="mt-4 grid gap-3 sm:grid-cols-2"
+        data-testid="device-edit"
+        @submit.prevent="saveEdit"
+      >
+        <label class="text-sm">状态
+          <select v-model="draftStatus" class="field mt-1" aria-label="编辑状态">
+            <option value="online">在线</option>
+            <option value="offline">离线</option>
+          </select>
+        </label>
+        <label class="text-sm">备注
+          <input v-model="draftNote" class="field mt-1" aria-label="编辑备注" maxlength="500" />
+        </label>
+        <p class="text-sm text-mist sm:col-span-2">
+          保存后备注和状态留在这一页。返回设备列表也能看到。最近心跳不在这里改。
+        </p>
+        <button class="btn-primary w-fit" type="submit" :disabled="saving">
+          {{ saving ? '保存中…' : '保存' }}
+        </button>
+      </form>
+      <p v-if="formError" class="mt-2 text-sm text-danger" data-testid="device-edit-error">{{ formError }}</p>
       <section v-if="device.type === 'camera'" class="mt-4" data-testid="device-alerts">
         <h3 class="mb-2 text-sm">相关告警</h3>
         <p v-if="alertsError" class="text-sm text-danger" data-testid="device-alerts-error">{{ alertsError }}</p>
