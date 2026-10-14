@@ -82,7 +82,7 @@ test('checked-in sample posts four readings and the make target stays beside the
     { sensorCode: DEMO_SENSOR, from: payloads.window.from, to: payloads.window.to },
     'http://127.0.0.1:43123',
   );
-  assert.match(proof, new RegExp(page.replace(/[.]/g, '\\.')));
+  assert.ok(proof.includes(page), proof);
   assert.match(page, /\/environment\?/);
   assert.match(page, /sensorCode=SENSOR-HIST-01/);
   assert.equal(resolveChannel(['node', 'script']), 'http');
@@ -124,7 +124,7 @@ test('http send posts the four rows and reads the sensor window back', async () 
     return jsonResponse(404, {});
   };
   try {
-    const sent = await sendDemo({ channel: 'http', now, timeoutMs: 0 });
+    const sent = await sendDemo({ channel: 'http', now, timeoutMs: 5_000 });
     const posts = calls.filter((call) => call.target.endsWith('/ingest/environment'));
     assert.equal(posts.length, 4);
     assert.deepEqual(
@@ -160,7 +160,7 @@ test('mqtt send publishes the same four bodies', async () => {
     const sent = await sendDemo({
       channel: 'mqtt',
       now,
-      timeoutMs: 0,
+      timeoutMs: 5_000,
       publish: async (topic, payload) => {
         published.push({ topic, body: JSON.parse(payload) });
       },
