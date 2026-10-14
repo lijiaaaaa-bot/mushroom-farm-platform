@@ -334,4 +334,30 @@ describe('alert claim and false-positive close', () => {
       expect.objectContaining({ id: created.id, shedCode: 'S01' }),
     ]);
   });
+
+  it('returns one alert for the detail page and keeps shed isolation', async () => {
+    const created = await createAlert('S01', '高温');
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/alerts/${created.id}`)
+      .set(auth('viewer', 'viewer-s01', 'S01'));
+    expect(detail.status).toBe(200);
+    expect(detail.body).toMatchObject({
+      id: created.id,
+      shedCode: 'S01',
+      level: 'severe',
+      status: 'open',
+      title: '高温',
+      message: '高温说明',
+    });
+
+    const missing = await request(app.getHttpServer())
+      .get('/api/v1/alerts/missing-alert')
+      .set(auth('super_admin', 'id-super'));
+    expect(missing.status).toBe(404);
+
+    const outsider = await request(app.getHttpServer())
+      .get(`/api/v1/alerts/${created.id}`)
+      .set(auth('shed_manager', 'shed-s02', 'S02'));
+    expect(outsider.status).toBe(403);
+  });
 });

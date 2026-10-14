@@ -58,6 +58,7 @@
 - 设备页可登记一台摄像头（编号、棚区、名称、备注）。保存备注后刷新仍在。`POST/PATCH /api/v1/devices` 的 `note` 可空。在线状态仍由心跳决定。步骤见 `docs/CURRENT_CAPABILITIES.md` 的「登记一台摄像头」。PR #96。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/96
 - 登记 `CAM-REG-02` 再发一条识别：`make demo-register-and-ingest` 先 `POST /api/v1/devices`（已存在则不改档案），再把样例识别的摄像头编号改成 `CAM-REG-02` 并 POST 一次。样例文件里的 `CAM-DEMO-01` 不改。登录后打开 `/recognitions?cameraCode=CAM-REG-02`。步骤见 `docs/DEMO_REGISTER_AND_INGEST.md`。PR #97。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/97
 - 登记 `CAM-REG-02` 再发一条心跳：`make demo-register-and-heartbeat` 先 `POST /api/v1/devices`（已存在则不改档案），再 POST 一次 `POST /api/v1/ingest/heartbeat`（设备类型 `camera`，`online` 为 true，心跳时间为当前时刻）。设备列表这一行 `onlineStatus` 为 `online` 且 `lastHeartbeatAt` 有值。登录后 `/devices` 与 `/duty-screen/S01` 显示在线。不改 `heartbeat.http.json`，不发识别。步骤见 `docs/DEMO_REGISTER_AND_HEARTBEAT.md`。PR #98。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/98
+- 一条温度过高告警：`make demo-one-alert` 把样例识别的摄像头改成 `CAM-ALERT-01`、温度改成 30，POST 一次。种子规则「温度过高」（阈值 28）留下未闭合告警。`GET /api/v1/alerts/:id` 与 `/alerts/:id` 显示标题、说明、级别、状态、棚区、摄像头、时间和阈值。列表标题点进详情。样例文件里的 `CAM-DEMO-01` 不改。步骤见 `docs/DEMO_ONE_ALERT.md`。PR #99。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/99
 
 ## 进行中
 - 无

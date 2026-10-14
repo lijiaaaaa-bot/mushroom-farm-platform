@@ -1,0 +1,1 @@
+`alerts-list.png`、`alert-detail.png`：2026-10-14 执行 `make migrate`、`make api`、`make web`、`make demo-one-alert` 后，Chrome 登录 `admin` 打开 http://127.0.0.1:43123/alerts ，点「温度过高告警」进入详情。画面含棚区 S01、摄像头 CAM-ALERT-01、严重、待确认、当前值 30℃、阈值 28℃。本环境没有 Docker，数据库是本机 Postgres 16，`MQTT_ENABLED=false`。MinIO 与 Redis 未启动，抓拍未入库，告警仍生成。

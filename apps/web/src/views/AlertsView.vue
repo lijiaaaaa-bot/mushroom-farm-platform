@@ -206,7 +206,11 @@ onMounted(load);
             <td>{{ row.claimedBy || '—' }}</td>
             <td>{{ row.shedCode }}</td>
             <td>
-              {{ row.title }}
+              <router-link
+                class="text-accent"
+                :to="`/alerts/${row.id}`"
+                data-testid="alert-detail-link"
+              >{{ row.title }}</router-link>
               <p class="text-xs text-mist">{{ row.message }}</p>
               <p v-if="row.claimNote" class="text-xs text-mist">认领备注 {{ row.claimNote }}</p>
               <p v-if="row.closeNote" class="text-xs text-mist">关闭备注 {{ row.closeNote }}</p>

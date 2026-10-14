@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import AdminLayout from './layouts/AdminLayout.vue';
+import AlertDetailView from './views/AlertDetailView.vue';
 import AlertsView from './views/AlertsView.vue';
 import BatchesView from './views/BatchesView.vue';
 import AuditView from './views/AuditView.vue';
@@ -43,6 +44,7 @@ const router = createRouter({
         { path: 'ingest-observability', component: IngestObservabilityView, meta: { title: '接入观测' } },
         { path: 'diseases', component: DiseasesView, meta: { title: '病害' } },
         { path: 'alerts', component: AlertsView, meta: { title: '告警' } },
+        { path: 'alerts/:id', component: AlertDetailView, meta: { title: '告警详情' } },
         { path: 'phase2/wecom', component: WecomPushView, meta: { title: '企微/钉钉' } },
         { path: 'alert-rules', component: RulesView, meta: { title: '阈值规则' } },
         { path: 'harvest', component: HarvestView, meta: { title: '采摘' } },
