@@ -158,6 +158,20 @@ async function setEnabled(row: DeviceRow, enabled: boolean) {
   }
 }
 
+async function removeDevice(row: DeviceRow) {
+  formError.value = '';
+  savingId.value = row.id;
+  try {
+    await http.delete(`/devices/${encodeURIComponent(row.id)}`);
+    if (createdCamera.value?.id === row.id) createdCamera.value = null;
+    await load();
+  } catch (cause) {
+    formError.value = errorText(cause);
+  } finally {
+    savingId.value = '';
+  }
+}
+
 function enabledText(enabled: boolean | undefined) {
   return enabled === false ? '停用' : '启用';
 }
@@ -250,7 +264,7 @@ onMounted(load);
     <section class="panel space-y-3">
       <h2 class="text-lg">登记摄像头</h2>
       <p v-if="canRegister" class="text-sm text-mist">
-        编号、棚区、名称必填。备注可空。登记后出现在下方列表，镜头码进入详情。新建是离线、启用。这一行可以改备注和状态，保存不写心跳。摄像头可以停用，档案仍在。
+        编号、棚区、名称必填。备注可空。登记后出现在下方列表，镜头码进入详情。新建是离线、启用。这一行可以改备注和状态，保存不写心跳。摄像头可以停用，档案仍在。也可以删除。删除后这一行从列表消失，详情不再打开。告警和识别仍按镜头码留着。
       </p>
       <p v-else class="text-sm text-mist">当前角色不能登记摄像头。</p>
       <form
@@ -288,7 +302,7 @@ onMounted(load);
     <section class="panel overflow-x-auto">
       <h2 class="mb-3 text-lg">摄像头 / AI 盒 / 传感器</h2>
       <p class="mb-3 text-sm text-mist">
-        摄像头这一行的镜头码与编号相同。点镜头码进入这台摄像头的详情。告警列表按这个镜头码筛选，识别记录也按它打开。传感器和 AI 盒的镜头码是「—」。能改档案时，备注和状态下拉在这一行，提交后列表重新读取。停用只改启用标记，不改在线状态、备注和最近心跳。停用后这一行还在，详情仍可打开。
+        摄像头这一行的镜头码与编号相同。点镜头码进入这台摄像头的详情。告警列表按这个镜头码筛选，识别记录也按它打开。传感器和 AI 盒的镜头码是「—」。能改档案时，备注和状态下拉在这一行，提交后列表重新读取。停用只改启用标记，不改在线状态、备注和最近心跳。停用后这一行还在，详情仍可打开。删除会去掉这一行档案。列表和详情都不再有这一台。告警和识别仍按镜头码留着。
       </p>
       <p v-if="loading" class="text-mist">加载中…</p>
       <p v-else-if="error" class="text-danger">{{ error }}</p>
@@ -362,7 +376,23 @@ onMounted(load);
                   :disabled="savingId === row.id"
                   @click="setEnabled(row, row.enabled === false)"
                 >{{ row.enabled === false ? '启用' : '停用' }}</button>
+                <button
+                  v-if="canRegister"
+                  class="ml-2 text-accent"
+                  type="button"
+                  :data-testid="`device-delete-${row.code}`"
+                  :disabled="savingId === row.id"
+                  @click="removeDevice(row)"
+                >删除</button>
               </template>
+              <button
+                v-else-if="canRegister"
+                class="text-accent"
+                type="button"
+                :data-testid="`device-delete-${row.code}`"
+                :disabled="savingId === row.id"
+                @click="removeDevice(row)"
+              >删除</button>
               <span v-else>—</span>
             </td>
           </tr>

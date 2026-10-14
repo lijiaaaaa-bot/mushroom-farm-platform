@@ -75,6 +75,7 @@
 - 镜头详情：`/devices` 点镜头码进入 `/devices/:id`。`GET /api/v1/devices/:id` 返回编号、名称、类型、棚区、状态、备注、最近心跳。相关告警来自 `GET /api/v1/alerts?cameraCode=`。`make demo-camera-detail` 保证 `CAM-ALERT-01` 并留下或沿用「镜头详情告警」。不发识别，不发心跳，不改已有演示命令。步骤见 `docs/DEMO_CAMERA_DETAIL.md`。PR #112。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/112
 - 镜头可改备注和状态：`make demo-camera-edit` 登记 `CAM-EDIT-01`（棚区 S01，名称可编辑镜头，备注编辑前）。已存在则不改名称和心跳。再 `PATCH` 备注为「备注已改」、状态为在线。`GET /api/v1/devices?pageSize=100` 与 `GET /api/v1/devices/:id` 两处一致。`/devices` 与 `/devices/:id` 可保存这两项。不发识别，不发心跳，不改已有演示命令。步骤见 `docs/DEMO_CAMERA_EDIT.md`。
 - 镜头可停用：`make demo-camera-stop` 登记 `CAM-STOP-01`（棚区 S01，名称可停用镜头，备注停用前）。已存在则不改名称和心跳。再 `PATCH` `enabled` 为 false。`GET /api/v1/devices?pageSize=100` 与 `GET /api/v1/devices/:id` 两处启用都是停用，备注和在线状态不变，详情仍可打开。`/devices` 与 `/devices/:id` 可停用，也可再启用。不发识别，不发心跳，不删除档案，不改已有演示命令。步骤见 `docs/DEMO_CAMERA_STOP.md`。
+- 镜头可删除：`make demo-camera-delete` 登记 `CAM-DEL-01`（棚区 S01，名称可删除镜头，备注删除前）。已存在则不改名称和心跳。列表能看到后，`PATCH` 备注为「删除前已改」，再 `DELETE`。列表不再有这一台，`GET /api/v1/devices/:id` 是 404「设备不存在」。没有软删除列。告警和识别仍按镜头码留着。`/devices` 与 `/devices/:id` 可删除。不发识别，不发心跳，不改已有演示命令。步骤见 `docs/DEMO_CAMERA_DELETE.md`。
 
 ## 进行中
 - 无

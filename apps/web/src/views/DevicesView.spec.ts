@@ -6,12 +6,14 @@ import DevicesView from './DevicesView.vue';
 const httpGet = vi.hoisted(() => vi.fn());
 const httpPost = vi.hoisted(() => vi.fn());
 const httpPatch = vi.hoisted(() => vi.fn());
+const httpDelete = vi.hoisted(() => vi.fn());
 
 vi.mock('../api', () => ({
   http: {
     get: httpGet,
     post: httpPost,
     patch: httpPatch,
+    delete: httpDelete,
   },
   errorText: () => '请求失败',
 }));
@@ -51,6 +53,7 @@ describe('DevicesView batch import', () => {
     httpGet.mockReset();
     httpPost.mockReset();
     httpPatch.mockReset();
+    httpDelete.mockReset();
     currentUser.value = null;
     asUser('production_admin');
   });
@@ -228,6 +231,7 @@ describe('DevicesView batch import', () => {
     expect(wrapper.text()).toContain('CAM-S01');
     expect(wrapper.text()).not.toContain('保存');
     expect(wrapper.find('[data-testid="device-enabled-CAM-S01"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="device-delete-CAM-S01"]').exists()).toBe(false);
     wrapper.unmount();
   });
 
@@ -406,6 +410,59 @@ describe('DevicesView batch import', () => {
     expect(wrapper.text()).toContain('当前角色不能登记摄像头。');
     expect(wrapper.text()).not.toContain('保存');
     expect(wrapper.find('[data-testid="device-enabled-CAM-S01"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="device-delete-CAM-S01"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('deletes a camera and drops it from the reloaded list', async () => {
+    httpGet
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            { ...device, note: '删除前已改' },
+            {
+              id: 'device-2',
+              code: 'SENSOR-KEEP-01',
+              name: '保留传感器',
+              type: 'sensor' as const,
+              shedCode: 'S01',
+              onlineStatus: 'offline',
+              lastSeenAt: null,
+              note: null,
+            },
+          ],
+          total: 2,
+        },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              id: 'device-2',
+              code: 'SENSOR-KEEP-01',
+              name: '保留传感器',
+              type: 'sensor' as const,
+              shedCode: 'S01',
+              onlineStatus: 'offline',
+              lastSeenAt: null,
+              note: null,
+            },
+          ],
+          total: 1,
+        },
+      });
+    httpDelete.mockResolvedValue({ data: { id: device.id, code: device.code } });
+    const wrapper = await mountView();
+
+    expect(wrapper.get('[data-testid="device-delete-CAM-S01"]').text()).toBe('删除');
+    expect(wrapper.get('[data-testid="device-delete-SENSOR-KEEP-01"]').text()).toBe('删除');
+    await wrapper.get('[data-testid="device-delete-CAM-S01"]').trigger('click');
+    await flushPromises();
+
+    expect(httpDelete).toHaveBeenCalledWith('/devices/device-1');
+    expect(wrapper.text()).not.toContain('CAM-S01');
+    expect(wrapper.get('[data-field="code"]').text()).toBe('SENSOR-KEEP-01');
+    expect(wrapper.find('[data-testid="device-delete-CAM-S01"]').exists()).toBe(false);
     wrapper.unmount();
   });
 });

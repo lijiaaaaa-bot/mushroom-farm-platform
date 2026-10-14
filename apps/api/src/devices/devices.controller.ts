@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Param,
@@ -170,6 +171,28 @@ export class DevicesController {
         code: device.code,
         onlineStatus: device.onlineStatus,
         enabled: device.enabled,
+      },
+      ip: request.ip,
+    });
+    return device;
+  }
+
+  @Delete(':id')
+  @Roles('super_admin', 'production_admin')
+  async remove(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthUser,
+    @Req() request: Request,
+  ) {
+    const device = await this.devices.remove(user, id);
+    await this.audit.write({
+      user,
+      action: 'device.delete',
+      resource: `device:${device.id}`,
+      detail: {
+        code: device.code,
+        type: device.type,
+        shedCode: device.shedCode,
       },
       ip: request.ip,
     });
