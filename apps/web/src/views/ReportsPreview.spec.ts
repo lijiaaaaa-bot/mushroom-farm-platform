@@ -12,6 +12,7 @@ vi.mock('../api', () => ({
 describe('ReportsView preview', () => {
   beforeEach(() => {
     httpGet.mockReset();
+    window.history.replaceState({}, '', '/');
   });
 
   it('previews a filtered growth sheet and prints that preview', async () => {
@@ -107,6 +108,7 @@ describe('ReportsView preview', () => {
       }),
     );
     expect(exportCall?.[1].params.status).toBeUndefined();
+    expect(wrapper.get('[data-testid="report-download"]').text()).toBe('已开始下载 devices.xlsx');
     wrapper.unmount();
   });
 
@@ -130,6 +132,50 @@ describe('ReportsView preview', () => {
     });
     const call = httpGet.mock.calls.find((call) => call[0] === '/reports/preview');
     expect(call?.[1].params.online).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it('does not preview until asked when the address has no kind', async () => {
+    const wrapper = mount(ReportsView);
+    await flushPromises();
+    expect(httpGet).not.toHaveBeenCalled();
+    expect(wrapper.find('[data-testid="report-preview"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('loads growth rows from the address query', async () => {
+    window.history.pushState(
+      {},
+      '',
+      '/reports?kind=growth&grain=day&shedCode=S02&from=2026-10-14&to=2026-10-14',
+    );
+    httpGet.mockResolvedValue({
+      data: {
+        title: '园区生长',
+        columns: [
+          { key: 'shedCode', header: '棚区' },
+          { key: 'period', header: '周期' },
+          { key: 'mushroomCount', header: '蘑菇数量' },
+        ],
+        rows: [{ shedCode: 'S02', period: '2026-10-14', mushroomCount: 17 }],
+      },
+    });
+    const wrapper = mount(ReportsView);
+    await flushPromises();
+
+    expect(httpGet).toHaveBeenCalledWith('/reports/preview', {
+      params: expect.objectContaining({
+        kind: 'growth',
+        grain: 'day',
+        shedCode: 'S02',
+        from: '2026-10-14',
+        to: '2026-10-14',
+      }),
+    });
+    expect(wrapper.get('[data-testid="report-preview"]').text()).toContain('S02');
+    expect(wrapper.get('[data-testid="report-preview"]').text()).toContain('17');
+    expect(window.location.pathname).toBe('/reports');
+    expect(window.location.search).toContain('shedCode=S02');
     wrapper.unmount();
   });
 });
