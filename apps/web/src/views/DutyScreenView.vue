@@ -145,6 +145,7 @@ const overview = ref<Overview | null>(null);
 const observability = ref<Observability | null>(null);
 const devicesTruncated = ref(false);
 const alertsTruncated = ref(false);
+const openAlertTotal = ref<number | null>(null);
 const zoneError = reactive({
   sheds: '',
   devices: '',
@@ -221,6 +222,21 @@ const maxRecognitions = computed(() =>
 const openAlertCount = computed(
   () => alerts.value.filter((row) => row.status !== 'closed').length,
 );
+
+const onlineDeviceCount = computed(() =>
+  overviewOk.value && overview.value ? overview.value.deviceOnline : null,
+);
+const offlineDeviceCount = computed(() => {
+  if (!overviewOk.value || !overview.value) return null;
+  return Math.max(0, overview.value.deviceTotal - overview.value.deviceOnline);
+});
+const pendingAlertCount = computed(() =>
+  alertsOk.value && openAlertTotal.value != null ? openAlertTotal.value : null,
+);
+
+function countText(value: number | null) {
+  return value == null ? '—' : String(value);
+}
 
 const pipeline = computed(() => {
   const byKey = new Map(
@@ -467,8 +483,10 @@ async function load() {
     const [open, acked] = alertsResult.value;
     alerts.value = dedupeAlerts([...open.items, ...acked.items]);
     alertsTruncated.value = open.truncated || acked.truncated;
+    openAlertTotal.value = open.total;
     zoneError.alerts = '';
   } else {
+    openAlertTotal.value = null;
     zoneError.alerts = errorText(alertsResult.reason);
   }
 
@@ -565,6 +583,35 @@ onBeforeUnmount(() => {
             <span class="off">离线</span>
             <span v-if="alertsOk">未闭合 {{ openAlertCount }}</span>
           </p>
+        </div>
+        <div class="count-row" data-test="duty-counts">
+          <router-link
+            class="count"
+            data-tone="ok"
+            data-field="online-devices"
+            :to="{ path: '/devices', query: { online: 'online' } }"
+          >
+            <p class="k">在线设备</p>
+            <p class="v">{{ countText(onlineDeviceCount) }}</p>
+          </router-link>
+          <router-link
+            class="count"
+            data-tone="off"
+            data-field="offline-devices"
+            :to="{ path: '/devices', query: { online: 'offline' } }"
+          >
+            <p class="k">离线设备</p>
+            <p class="v">{{ countText(offlineDeviceCount) }}</p>
+          </router-link>
+          <router-link
+            class="count"
+            data-tone="alert"
+            data-field="open-alerts"
+            :to="{ path: '/alerts', query: { status: 'open' } }"
+          >
+            <p class="k">待确认</p>
+            <p class="v">{{ countText(pendingAlertCount) }}</p>
+          </router-link>
         </div>
         <p v-if="loading" class="zone-error">加载中…</p>
         <p v-else-if="zoneError.sheds" class="zone-error">{{ zoneError.sheds }}</p>
@@ -751,6 +798,31 @@ onBeforeUnmount(() => {
 .legend .ok::before { background: #22c55e; }
 .legend .warn::before { background: #ff8c00; }
 .legend .off::before { background: #4a5a70; }
+.count-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+a.count {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+  padding: 10px 12px;
+  border: 1px solid #1a2336;
+  border-left: 3px solid #4a5a70;
+  border-radius: 4px;
+  background: #0f1524;
+}
+a.count[data-tone="ok"] { border-left-color: #22c55e; }
+a.count[data-tone="off"] { border-left-color: #4a5a70; }
+a.count[data-tone="alert"] { border-left-color: #ff8c00; }
+a.count:hover { border-color: rgba(0, 229, 255, 0.45); }
+a.count:focus-visible {
+  outline: 1px solid #00e5ff;
+  outline-offset: 2px;
+}
+a.count .v { font-size: 28px; }
 .shed-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
