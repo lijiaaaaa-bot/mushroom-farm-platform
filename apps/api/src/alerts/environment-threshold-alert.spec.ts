@@ -181,6 +181,53 @@ describe('environment telemetry threshold alerts', () => {
     });
   });
 
+  it('follows an edited shed rule and stays quiet when that threshold is above the reading', async () => {
+    const custom = rule('demo-env-temp', 'temperature_high', 30, {
+      level: 'warning',
+      shedCode: 'S03',
+      name: '演示环境温度过高',
+    });
+    const { engine, rows } = memory([...seedRules, custom]);
+    const sample = {
+      shedCode: 'S03',
+      sensorCode: 'SENSOR-RULE-01',
+      temperature: 26,
+      humidity: 88,
+      co2: 900,
+      substrateMoisture: 70,
+    };
+    await engine.evaluateEnvironment(
+      reading({ id: 'env-quiet', idempotencyKey: 'quiet', ...sample }),
+    );
+    expect(rows).toHaveLength(0);
+    custom.threshold = 24;
+    await engine.evaluateEnvironment(
+      reading({ id: 'env-fire', idempotencyKey: 'fire', ...sample }),
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      ruleId: 'demo-env-temp',
+      metric: 'temperature_high',
+      level: 'warning',
+      status: 'open',
+      shedCode: 'S03',
+      sensorCode: 'SENSOR-RULE-01',
+      cameraCode: null,
+      title: '温度过高告警',
+      message: '棚区 S03 传感器 SENSOR-RULE-01 温度过高 26，阈值 24',
+      metricValue: 26,
+      threshold: 24,
+    });
+    rows[0].status = 'closed';
+    custom.threshold = 30;
+    await engine.evaluateEnvironment(
+      reading({ id: 'env-raised', idempotencyKey: 'raised', ...sample }),
+    );
+    expect(
+      rows.filter((row) => row.status === 'open' || row.status === 'acked'),
+    ).toHaveLength(0);
+  });
+
   it('still opens a camera alert from a recognition and leaves the sensor empty', async () => {
     const { engine, rows } = memory(
       seedRules.filter((item) => item.metric !== 'growth_stall'),

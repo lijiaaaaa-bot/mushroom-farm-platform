@@ -134,6 +134,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 环境读数入库后，按已启用的阈值规则判断温度过高、温度过低、湿度过高、湿度过低、CO₂过高、基质偏干。超过阈值就写入一条告警：`sensorCode` 是传感器编号，`cameraCode` 为空，说明写成「棚区 … 传感器 …」。同一规则、同一传感器已有未闭合告警则不再新建。识别报文仍按摄像头另走一条，不因为这次环境判断改掉。`make demo-telemetry-threshold-alert` 读取 `environment.demo-telemetry-threshold.json`，把观测时间改成当前时刻，POST 一次传感器 `SENSOR-TELEM-01`、温度 32℃、湿度 88%、CO₂ 900、基质含水率 70%。种子规则「温度过高」阈值仍是 28。待确认列表出现「温度过高告警」，`GET /api/v1/alerts/:id` 的当前值是 32、阈值是 28。这台传感器上已有未闭合告警会先关闭，备注「遥测样例重发前关闭」，其他告警不动。步骤见 [`DEMO_TELEMETRY_THRESHOLD_ALERT.md`](DEMO_TELEMETRY_THRESHOLD_ALERT.md)。
 
+`make demo-alert-rule-config` 用 `POST` / `PATCH /api/v1/alert-rules` 维护规则「演示环境温度过高」（指标温度过高，级别一般，棚区 S03，启用）。没有这条规则时先新建，阈值 30。传感器 `SENSOR-RULE-01`、温度 26℃、湿度 88%、CO₂ 900、基质含水率 70% 在阈值 30 时不产生告警：26 不高于 30，也不高于种子规则「温度过高」的 28。再把阈值改成 24，同一温度留下待确认告警，说明是「棚区 S03 传感器 SENSOR-RULE-01 温度过高 26，阈值 24」，级别一般，摄像头为空。然后把阈值改回 30，先关闭这条告警，再发同一温度，不再新建。最后把阈值写回 24 并再发一条，列表和详情留下这条待确认告警。种子规则「温度过高」仍是 28。规则限定 S03，不改 S01 上的 `SENSOR-TELEM-01`、`SENSOR-LATEST-01` 和识别演示。步骤见 [`DEMO_ALERT_RULE_CONFIG.md`](DEMO_ALERT_RULE_CONFIG.md)。
+
 病害 `/diseases`。`GET /api/v1/diseases` 只列 `diseaseCount>0` 的识别。同屏环境：`GET /api/v1/diseases/:id/environment`，按该识别的棚，取识别时间前后各 30 分钟（`DISEASE_ENV_WINDOW_MINUTES`）的环境读数；无读数返回「该时间窗内无环境读数」。高发：`GET /api/v1/diseases/peaks`，默认小时粒度读 `metric_buckets_hour`，`grain=day` 读日桶；页面在有桶时展示峰值。病害档案仍是识别明细，不是桶。
 
 ## 告警与阈值规则
