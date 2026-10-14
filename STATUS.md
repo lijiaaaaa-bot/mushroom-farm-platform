@@ -83,6 +83,7 @@
 
 - 超管与查看登录后菜单不同：`make demo-rbac` 保证 `admin` / `Admin@123456` 与 `viewer` / `Viewer@123456`（棚号 S01）。侧栏「审计」只给超管和生产管理员，「用户」只给超管；查看打开 `/audit` 或 `/users` 回到总览。`GET /api/v1/users`、`/audit-logs`、`/login-logs` 对查看是 403。查看的棚列表含 S01、不含 S02。已有 `viewer` 且请求带 `resetPassword: true` 时重设密码和棚号，不另建一行。不发识别，不发心跳，不改告警。步骤见 `docs/DEMO_RBAC.md`。PR #121。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/121
 - 审计页能看到登录和操作记录：`make demo-audit-log` 用 `admin` / `Admin@123456` 登录（User-Agent `audit-log-demo/1`），再对不存在的用户 `audit-demo` 做一次失败登录。`/audit` 上方有 `audit-demo` 失败和 `admin` 成功；下方有「登录失败」（明细 `audit-demo`）和 `admin` 的「登录成功」。`GET /api/v1/login-logs` 与 `GET /api/v1/audit-logs` 对超管是 200，查看 `viewer` / `Viewer@123456` 仍是 403，打开 `/audit` 回到总览。不发识别，不发心跳，不改告警。步骤见 `docs/DEMO_AUDIT_LOG.md`。PR #123。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/123
+- 超管打开 `/users` 至少看到两条账号及角色：`make demo-user-mgmt` 用 `admin` / `Admin@123456` 把 `viewer` / `Viewer@123456` 写成查看（与 `make demo-rbac` 同一写入）。列表有 `admin`（超管）和 `viewer`（查看），不含密码。查看该接口 403，侧栏没有「用户」，打开 `/users` 回到总览。页面没有新建或重设密码表单。不发识别，不发心跳，不改告警。步骤见 `docs/DEMO_USER_MGMT.md`。
 
 ## 进行中
 - 无
