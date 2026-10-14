@@ -66,7 +66,57 @@
 
 ## 设备、识别、环境、病害
 
-设备 `/devices`。`GET/POST /api/v1/devices`，`PATCH /api/v1/devices/:id`，`POST /api/v1/devices/import`（CSV 文件、CSV 文本或 JSON 行）。编码冲突跳过且不改原档案。超管、生产管理员、棚区负责人可导入；查看人员 403。心跳超时（默认 5 分钟，`DEVICE_OFFLINE_AFTER_MS`）产生「设备离线」告警，恢复心跳自动关闭。在线状态以 `lastHeartbeatAt` 为准。
+设备 `/devices`。`GET/POST /api/v1/devices`，`PATCH /api/v1/devices/:id`，`POST /api/v1/devices/import`（CSV 文件、CSV 文本或 JSON 行）。导入时编码冲突跳过且不改原档案。单条 `POST` 遇到已有编码返回 409，文案「设备编码已存在」。登记字段：编号 `code`、名称 `name`、类型 `type`（页面固定为 `camera`）、棚区 `shedCode`、备注 `note`（可空，最长 500 字，空白记为 null）。`PATCH` 可改备注。超管与生产管理员可登记和改备注；棚区负责人可导入，不能单条登记或改备注；查看人员 403。心跳超时（默认 5 分钟，`DEVICE_OFFLINE_AFTER_MS`）产生「设备离线」告警，恢复心跳自动关闭。在线状态以 `lastHeartbeatAt` 为准。登记和改备注不改在线状态，之后的心跳也不清备注。
+
+### 登记一台摄像头
+
+数据库和前后端已经在跑就跳过这三步：
+
+```bash
+make up && make migrate
+make api
+make web
+```
+
+API 是 http://127.0.0.1:41821 。页面是 http://127.0.0.1:43123 。
+
+浏览器打开 http://127.0.0.1:43123/login ，账号 `admin`，密码 `Admin@123456`。然后打开 http://127.0.0.1:43123/devices 。
+
+1. 「登记摄像头」填编号 `CAM-REG-01`、棚区 `S01`、名称 `东侧过道`、备注 `靠门`，点「登记」。
+2. 下方「摄像头 / AI 盒 / 传感器」列表出现这一行：编号 CAM-REG-01，名称东侧过道，类型摄像头，棚区 S01，状态离线，备注靠门。
+3. 把该行备注改成 `靠门，已核对`，点「保存」。
+4. 刷新 http://127.0.0.1:43123/devices 。备注仍是「靠门，已核对」。状态仍是离线，直到有心跳。
+
+同一条用接口时，先登录，从响应里复制 `accessToken`：
+
+```bash
+curl -s -X POST http://127.0.0.1:41821/api/v1/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"Admin@123456"}'
+```
+
+把令牌放进 `TOKEN` 后：
+
+```bash
+curl -s -X POST http://127.0.0.1:41821/api/v1/devices \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"code":"CAM-REG-01","name":"东侧过道","type":"camera","shedCode":"S01","note":"靠门"}'
+```
+
+响应里的 `id` 用于改备注，再按摄像头类型拉列表：
+
+```bash
+curl -s -X PATCH "http://127.0.0.1:41821/api/v1/devices/<id>" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H 'Content-Type: application/json' \
+  -d '{"note":"靠门，已核对"}'
+
+curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+列表里这条的 `code` 是 `CAM-REG-01`，`note` 是「靠门，已核对」。棚区用种子里已有的 `S01`。
 
 识别 `/recognitions`。`GET /api/v1/ingest/recognitions`，可按摄像头、上海日筛选。有图时打开已存抓拍。
 
@@ -171,10 +221,10 @@
 
 | 代码 | 界面 | 棚范围 | 写操作 |
 |------|------|--------|--------|
-| `super_admin` | 超管 | 全场 | 用户、阈值规则、棚坐标、采摘修正、采摘任务、批次、设备导入、告警处置、审计 |
+| `super_admin` | 超管 | 全场 | 用户、阈值规则、棚坐标、采摘修正、采摘任务、批次、设备导入、摄像头登记与备注、告警处置、审计 |
 | `production_admin` | 生产管理员 | 全场 | 与超管相同，但不能建用户 |
-| `shed_manager` | 棚区负责人 | 仅账号上的棚号 | 采摘修正、采摘任务、批次、设备导入、告警处置。不能改规则、不能改棚坐标、不能看审计 |
-| `viewer` | 查看 | 仅账号上的棚号 | 只读。采摘、告警处置、规则、批次新建均 403 |
+| `shed_manager` | 棚区负责人 | 仅账号上的棚号 | 采摘修正、采摘任务、批次、设备导入、告警处置。不能改规则、不能改棚坐标、不能单条登记摄像头或改备注、不能看审计 |
+| `viewer` | 查看 | 仅账号上的棚号 | 只读。采摘、告警处置、规则、批次新建、设备登记均 403 |
 
 棚隔离在认证之后（`ShedScope`）。超管与生产管理员不限制棚；棚区负责人与查看只保留账号上的棚号；棚号列表为空则看不到任何棚。越权返回 403。
 

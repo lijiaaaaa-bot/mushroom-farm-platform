@@ -12,7 +12,13 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from 'class-validator';
 import { Request } from 'express';
 import { AuditService } from '../audit';
 import { AuthUser } from '../common/auth-user';
@@ -40,6 +46,11 @@ class DeviceDto {
   @IsOptional()
   @IsString()
   parentCode?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
 }
 
 class UpdateDeviceDto {
@@ -58,6 +69,11 @@ class UpdateDeviceDto {
   @IsOptional()
   @IsIn(DEVICE_TYPES as unknown as string[])
   type?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  note?: string;
 }
 
 @Controller('devices')

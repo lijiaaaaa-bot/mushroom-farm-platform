@@ -41,6 +41,11 @@ export function canImportDevices(role: Role | undefined) {
   return role === 'super_admin' || role === 'production_admin' || role === 'shed_manager';
 }
 
+/** 与 POST/PATCH /devices 相同：超管与生产管理员。 */
+export function canRegisterDevices(role: Role | undefined) {
+  return role === 'super_admin' || role === 'production_admin';
+}
+
 export function canConfigureSheds(role: Role | undefined) {
   return role === 'super_admin' || role === 'production_admin';
 }

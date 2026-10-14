@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException, Optional } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -77,24 +83,34 @@ export class DevicesService {
       type: string;
       shedCode: string;
       parentCode?: string | null;
+      note?: string | null;
     },
   ) {
+    const code = input.code.trim();
+    const name = input.name.trim();
+    const shedCode = input.shedCode.trim();
+    if (!code || !name || !shedCode) {
+      throw new BadRequestException('设备编码、名称和棚区不能为空');
+    }
     const scope = ShedScope.fromUser(user);
-    scope.assert(input.shedCode);
+    scope.assert(shedCode);
     if (!isDeviceType(input.type)) {
       throw new NotFoundException('设备类型无效');
     }
-    await this.ensureShed(input.shedCode);
+    const existing = await this.devices.findOne({ where: { code } });
+    if (existing) throw new ConflictException('设备编码已存在');
+    await this.ensureShed(shedCode);
     return this.devices.save(
       this.devices.create({
-        code: input.code.trim(),
-        name: input.name.trim(),
+        code,
+        name,
         type: input.type,
-        shedCode: input.shedCode,
+        shedCode,
         parentCode: input.parentCode ?? null,
         onlineStatus: 'offline',
         lastSeenAt: null,
         lastHeartbeatAt: null,
+        note: storedNote(input.note),
         meta: {},
       }),
     );
@@ -108,6 +124,7 @@ export class DevicesService {
       shedCode?: string;
       parentCode?: string | null;
       type?: string;
+      note?: string | null;
     },
   ) {
     const device = await this.devices.findOne({ where: { id } });
@@ -120,6 +137,7 @@ export class DevicesService {
     if (patch.parentCode !== undefined) device.parentCode = patch.parentCode;
     if (patch.type !== undefined && isDeviceType(patch.type))
       device.type = patch.type;
+    if (patch.note !== undefined) device.note = storedNote(patch.note);
     return this.devices.save(device);
   }
 
@@ -193,6 +211,7 @@ export class DevicesService {
             onlineStatus: 'offline',
             lastSeenAt: null,
             lastHeartbeatAt: null,
+            note: null,
             meta: {},
           }),
         );
@@ -257,6 +276,7 @@ export class DevicesService {
         onlineStatus: 'offline',
         lastSeenAt: null,
         lastHeartbeatAt: null,
+        note: null,
         meta: { autoRegistered: true },
       });
     } else if (deviceType && isDeviceType(deviceType)) {
@@ -305,6 +325,7 @@ export class DevicesService {
         onlineStatus: online ? 'online' : 'offline',
         lastSeenAt: online ? new Date() : null,
         lastHeartbeatAt: null,
+        note: null,
         meta: { autoRegistered: true },
       });
     } else {
@@ -426,6 +447,12 @@ export class DevicesService {
       }),
     );
   }
+}
+
+function storedNote(value: string | null | undefined): string | null {
+  if (value == null) return null;
+  const trimmed = value.trim();
+  return trimmed.length ? trimmed : null;
 }
 
 function canonicalDeviceType(raw: string): string {

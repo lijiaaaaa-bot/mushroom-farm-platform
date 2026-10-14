@@ -5,11 +5,13 @@ import DevicesView from './DevicesView.vue';
 
 const httpGet = vi.hoisted(() => vi.fn());
 const httpPost = vi.hoisted(() => vi.fn());
+const httpPatch = vi.hoisted(() => vi.fn());
 
 vi.mock('../api', () => ({
   http: {
     get: httpGet,
     post: httpPost,
+    patch: httpPatch,
   },
   errorText: () => '请求失败',
 }));
@@ -22,6 +24,7 @@ const device = {
   shedCode: 'S01',
   onlineStatus: 'online',
   lastSeenAt: '2026-09-23T01:02:00.000Z',
+  note: null as string | null,
 };
 
 const csv = '设备编码,棚编码,名称\nCAM-S01,S01,东摄像头\nCAM-X,S99,无棚\n';
@@ -47,6 +50,7 @@ describe('DevicesView batch import', () => {
     localStorage.clear();
     httpGet.mockReset();
     httpPost.mockReset();
+    httpPatch.mockReset();
     currentUser.value = null;
     asUser('production_admin');
   });
@@ -78,7 +82,7 @@ describe('DevicesView batch import', () => {
 
     expect(wrapper.text()).toContain('暂无设备');
     await wrapper.get('textarea[aria-label="粘贴 CSV"]').setValue(csv);
-    await wrapper.get('form').trigger('submit');
+    await wrapper.get('[data-testid="device-import-form"]').trigger('submit');
     await flushPromises();
 
     expect(httpPost).toHaveBeenCalledWith('/devices/import', { csv });
@@ -107,7 +111,7 @@ describe('DevicesView batch import', () => {
     const wrapper = await mountView();
 
     await wrapper.get('textarea[aria-label="粘贴 CSV"]').setValue(csv);
-    await wrapper.get('form').trigger('submit');
+    await wrapper.get('[data-testid="device-import-form"]').trigger('submit');
     await flushPromises();
 
     expect(wrapper.text()).toContain('成功 1，失败 1，跳过 0');
@@ -135,7 +139,7 @@ describe('DevicesView batch import', () => {
     const selected = new File([csv], 'cameras.csv', { type: 'text/csv' });
     Object.defineProperty(input.element, 'files', { value: [selected] });
     await input.trigger('change');
-    await wrapper.get('form').trigger('submit');
+    await wrapper.get('[data-testid="device-import-form"]').trigger('submit');
     await flushPromises();
 
     expect(httpPost).toHaveBeenCalledTimes(1);
@@ -196,9 +200,95 @@ describe('DevicesView batch import', () => {
     const wrapper = await mountView();
 
     expect(wrapper.text()).toContain('当前角色不能批量导入设备。');
+    expect(wrapper.text()).toContain('当前角色不能登记摄像头。');
     expect(wrapper.find('form').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="camera-register-form"]').exists()).toBe(false);
     expect(wrapper.find('input[type="file"]').exists()).toBe(false);
     expect(wrapper.text()).toContain('CAM-S01');
+    expect(wrapper.text()).not.toContain('保存');
+    wrapper.unmount();
+  });
+
+  it('registers a camera and shows it in the list', async () => {
+    httpGet
+      .mockResolvedValueOnce({ data: { items: [], total: 0 } })
+      .mockResolvedValueOnce({
+        data: {
+          items: [
+            {
+              ...device,
+              id: 'device-reg',
+              code: 'CAM-REG-01',
+              name: '东侧过道',
+              onlineStatus: 'offline',
+              note: '靠门',
+            },
+          ],
+          total: 1,
+        },
+      });
+    httpPost.mockResolvedValue({ data: { id: 'device-reg' } });
+    const wrapper = await mountView();
+
+    await wrapper.get('input[aria-label="摄像头编号"]').setValue('CAM-REG-01');
+    await wrapper.get('input[aria-label="棚区"]').setValue('S01');
+    await wrapper.get('input[aria-label="名称"]').setValue('东侧过道');
+    await wrapper.get('input[aria-label="登记备注"]').setValue('靠门');
+    await wrapper.get('[data-testid="camera-register-form"]').trigger('submit');
+    await flushPromises();
+
+    expect(httpPost).toHaveBeenCalledWith('/devices', {
+      code: 'CAM-REG-01',
+      name: '东侧过道',
+      type: 'camera',
+      shedCode: 'S01',
+      note: '靠门',
+    });
+    expect(wrapper.text()).toContain('CAM-REG-01');
+    expect(wrapper.text()).toContain('东侧过道');
+    expect(wrapper.get('input[aria-label="备注 CAM-REG-01"]').element).toHaveProperty(
+      'value',
+      '靠门',
+    );
+    wrapper.unmount();
+  });
+
+  it('saves a note and shows the reloaded value', async () => {
+    httpGet
+      .mockResolvedValueOnce({
+        data: { items: [{ ...device, note: '靠门' }], total: 1 },
+      })
+      .mockResolvedValueOnce({
+        data: { items: [{ ...device, note: '靠门，已核对' }], total: 1 },
+      });
+    httpPatch.mockResolvedValue({ data: { id: device.id, note: '靠门，已核对' } });
+    const wrapper = await mountView();
+    const note = wrapper.get('input[aria-label="备注 CAM-S01"]');
+    expect((note.element as HTMLInputElement).value).toBe('靠门');
+
+    await note.setValue('靠门，已核对');
+    await wrapper.get('[data-testid="device-note-CAM-S01"]').trigger('submit');
+    await flushPromises();
+
+    expect(httpPatch).toHaveBeenCalledWith('/devices/device-1', { note: '靠门，已核对' });
+    const gets = httpGet.mock.invocationCallOrder;
+    expect(gets[gets.length - 1]).toBeGreaterThan(httpPatch.mock.invocationCallOrder[0]);
+    expect(wrapper.get('input[aria-label="备注 CAM-S01"]').element).toHaveProperty(
+      'value',
+      '靠门，已核对',
+    );
+    wrapper.unmount();
+  });
+
+  it('lets a shed manager import but not register', async () => {
+    asUser('shed_manager');
+    httpGet.mockResolvedValue({ data: { items: [device], total: 1 } });
+    const wrapper = await mountView();
+
+    expect(wrapper.find('[data-testid="device-import-form"]').exists()).toBe(true);
+    expect(wrapper.find('[data-testid="camera-register-form"]').exists()).toBe(false);
+    expect(wrapper.text()).toContain('当前角色不能登记摄像头。');
+    expect(wrapper.text()).not.toContain('保存');
     wrapper.unmount();
   });
 });

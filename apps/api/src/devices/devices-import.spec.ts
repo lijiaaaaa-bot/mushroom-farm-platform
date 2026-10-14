@@ -172,6 +172,7 @@ describe('device batch import HTTP', () => {
       onlineStatus: 'offline',
       lastSeenAt: null,
       lastHeartbeatAt: null,
+      note: null,
       meta: {},
       createdAt: new Date(),
     });
