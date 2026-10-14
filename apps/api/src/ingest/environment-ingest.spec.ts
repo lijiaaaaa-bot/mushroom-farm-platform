@@ -90,8 +90,18 @@ function memoryReadings() {
       const filters: Array<(item: Reading) => boolean> = [];
       let skip = 0;
       let take = rows.length;
+      let distinct = false;
+      const matched = () =>
+        rows
+          .filter((item) => filters.every((fn) => fn(item)))
+          .sort((a, b) => b.observedAt.getTime() - a.observedAt.getTime());
       const qb = {
+        distinctOn: () => {
+          distinct = true;
+          return qb;
+        },
         orderBy: () => qb,
+        addOrderBy: () => qb,
         andWhere: (sql: string, params?: Record<string, unknown>) => {
           if (sql === '1 = 0') filters.push(() => false);
           else if (sql === 'e.shedCode IN (:...codes)') {
@@ -99,6 +109,8 @@ function memoryReadings() {
             filters.push((item) => codes.includes(item.shedCode));
           } else if (sql === 'e.shedCode = :shedCode') {
             filters.push((item) => item.shedCode === params?.shedCode);
+          } else if (sql === 'e.sensorCode = :sensorCode') {
+            filters.push((item) => item.sensorCode === params?.sensorCode);
           } else if (sql === 'e.observedAt >= :from') {
             const from = params?.from as Date;
             filters.push((item) => item.observedAt >= from);
@@ -118,11 +130,22 @@ function memoryReadings() {
           take = value;
           return qb;
         },
+        getMany: async () => {
+          const items = matched();
+          if (!distinct) return items;
+          const seen = new Set<string>();
+          const latest: Reading[] = [];
+          for (const item of items) {
+            const key = `${item.shedCode}\0${item.sensorCode}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            latest.push(item);
+          }
+          return latest;
+        },
         getManyAndCount: async () => {
-          const matched = rows
-            .filter((item) => filters.every((fn) => fn(item)))
-            .sort((a, b) => b.observedAt.getTime() - a.observedAt.getTime());
-          return [matched.slice(skip, skip + take), matched.length] as const;
+          const items = matched();
+          return [items.slice(skip, skip + take), items.length] as const;
         },
       };
       return qb;
@@ -423,5 +446,118 @@ describe('environment ingest', () => {
       humidity: 86,
       source: 'mqtt',
     });
+  });
+
+  it('keeps one latest row per sensor and returns that row from the detail', async () => {
+    await post(golden.body);
+    const newer = await post({
+      ...golden.body,
+      idempotencyKey: 'golden-environment-later',
+      observedAt: '2026-09-23T02:10:00.000Z',
+      temperature: 24.6,
+      humidity: 85,
+      co2: 760,
+      substrateMoisture: 72,
+    });
+    await post({
+      ...golden.body,
+      idempotencyKey: 'golden-environment-other',
+      sensorCode: 'SENSOR-S01-B',
+      observedAt: '2026-09-23T02:05:00.000Z',
+      temperature: 18.1,
+      humidity: 90,
+      co2: 1000,
+      substrateMoisture: 60,
+    });
+
+    const latest = await request(app.getHttpServer())
+      .get('/api/v1/ingest/environment-readings/latest')
+      .query({ sensorCode: 'SENSOR-S01' })
+      .set('x-test-role', 'super_admin');
+    const both = await request(app.getHttpServer())
+      .get('/api/v1/ingest/environment-readings/latest')
+      .set('x-test-role', 'super_admin');
+    const history = await request(app.getHttpServer())
+      .get('/api/v1/ingest/environment-readings')
+      .query({ sensorCode: 'SENSOR-S01', pageSize: '50' })
+      .set('x-test-role', 'super_admin');
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/ingest/environment-readings/${newer.body.id}`)
+      .set('x-test-role', 'super_admin');
+
+    expect(latest.status).toBe(200);
+    expect(latest.body.total).toBe(1);
+    expect(latest.body.items[0]).toMatchObject({
+      id: newer.body.id,
+      sensorCode: 'SENSOR-S01',
+      temperature: 24.6,
+      humidity: 85,
+      co2: 760,
+      substrateMoisture: 72,
+    });
+    expect(latest.body.items[0].temperature).not.toBe(22.5);
+    expect(both.body.total).toBe(2);
+    expect(
+      both.body.items.map((item: { sensorCode: string }) => item.sensorCode),
+    ).toEqual(['SENSOR-S01', 'SENSOR-S01-B']);
+    expect(history.body.total).toBe(2);
+    expect(
+      history.body.items.map(
+        (item: { temperature: number }) => item.temperature,
+      ),
+    ).toEqual([24.6, 22.5]);
+    expect(detail.status).toBe(200);
+    expect(detail.body).toMatchObject({
+      id: newer.body.id,
+      temperature: 24.6,
+      co2: 760,
+      substrateMoisture: 72,
+      source: 'http',
+    });
+  });
+
+  it('hides another shed from the latest list and the detail', async () => {
+    const own = await post(golden.body);
+    const other = await post({
+      ...golden.body,
+      idempotencyKey: 'golden-environment-s02-latest',
+      shedCode: 'S02',
+      sensorCode: 'SENSOR-S02',
+      observedAt: '2026-09-23T02:20:00.000Z',
+      temperature: 19,
+      humidity: 91,
+    });
+
+    const latest = await request(app.getHttpServer())
+      .get('/api/v1/ingest/environment-readings/latest')
+      .set('x-test-role', 'shed_manager');
+    const crossed = await request(app.getHttpServer())
+      .get('/api/v1/ingest/environment-readings/latest')
+      .query({ shedCode: 'S02' })
+      .set('x-test-role', 'viewer');
+    const denied = await request(app.getHttpServer())
+      .get(`/api/v1/ingest/environment-readings/${other.body.id}`)
+      .set('x-test-role', 'shed_manager');
+    const allowed = await request(app.getHttpServer())
+      .get(`/api/v1/ingest/environment-readings/${own.body.id}`)
+      .set('x-test-role', 'viewer');
+    const missing = await request(app.getHttpServer())
+      .get('/api/v1/ingest/environment-readings/missing-reading')
+      .set('x-test-role', 'super_admin');
+    const emptyScope = await request(app.getHttpServer())
+      .get('/api/v1/ingest/environment-readings/latest')
+      .set('x-test-role', 'viewer')
+      .set('x-test-sheds', '');
+
+    expect(latest.status).toBe(200);
+    expect(
+      latest.body.items.map((item: { shedCode: string }) => item.shedCode),
+    ).toEqual(['S01']);
+    expect(crossed.status).toBe(403);
+    expect(denied.status).toBe(403);
+    expect(allowed.status).toBe(200);
+    expect(allowed.body.id).toBe(own.body.id);
+    expect(missing.status).toBe(404);
+    expect(emptyScope.body).toMatchObject({ items: [], total: 0 });
   });
 });

@@ -114,6 +114,19 @@ export class IngestController {
     return this.ingest.list(user, query);
   }
 
+  @Get('environment-readings/latest')
+  listEnvironmentLatest(
+    @CurrentUser() user: AuthUser,
+    @Query() query: ListQuery,
+  ) {
+    return this.ingest.listEnvironmentLatest(user, query);
+  }
+
+  @Get('environment-readings/:id')
+  getEnvironment(@CurrentUser() user: AuthUser, @Param('id') id: string) {
+    return this.ingest.getEnvironment(user, id);
+  }
+
   @Get('environment-readings')
   listEnvironment(@CurrentUser() user: AuthUser, @Query() query: ListQuery) {
     return this.ingest.listEnvironment(user, query);

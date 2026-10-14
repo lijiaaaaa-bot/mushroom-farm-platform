@@ -39,6 +39,10 @@ export function heartbeatTopic(shedCode, deviceCode) {
   return loadContracts().MQTT_HEARTBEAT_TOPIC.replace('+', shedCode).replace('+', deviceCode);
 }
 
+export function environmentTopic(shedCode, sensorCode) {
+  return loadContracts().MQTT_ENVIRONMENT_TOPIC.replace('+', shedCode).replace('+', sensorCode);
+}
+
 export function apiBase() {
   return process.env.API_BASE || 'http://127.0.0.1:41821/api/v1';
 }

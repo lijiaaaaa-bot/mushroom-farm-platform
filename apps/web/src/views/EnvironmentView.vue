@@ -10,9 +10,12 @@ interface Row {
   observedAt: string;
   temperature: number | null;
   humidity: number | null;
+  co2: number | null;
+  substrateMoisture: number | null;
   source: string;
 }
 
+const latestRows = ref<Row[]>([]);
 const rows = ref<Row[]>([]);
 const loading = ref(true);
 const error = ref('');
@@ -20,8 +23,10 @@ const hourPoints = ref<Array<{ hour: string; temperature: number | null; humidit
 
 onMounted(async () => {
   try {
+    const latest = await http.get<{ items: Row[] }>('/ingest/environment-readings/latest');
+    latestRows.value = Array.isArray(latest.data.items) ? latest.data.items : [];
     const response = await http.get<{ items: Row[] }>('/ingest/environment-readings?pageSize=50');
-    rows.value = response.data.items;
+    rows.value = Array.isArray(response.data.items) ? response.data.items : [];
   } catch (cause) {
     error.value = errorText(cause);
   } finally {
@@ -37,7 +42,7 @@ onMounted(async () => {
   }
 });
 
-function reading(value: number | null, unit: string) {
+function reading(value: number | null | undefined, unit: string) {
   return value === null || value === undefined ? '—' : `${value}${unit}`;
 }
 </script>
@@ -55,28 +60,64 @@ function reading(value: number | null, unit: string) {
     </ul>
     <p v-if="loading" class="text-mist">加载中…</p>
     <p v-else-if="error" class="text-danger">{{ error }}</p>
-    <p v-else-if="!rows.length" class="text-mist">暂无环境读数。</p>
-    <table v-else class="data-table">
-      <thead>
-        <tr>
-          <th>时间</th>
-          <th>棚区</th>
-          <th>传感器</th>
-          <th>温度</th>
-          <th>湿度</th>
-          <th>来源</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="row in rows" :key="row.id">
-          <td class="font-mono text-xs">{{ new Date(row.observedAt).toLocaleString('zh-CN') }}</td>
-          <td>{{ row.shedCode }}</td>
-          <td class="font-mono">{{ row.sensorCode }}</td>
-          <td class="font-mono text-accent">{{ reading(row.temperature, '℃') }}</td>
-          <td class="font-mono text-accent">{{ reading(row.humidity, '%') }}</td>
-          <td>{{ row.source }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <p v-else-if="!latestRows.length && !rows.length" class="text-mist">暂无环境读数。</p>
+    <template v-else>
+      <h3 v-if="latestRows.length" class="mb-2 text-sm">最新值</h3>
+      <table v-if="latestRows.length" class="data-table mb-4" data-testid="env-latest">
+        <thead>
+          <tr>
+            <th>时间</th>
+            <th>棚区</th>
+            <th>传感器</th>
+            <th>温度</th>
+            <th>湿度</th>
+            <th>CO₂</th>
+            <th>基质含水率</th>
+            <th>来源</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in latestRows" :key="row.id">
+            <td class="font-mono text-xs">{{ new Date(row.observedAt).toLocaleString('zh-CN') }}</td>
+            <td>{{ row.shedCode }}</td>
+            <td class="font-mono">
+              <router-link
+                class="text-accent"
+                :to="`/environment/${row.id}`"
+                data-testid="env-latest-link"
+              >{{ row.sensorCode }}</router-link>
+            </td>
+            <td class="font-mono text-accent">{{ reading(row.temperature, '℃') }}</td>
+            <td class="font-mono text-accent">{{ reading(row.humidity, '%') }}</td>
+            <td class="font-mono">{{ reading(row.co2, '') }}</td>
+            <td class="font-mono">{{ reading(row.substrateMoisture, '%') }}</td>
+            <td>{{ row.source }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <h3 v-if="rows.length" class="mb-2 text-sm">最近读数</h3>
+      <table v-if="rows.length" class="data-table">
+        <thead>
+          <tr>
+            <th>时间</th>
+            <th>棚区</th>
+            <th>传感器</th>
+            <th>温度</th>
+            <th>湿度</th>
+            <th>来源</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in rows" :key="row.id">
+            <td class="font-mono text-xs">{{ new Date(row.observedAt).toLocaleString('zh-CN') }}</td>
+            <td>{{ row.shedCode }}</td>
+            <td class="font-mono">{{ row.sensorCode }}</td>
+            <td class="font-mono text-accent">{{ reading(row.temperature, '℃') }}</td>
+            <td class="font-mono text-accent">{{ reading(row.humidity, '%') }}</td>
+            <td>{{ row.source }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </template>
   </section>
 </template>

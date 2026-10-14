@@ -11,6 +11,7 @@ import DashboardView from './views/DashboardView.vue';
 import DiseasesView from './views/DiseasesView.vue';
 import DevicesView from './views/DevicesView.vue';
 import EnvironmentView from './views/EnvironmentView.vue';
+import EnvironmentReadingView from './views/EnvironmentReadingView.vue';
 import GrowthTrendsView from './views/GrowthTrendsView.vue';
 import HarvestView from './views/HarvestView.vue';
 import IngestObservabilityView from './views/IngestObservabilityView.vue';
@@ -41,6 +42,7 @@ const router = createRouter({
         { path: 'devices', component: DevicesView, meta: { title: '设备' } },
         { path: 'recognitions', component: RecognitionsView, meta: { title: '识别记录' } },
         { path: 'environment', component: EnvironmentView, meta: { title: '环境读数' } },
+        { path: 'environment/:id', component: EnvironmentReadingView, meta: { title: '环境读数详情' } },
         { path: 'ingest-observability', component: IngestObservabilityView, meta: { title: '接入观测' } },
         { path: 'diseases', component: DiseasesView, meta: { title: '病害' } },
         { path: 'alerts', component: AlertsView, meta: { title: '告警' } },

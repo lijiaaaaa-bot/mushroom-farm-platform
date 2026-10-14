@@ -6,7 +6,12 @@ import {
   Optional,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ObjectLiteral, QueryFailedError, Repository } from 'typeorm';
+import {
+  ObjectLiteral,
+  QueryFailedError,
+  Repository,
+  SelectQueryBuilder,
+} from 'typeorm';
 import { ListQuery, parsePage } from '../common/pagination';
 import { ShedScope } from '../common/shed-scope';
 import {
@@ -484,27 +489,65 @@ export class IngestService {
   }
 
   async listEnvironment(user: AuthUser, query: ListQuery) {
-    const scope = ShedScope.fromUser(user);
-    if (query.shedCode) scope.assert(query.shedCode);
     const page = parsePage(query);
     const qb = this.readings
       .createQueryBuilder('e')
       .orderBy('e.observedAt', 'DESC');
+    this.scopeEnvironmentQuery(qb, user, query);
+    const [items, total] = await qb
+      .skip(page.skip)
+      .take(page.pageSize)
+      .getManyAndCount();
+    return { items, total, page: page.page, pageSize: page.pageSize };
+  }
+
+  async listEnvironmentLatest(user: AuthUser, query: ListQuery) {
+    const qb = this.readings
+      .createQueryBuilder('e')
+      .distinctOn(['e.shed_code', 'e.sensor_code'])
+      .orderBy('e.shedCode', 'ASC')
+      .addOrderBy('e.sensorCode', 'ASC')
+      .addOrderBy('e.observedAt', 'DESC');
+    this.scopeEnvironmentQuery(qb, user, query);
+    const rows = await qb.getMany();
+    rows.sort((left, right) => {
+      const delta =
+        new Date(right.observedAt).getTime() -
+        new Date(left.observedAt).getTime();
+      if (delta !== 0) return delta;
+      return left.sensorCode.localeCompare(right.sensorCode);
+    });
+    return { items: rows, total: rows.length };
+  }
+
+  async getEnvironment(user: AuthUser, id: string) {
+    const row = await this.readings.findOne({ where: { id } });
+    if (!row) throw new NotFoundException('环境读数不存在');
+    ShedScope.fromUser(user).assert(row.shedCode);
+    return row;
+  }
+
+  private scopeEnvironmentQuery(
+    qb: SelectQueryBuilder<EnvironmentReading>,
+    user: AuthUser,
+    query: ListQuery,
+  ) {
+    const scope = ShedScope.fromUser(user);
+    if (query.shedCode) scope.assert(query.shedCode);
     if (scope.codes) {
       if (!scope.codes.length) qb.andWhere('1 = 0');
       else qb.andWhere('e.shedCode IN (:...codes)', { codes: scope.codes });
     }
     if (query.shedCode)
       qb.andWhere('e.shedCode = :shedCode', { shedCode: query.shedCode });
+    const sensorCode = query.sensorCode?.trim();
+    if (sensorCode) {
+      qb.andWhere('e.sensorCode = :sensorCode', { sensorCode });
+    }
     if (query.from)
       qb.andWhere('e.observedAt >= :from', { from: new Date(query.from) });
     if (query.to)
       qb.andWhere('e.observedAt <= :to', { to: new Date(query.to) });
-    const [items, total] = await qb
-      .skip(page.skip)
-      .take(page.pageSize)
-      .getManyAndCount();
-    return { items, total, page: page.page, pageSize: page.pageSize };
   }
 
   async diseaseEnvironment(

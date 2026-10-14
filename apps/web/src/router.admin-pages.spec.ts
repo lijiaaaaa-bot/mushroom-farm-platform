@@ -14,6 +14,7 @@ import AlertDetailView from './views/AlertDetailView.vue';
 import AlertsView from './views/AlertsView.vue';
 import DevicesView from './views/DevicesView.vue';
 import EnvironmentView from './views/EnvironmentView.vue';
+import EnvironmentReadingView from './views/EnvironmentReadingView.vue';
 import IngestObservabilityView from './views/IngestObservabilityView.vue';
 import DiseasesView from './views/DiseasesView.vue';
 import BatchesView from './views/BatchesView.vue';
@@ -63,6 +64,19 @@ describe('admin list routes', () => {
       const record = router.currentRoute.value.matched.find((item) => item.path === page.path);
       expect(record?.components?.default).toBe(page.component);
     }
+  });
+
+  it('opens an environment reading detail page inside the admin shell', async () => {
+    localStorage.setItem('token', 'test-token');
+    const route = router.getRoutes().find((record) => record.path === '/environment/:id');
+    expect(route?.components?.default).toBe(EnvironmentReadingView);
+    expect(route?.meta.title).toBe('环境读数详情');
+    await router.push('/environment/env-1');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/environment/env-1');
+    const matched = router.currentRoute.value.matched.map((record) => record.path);
+    expect(matched).toContain('/');
+    expect(matched).toContain('/environment/:id');
   });
 
   it('opens an alert detail page inside the admin shell', async () => {

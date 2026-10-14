@@ -128,7 +128,9 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 识别 `/recognitions`。`GET /api/v1/ingest/recognitions`，可按摄像头、上海日筛选。有图时打开已存抓拍。
 
-环境 `/environment`。`GET /api/v1/ingest/environment-readings` 列出最近读数（温度、湿度、CO₂、基质含水率）。数据来自环境报文，不用识别报文里的温湿度充数。
+环境 `/environment`。`GET /api/v1/ingest/environment-readings` 列出最近读数（温度、湿度、CO₂、基质含水率）。`GET /api/v1/ingest/environment-readings/latest` 按棚区和传感器各留观测时间最新的一条，可加 `sensorCode`、`shedCode`。`GET /api/v1/ingest/environment-readings/:id` 返回这一条；没有这条是 404，棚外是 403。页面「最新值」点传感器进入 `/environment/:id`。数据来自环境报文，不用识别报文里的温湿度充数。
+
+`make demo-telemetry-latest` 读取 `environment.demo-latest.json`，先 POST 较早一条（温度 19.2℃），再 POST 当前时刻的一条（传感器 `SENSOR-LATEST-01`，棚区 S01，温度 24.6℃，湿度 85%，CO₂ 760，基质含水率 72%）。`GET /api/v1/ingest/environment-readings/latest?sensorCode=SENSOR-LATEST-01` 只返回后一条。详情是同一条。登录后 `/environment` 的「最新值」是 24.6℃，点进 `/environment/:id`。`environment.golden.json` 不改。MQTT 用 `node scripts/demo-telemetry-latest.mjs --channel mqtt`，主题 `mushroom/S01/SENSOR-LATEST-01/environment`。步骤见 [`DEMO_TELEMETRY_LATEST.md`](DEMO_TELEMETRY_LATEST.md)。
 
 病害 `/diseases`。`GET /api/v1/diseases` 只列 `diseaseCount>0` 的识别。同屏环境：`GET /api/v1/diseases/:id/environment`，按该识别的棚，取识别时间前后各 30 分钟（`DISEASE_ENV_WINDOW_MINUTES`）的环境读数；无读数返回「该时间窗内无环境读数」。高发：`GET /api/v1/diseases/peaks`，默认小时粒度读 `metric_buckets_hour`，`grain=day` 读日桶；页面在有桶时展示峰值。病害档案仍是识别明细，不是桶。
 
