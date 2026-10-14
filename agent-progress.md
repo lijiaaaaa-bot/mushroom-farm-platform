@@ -22,7 +22,7 @@
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
-| 2026-10-14 | `make demo-alert-status-filter`：留下待确认 `CAM-STATUS-01` 与已关闭 `CAM-STATUS-02`。`status=open` 只有待确认；`status=closed` 只有已关闭；不带 `status` 时两条都在。详情可打开。页面下拉同步地址，改回全部后两条都在。关闭用与 `demo-close-one-alert` 相同的备注，不关其他告警 | 待 `make test` 与 `make gates` | 不合并 |
+| 2026-10-14 | `make demo-alert-status-filter`：留下待确认 `CAM-STATUS-01` 与已关闭 `CAM-STATUS-02`。`status=open` 只有待确认；`status=closed` 只有已关闭；不带 `status` 时两条都在。详情可打开。页面下拉同步地址，改回全部后两条都在。关闭用与 `demo-close-one-alert` 相同的备注，不关其他告警 | `make test` 退出码 0（contracts 10，脚本 node:test 88，API jest 128，web vitest 146）；`make gates` 退出码 0。PR #103 | CI 待绿后再标为可审。不合并 |
 | 2026-10-14 | `make demo-alert-camera-filter`：`POST /api/v1/alerts` 留下 `CAM-FILTER-01` 与 `CAM-FILTER-02`。`cameraCode=CAM-FILTER-02` 只返回这台；详情可打开；不带该参数时两条都在。页面「筛选 / 清除」走同一参数。不发识别，不改已有演示命令。列表测试最后一次请求改用下标，避开 `Array.at` | 本地 `make test` 退出码 0（contracts 10，脚本 node:test 82，API jest 127，web vitest 143）；`make gates` 退出码 0。PR #102 | CI 待绿后再标为可审。不合并 |
 | 2026-10-14 | `make demo-threshold-alert`：规则「演示二氧化碳过高」阈值 1500 → 1000，再 POST 一次 CO₂ 1200（`CAM-THRESH-01`）。待确认列表出现「CO₂过高告警」。种子规则「二氧化碳过高」仍是 2000。不改样例与已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 77，API jest 126，web vitest 140）；`make gates` 退出码 0。PR #101 | 本环境无 Docker 和 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/alerts` |
 | 2026-10-14 | 告警列表与详情：待确认可点「确认」，未关闭可点「关闭」，成功后重新请求列表或详情。`make demo-ack-one-alert` 确认温度过高告警并再读 `status=acked`；`make demo-close-one-alert` 关闭并再读 `status=closed`。步骤 `docs/DEMO_ACK_CLOSE_ALERT.md`。不改 `make demo-one-alert` | `make test` 退出码 0（contracts 10，脚本 node:test 72，API jest 126，web vitest 140）；`make gates` 退出码 0。PR #100 | 本环境无 Docker、无 Postgres，未跑登录后的页面，也未执行 `make demo-ack-one-alert` |

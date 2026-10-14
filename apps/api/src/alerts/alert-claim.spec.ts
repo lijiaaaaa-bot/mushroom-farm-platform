@@ -479,7 +479,11 @@ describe('alert claim and false-positive close', () => {
 
   it('filters pending and closed alerts apart and still opens each detail', async () => {
     const pending = await createAlert('S01', '待确认筛选告警', 'CAM-STATUS-01');
-    const finished = await createAlert('S01', '已关闭筛选告警', 'CAM-STATUS-02');
+    const finished = await createAlert(
+      'S01',
+      '已关闭筛选告警',
+      'CAM-STATUS-02',
+    );
     const closed = await request(app.getHttpServer())
       .post(`/api/v1/alerts/${finished.id}/close`)
       .set(auth('production_admin', 'producer'))
