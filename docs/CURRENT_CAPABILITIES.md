@@ -66,7 +66,7 @@
 
 ## 设备、识别、环境、病害
 
-设备 `/devices`。`GET/POST /api/v1/devices`，`PATCH /api/v1/devices/:id`，`POST /api/v1/devices/import`（CSV 文件、CSV 文本或 JSON 行）。导入时编码冲突跳过且不改原档案。单条 `POST` 遇到已有编码返回 409，文案「设备编码已存在」。登记字段：编号 `code`、名称 `name`、类型 `type`（页面固定为 `camera`）、棚区 `shedCode`、备注 `note`（可空，最长 500 字，空白记为 null）。`PATCH` 可改备注，也可把 `onlineStatus` 改成 `online` 或 `offline`，也可把 `enabled` 设为 `false`（停用）或 `true`（启用）。停用后档案仍在，列表和详情的 `enabled` 为 false。停用不改在线状态、备注和最近心跳。之后的心跳仍按上报改在线状态，不把停用改回启用。超管与生产管理员可登记、改备注、改状态和停用；棚区负责人可导入，不能单条登记或改档案；查看人员 403。心跳超时（默认 5 分钟，`DEVICE_OFFLINE_AFTER_MS`）产生「设备离线」告警，恢复心跳自动关闭。已有 `lastHeartbeatAt` 或 `lastSeenAt` 时，超时仍按该时间把在线改回离线。两者都空时，手改的在线留在列表和详情里，超时任务不改它。手改状态不写心跳，不新建、不关闭离线告警。之后的心跳按上报改状态，不清备注。只改备注时不改在线状态。
+设备 `/devices`。`GET/POST /api/v1/devices`，`PATCH /api/v1/devices/:id`，`POST /api/v1/devices/import`（CSV 文件、CSV 文本或 JSON 行）。导入时编码冲突跳过且不改原档案。单条 `POST` 遇到已有编码返回 409，文案「设备编码已存在」。登记字段：编号 `code`、名称 `name`、类型 `type`（页面固定为 `camera`）、棚区 `shedCode`、备注 `note`（可空，最长 500 字，空白记为 null）。`PATCH` 可改备注，也可把 `onlineStatus` 改成 `online` 或 `offline`，也可把 `enabled` 设为 `false`（停用）或 `true`（启用）。停用后档案仍在，列表和详情的 `enabled` 为 false。停用不改在线状态、备注和最近心跳。之后的心跳仍按上报改在线状态，不把停用改回启用。`DELETE /api/v1/devices/:id` 删掉这一行。之后列表不再返回它，`GET /api/v1/devices/:id` 是 404，文案「设备不存在」。没有软删除列。告警和识别仍按镜头码留着，删除不改它们。同一编码可以再登记。超管与生产管理员可登记、改备注、改状态、停用和删除；棚区负责人可导入，不能单条登记、改档案或删除；查看人员 403。心跳超时（默认 5 分钟，`DEVICE_OFFLINE_AFTER_MS`）产生「设备离线」告警，恢复心跳自动关闭。已有 `lastHeartbeatAt` 或 `lastSeenAt` 时，超时仍按该时间把在线改回离线。两者都空时，手改的在线留在列表和详情里，超时任务不改它。手改状态不写心跳，不新建、不关闭离线告警。之后的心跳按上报改状态，不清备注。只改备注时不改在线状态。
 
 ### 登记一台摄像头
 
@@ -137,6 +137,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 `make demo-camera-edit` 先 `POST /api/v1/devices` 登记镜头码 `CAM-EDIT-01`（棚区 `S01`，名称可编辑镜头，备注编辑前）。编码已存在则不改名称和心跳。然后 `PATCH /api/v1/devices/:id`，备注改为「备注已改」，状态改为在线。再读设备页同一份 `GET /api/v1/devices?pageSize=100` 和 `GET /api/v1/devices/:id`，两处备注和状态一致。不发识别，不发心跳，不新建告警，不改 `CAM-NEW-01`、`CAM-ALERT-01` 与 `CAM-REG-02`。`/devices` 这一行和 `/devices/:id` 都能改备注和状态，保存后重新读取。步骤见 [`DEMO_CAMERA_EDIT.md`](DEMO_CAMERA_EDIT.md)。
 
 `make demo-camera-stop` 先 `POST /api/v1/devices` 登记镜头码 `CAM-STOP-01`（棚区 `S01`，名称可停用镜头，备注停用前）。编码已存在则不改名称和心跳。然后 `PATCH /api/v1/devices/:id`，请求体只有 `{"enabled":false}`。再读设备页同一份 `GET /api/v1/devices?pageSize=100` 和 `GET /api/v1/devices/:id`，两处启用都是停用，备注、在线状态和最近心跳与停用前一致。这一行仍在列表里，详情仍可打开。不发识别，不发心跳，不新建告警，不删除档案，不改 `CAM-NEW-01`、`CAM-EDIT-01`、`CAM-ALERT-01` 与 `CAM-REG-02`。`/devices` 这一行和 `/devices/:id` 可以停用，也可以再启用。步骤见 [`DEMO_CAMERA_STOP.md`](DEMO_CAMERA_STOP.md)。
+
+`make demo-camera-delete` 先 `POST /api/v1/devices` 登记镜头码 `CAM-DEL-01`（棚区 `S01`，名称可删除镜头，备注删除前）。编码已存在则不改名称和心跳。再读 `GET /api/v1/devices?pageSize=100`，然后 `PATCH /api/v1/devices/:id`，请求体只有 `{"note":"删除前已改"}`。名称、在线状态、启用和最近心跳不变。然后 `DELETE /api/v1/devices/:id`。同一份列表不再有 `CAM-DEL-01`，别的设备还在。`GET /api/v1/devices/:id` 是 404「设备不存在」。`/devices` 这一行和 `/devices/:id` 可以删除，删除后回到列表时这一台没有了。不发识别，不发心跳，不新建告警，不改 `CAM-NEW-01`、`CAM-EDIT-01`、`CAM-STOP-01`、`CAM-ALERT-01` 与 `CAM-REG-02`。步骤见 [`DEMO_CAMERA_DELETE.md`](DEMO_CAMERA_DELETE.md)。
 
 识别 `/recognitions`。`GET /api/v1/ingest/recognitions`，可按摄像头、上海日筛选。有图时打开已存抓拍。
 

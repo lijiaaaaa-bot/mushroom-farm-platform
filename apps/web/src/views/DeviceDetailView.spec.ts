@@ -6,9 +6,10 @@ import DeviceDetailView from './DeviceDetailView.vue';
 
 const httpGet = vi.hoisted(() => vi.fn());
 const httpPatch = vi.hoisted(() => vi.fn());
+const httpDelete = vi.hoisted(() => vi.fn());
 
 vi.mock('../api', () => ({
-  http: { get: httpGet, patch: httpPatch },
+  http: { get: httpGet, patch: httpPatch, delete: httpDelete },
   errorText: () => '请求失败',
 }));
 
@@ -33,6 +34,8 @@ const alert = {
   createdAt: '2026-10-14T01:02:03.004Z',
 };
 
+let activeRouter: ReturnType<typeof createRouter>;
+
 async function mountDetail(id = device.id) {
   const router = createRouter({
     history: createMemoryHistory(),
@@ -44,6 +47,7 @@ async function mountDetail(id = device.id) {
   });
   await router.push(`/devices/${id}`);
   await router.isReady();
+  activeRouter = router;
   const wrapper = mount(DeviceDetailView, { global: { plugins: [router] } });
   await flushPromises();
   return wrapper;
@@ -63,6 +67,7 @@ describe('DeviceDetailView', () => {
   beforeEach(() => {
     httpGet.mockReset();
     httpPatch.mockReset();
+    httpDelete.mockReset();
     currentUser.value = null;
   });
 
@@ -182,6 +187,7 @@ describe('DeviceDetailView', () => {
     expect(wrapper.get('[data-field="note"]').text()).toBe('镜头码对照告警');
     expect(wrapper.find('[data-testid="device-edit"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="device-enabled"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="device-delete"]').exists()).toBe(false);
     expect(wrapper.text()).not.toContain('保存');
     expect(wrapper.get('[data-field="enabled"]').text()).toBe('启用');
     wrapper.unmount();
@@ -210,6 +216,26 @@ describe('DeviceDetailView', () => {
     expect(wrapper.get('[data-field="note"]').text()).toBe('停用前');
     expect(wrapper.get('[data-field="code"]').text()).toBe('CAM-ALERT-01');
     expect(wrapper.get('[data-testid="device-enabled"]').text()).toBe('启用');
+    wrapper.unmount();
+  });
+
+  it('deletes the camera and leaves the detail', async () => {
+    asUser('production_admin');
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/devices/dev-alert-01') return Promise.resolve({ data: device });
+      if (url === '/alerts') return Promise.resolve({ data: { items: [], total: 0 } });
+      return Promise.reject(new Error(url));
+    });
+    httpDelete.mockResolvedValue({ data: { id: device.id, code: device.code } });
+    const wrapper = await mountDetail();
+
+    expect(wrapper.get('[data-testid="device-delete"]').text()).toBe('删除');
+    await wrapper.get('[data-testid="device-delete"]').trigger('click');
+    await flushPromises();
+
+    expect(httpDelete).toHaveBeenCalledWith('/devices/dev-alert-01');
+    expect(activeRouter.currentRoute.value.path).toBe('/devices');
+    expect(wrapper.find('[data-testid="device-detail-error"]').exists()).toBe(false);
     wrapper.unmount();
   });
 });

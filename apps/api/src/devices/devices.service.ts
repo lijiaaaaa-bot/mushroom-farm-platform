@@ -164,6 +164,31 @@ export class DevicesService {
   }
 
   /**
+   * 删掉设备行。没有软删除列。
+   * 告警和识别按镜头码另存，这里不改。
+   */
+  async remove(user: AuthUser, id: string) {
+    const device = await this.get(user, id);
+    const removed = {
+      id: device.id,
+      code: device.code,
+      name: device.name,
+      type: device.type,
+      shedCode: device.shedCode,
+      parentCode: device.parentCode,
+      onlineStatus: device.onlineStatus,
+      lastSeenAt: device.lastSeenAt,
+      lastHeartbeatAt: device.lastHeartbeatAt,
+      note: device.note,
+      enabled: device.enabled,
+      meta: device.meta,
+      createdAt: device.createdAt,
+    };
+    await this.devices.remove(device);
+    return removed;
+  }
+
+  /**
    * 设备编码冲突时跳过，不改已有名称、棚或类型。
    * 棚不存在或无权访问时只失败该行。
    */

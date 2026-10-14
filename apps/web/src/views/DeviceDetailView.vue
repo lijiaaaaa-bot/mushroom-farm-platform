@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import {
   ALERT_LEVEL_LABEL,
   ALERT_STATUS_LABEL,
@@ -35,6 +35,7 @@ interface AlertRow {
 }
 
 const route = useRoute();
+const router = useRouter();
 const device = ref<DeviceRow | null>(null);
 const alerts = ref<AlertRow[]>([]);
 const loading = ref(true);
@@ -45,6 +46,8 @@ const draftNote = ref('');
 const draftStatus = ref<'online' | 'offline'>('offline');
 const saving = ref(false);
 const stopping = ref(false);
+const deleting = ref(false);
+const gone = ref(false);
 const formError = ref('');
 const canEdit = computed(() => canRegisterDevices(currentUser.value?.role));
 
@@ -105,6 +108,22 @@ async function saveEdit() {
   }
 }
 
+async function removeDevice() {
+  if (!device.value || gone.value) return;
+  formError.value = '';
+  deleting.value = true;
+  const id = device.value.id;
+  try {
+    await http.delete(`/devices/${encodeURIComponent(id)}`);
+    gone.value = true;
+    await router.push('/devices');
+  } catch (cause) {
+    formError.value = errorText(cause);
+  } finally {
+    deleting.value = false;
+  }
+}
+
 async function setEnabled(enabled: boolean) {
   if (!device.value) return;
   formError.value = '';
@@ -125,6 +144,7 @@ async function setEnabled(enabled: boolean) {
 watch(
   deviceId,
   async (id) => {
+    if (gone.value) return;
     device.value = null;
     alerts.value = [];
     error.value = '';
@@ -244,6 +264,16 @@ watch(
           @click="setEnabled(device.enabled === false)"
         >{{ stopping ? '保存中…' : device.enabled === false ? '启用' : '停用' }}</button>
         <span class="ml-2 text-mist">停用后这一页和设备列表仍能打开这台。在线状态、备注和最近心跳不动。</span>
+      </p>
+      <p v-if="canEdit" class="mt-4 text-sm">
+        <button
+          class="btn-ghost"
+          type="button"
+          data-testid="device-delete"
+          :disabled="deleting"
+          @click="removeDevice"
+        >{{ deleting ? '删除中…' : '删除' }}</button>
+        <span class="ml-2 text-mist">删除后回到设备列表。这一台不再出现。告警和识别仍按镜头码留着。</span>
       </p>
       <section v-if="device.type === 'camera'" class="mt-4" data-testid="device-alerts">
         <h3 class="mb-2 text-sm">相关告警</h3>

@@ -58,6 +58,14 @@ function memoryDevices() {
       });
       return Array.isArray(input) ? saved : saved[0];
     },
+    remove: async (input: Device | Device[]) => {
+      const batch = Array.isArray(input) ? input : [input];
+      for (const item of batch) {
+        const index = rows.findIndex((row) => row.id === item.id);
+        if (index >= 0) rows.splice(index, 1);
+      }
+      return input;
+    },
     createQueryBuilder: () => {
       const filters: Array<(row: Device) => boolean> = [];
       let skip = 0;
@@ -623,5 +631,115 @@ describe('camera registration', () => {
     expect(enabled.body.enabled).toBe(true);
     expect(enabled.body.onlineStatus).toBe('online');
     expect(enabled.body.note).toBe('停用前');
+  });
+
+  it('deletes a device so the list and the detail no longer have it', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/devices')
+      .set('x-test-role', 'production_admin')
+      .send({
+        code: 'CAM-DEL-01',
+        name: '可删除镜头',
+        type: 'camera',
+        shedCode: 'S01',
+        note: '删除前',
+      });
+    expect(created.status).toBe(201);
+    const sensor = await request(app.getHttpServer())
+      .post('/api/v1/devices')
+      .set('x-test-role', 'production_admin')
+      .send({
+        code: 'SENSOR-KEEP-01',
+        name: '保留传感器',
+        type: 'sensor',
+        shedCode: 'S01',
+      });
+    expect(sensor.status).toBe(201);
+
+    const noted = await request(app.getHttpServer())
+      .patch(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'super_admin')
+      .send({ note: '删除前已改' });
+    expect(noted.status).toBe(200);
+    expect(noted.body).toMatchObject({
+      id: created.body.id,
+      code: 'CAM-DEL-01',
+      name: '可删除镜头',
+      note: '删除前已改',
+      onlineStatus: 'offline',
+      enabled: true,
+      lastHeartbeatAt: null,
+    });
+
+    const denied = await request(app.getHttpServer())
+      .delete(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'viewer');
+    expect(denied.status).toBe(403);
+    const lead = await request(app.getHttpServer())
+      .delete(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'shed_manager');
+    expect(lead.status).toBe(403);
+    expect(devices.rows.map((row) => row.code).sort()).toEqual([
+      'CAM-DEL-01',
+      'SENSOR-KEEP-01',
+    ]);
+
+    const removed = await request(app.getHttpServer())
+      .delete(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'production_admin');
+    expect(removed.status).toBe(200);
+    expect(removed.body).toMatchObject({
+      id: created.body.id,
+      code: 'CAM-DEL-01',
+      note: '删除前已改',
+    });
+    expect(devices.rows.map((row) => row.code)).toEqual(['SENSOR-KEEP-01']);
+
+    const listed = await request(app.getHttpServer())
+      .get('/api/v1/devices')
+      .query({ pageSize: 100 })
+      .set('x-test-role', 'viewer');
+    expect(listed.status).toBe(200);
+    expect(listed.body.items.map((row: { code: string }) => row.code)).toEqual([
+      'SENSOR-KEEP-01',
+    ]);
+
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'viewer');
+    expect(detail.status).toBe(404);
+    expect(detail.body.message).toBe('设备不存在');
+
+    const again = await request(app.getHttpServer())
+      .delete(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'super_admin');
+    expect(again.status).toBe(404);
+    expect(again.body.message).toBe('设备不存在');
+
+    const missing = await request(app.getHttpServer())
+      .delete('/api/v1/devices/missing-device')
+      .set('x-test-role', 'super_admin');
+    expect(missing.status).toBe(404);
+
+    const sensorGone = await request(app.getHttpServer())
+      .delete(`/api/v1/devices/${sensor.body.id}`)
+      .set('x-test-role', 'super_admin');
+    expect(sensorGone.status).toBe(200);
+    expect(sensorGone.body.code).toBe('SENSOR-KEEP-01');
+    expect(devices.rows).toEqual([]);
+
+    const recreated = await request(app.getHttpServer())
+      .post('/api/v1/devices')
+      .set('x-test-role', 'production_admin')
+      .send({
+        code: 'CAM-DEL-01',
+        name: '可删除镜头',
+        type: 'camera',
+        shedCode: 'S01',
+        note: '删除前',
+      });
+    expect(recreated.status).toBe(201);
+    expect(recreated.body.code).toBe('CAM-DEL-01');
+    expect(devices.rows.map((row) => row.code)).toEqual(['CAM-DEL-01']);
   });
 });
