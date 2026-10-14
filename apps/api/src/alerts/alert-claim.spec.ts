@@ -28,6 +28,8 @@ class MemoryAlertQuery {
   private status: string | null = null;
   private camera: string | null = null;
   private titleKeyword: string | null = null;
+  private from: Date | null = null;
+  private to: Date | null = null;
   private skipN = 0;
   private takeN: number | null = null;
 
@@ -45,6 +47,8 @@ class MemoryAlertQuery {
       status?: string;
       cameraCode?: string;
       titleKeyword?: string;
+      from?: Date;
+      to?: Date;
     },
   ) {
     if (condition.includes('1 = 0')) this.blocked = true;
@@ -53,6 +57,8 @@ class MemoryAlertQuery {
     if (params?.status) this.status = params.status;
     if (params?.cameraCode) this.camera = params.cameraCode;
     if (params?.titleKeyword) this.titleKeyword = params.titleKeyword;
+    if (params?.from) this.from = params.from;
+    if (params?.to) this.to = params.to;
     return this;
   }
 
@@ -87,6 +93,14 @@ class MemoryAlertQuery {
         (row.title || '').toLowerCase().includes(needle),
       );
     }
+    if (this.from) {
+      const from = this.from.getTime();
+      items = items.filter((row) => row.createdAt.getTime() >= from);
+    }
+    if (this.to) {
+      const to = this.to.getTime();
+      items = items.filter((row) => row.createdAt.getTime() <= to);
+    }
     items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     return items;
   }
@@ -116,6 +130,20 @@ function memoryAlerts() {
     },
     findOne: async (query: { where: { id?: string } }) =>
       rows.find((row) => row.id === query.where.id) ?? null,
+    find: async (query: { where?: Partial<Alert> }) => {
+      const where = query?.where ?? {};
+      return rows.filter((row) =>
+        Object.entries(where).every(
+          ([key, value]) => row[key as keyof Alert] === value,
+        ),
+      );
+    },
+    update: async (id: string, patch: Partial<Alert>) => {
+      const row = rows.find((item) => item.id === id);
+      if (!row) return { affected: 0 };
+      Object.assign(row, patch);
+      return { affected: 1 };
+    },
     createQueryBuilder: () => new MemoryAlertQuery(rows),
   };
 }
@@ -754,6 +782,102 @@ describe('alert claim and false-positive close', () => {
       .set(auth('shed_manager', 'shed-c', 'S02'));
     expect(outsider.status).toBe(200);
     expect(outsider.body.items).toEqual([]);
+  });
+
+  it('filters alerts by createdAt and moves an existing row when the same camera and title are seeded again', async () => {
+    const outside = '2026-10-14T01:00:00.000Z';
+    const inside = '2026-10-14T04:00:00.000Z';
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/alerts')
+      .set(auth('super_admin', 'id-super'))
+      .send({
+        shedCode: 'S01',
+        cameraCode: 'CAM-TIME-01',
+        level: 'warning',
+        title: '时间窗外告警',
+        message: '窗外',
+        createdAt: outside,
+      });
+    expect(created.status).toBe(201);
+    expect(created.body.createdAt).toBe(outside);
+
+    const current = await request(app.getHttpServer())
+      .post('/api/v1/alerts')
+      .set(auth('super_admin', 'id-super'))
+      .send({
+        shedCode: 'S01',
+        cameraCode: 'CAM-TIME-03',
+        level: 'warning',
+        title: '时间窗内当前告警',
+        message: '窗内',
+        createdAt: '2026-10-14T04:30:00.000Z',
+      });
+    expect(current.status).toBe(201);
+
+    const wide = await request(app.getHttpServer())
+      .get(
+        '/api/v1/alerts?from=2026-10-14T00:00:00.000Z&to=2026-10-14T05:00:00.000Z&pageSize=50',
+      )
+      .set(auth('super_admin', 'id-super'));
+    expect(wide.status).toBe(200);
+    expect(wide.body.items.map((row: { id: string }) => row.id)).toEqual([
+      current.body.id,
+      created.body.id,
+    ]);
+
+    const narrow = await request(app.getHttpServer())
+      .get(
+        '/api/v1/alerts?from=2026-10-14T04:00:00.000Z&to=2026-10-14T05:00:00.000Z&status=open&pageSize=50',
+      )
+      .set(auth('super_admin', 'id-super'));
+    expect(narrow.status).toBe(200);
+    expect(narrow.body.total).toBeLessThan(wide.body.total);
+    expect(narrow.body.items.map((row: { id: string }) => row.id)).toEqual([
+      current.body.id,
+    ]);
+
+    const moved = await request(app.getHttpServer())
+      .post('/api/v1/alerts')
+      .set(auth('super_admin', 'id-super'))
+      .send({
+        shedCode: 'S01',
+        cameraCode: 'CAM-TIME-01',
+        level: 'warning',
+        title: '时间窗外告警',
+        message: '窗外',
+        createdAt: inside,
+      });
+    expect(moved.status).toBe(201);
+    expect(moved.body.id).toBe(created.body.id);
+    expect(moved.body.createdAt).toBe(inside);
+    expect(
+      alerts.rows.filter((row) => row.cameraCode === 'CAM-TIME-01'),
+    ).toHaveLength(1);
+
+    const earlier = await request(app.getHttpServer())
+      .get(
+        '/api/v1/alerts?from=2026-10-14T00:00:00.000Z&to=2026-10-14T03:00:00.000Z&pageSize=50',
+      )
+      .set(auth('super_admin', 'id-super'));
+    expect(earlier.body.items).toEqual([]);
+
+    const blank = await request(app.getHttpServer())
+      .get('/api/v1/alerts?from=%20%20&pageSize=50')
+      .set(auth('super_admin', 'id-super'));
+    expect(blank.status).toBe(200);
+    expect(blank.body.total).toBe(2);
+
+    const invalid = await request(app.getHttpServer())
+      .get('/api/v1/alerts?from=not-a-time&pageSize=50')
+      .set(auth('super_admin', 'id-super'));
+    expect(invalid.status).toBe(400);
+
+    const reversed = await request(app.getHttpServer())
+      .get(
+        '/api/v1/alerts?from=2026-10-14T05:00:00.000Z&to=2026-10-14T01:00:00.000Z&pageSize=50',
+      )
+      .set(auth('super_admin', 'id-super'));
+    expect(reversed.status).toBe(400);
   });
 
   it('forbids a viewer from confirming a pending alert', async () => {

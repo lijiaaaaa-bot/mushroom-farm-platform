@@ -91,6 +91,8 @@
 
 - 单条告警详情：`make demo-alert-detail` 用与 `make demo-one-alert` 相同的识别留下或沿用棚区 S01、摄像头 `CAM-ALERT-01` 的「温度过高告警」（当前值 30℃，阈值 28℃）。终端打印详情地址 `/alerts/<id>`。`/alerts/:id` 显示标题、说明、级别、状态、棚区、摄像头、发生时间、指标、当前值、阈值，以及认领人、认领时间、确认人、确认时间、关闭原因、关闭人、关闭时间。不确认、不关闭，不改已有演示命令。步骤见 `docs/DEMO_ALERT_DETAIL.md`。PR #127。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/127
 
+- 告警列表可按起止时间筛选：`GET /api/v1/alerts` 的 `from`、`to` 按列表「时间」列的 `createdAt` 比较，含两端。`/alerts` 填写开始时间、结束时间后点「查询」，地址栏同步；点「清除时间」不再传。状态下拉仍单独传 `status`。没有落在窗口里时写「没有符合条件的告警。」。时间无效时写「时间筛选无效」。`make demo-alert-time-range` 留下 `CAM-TIME-01`（前 3 小时，「时间窗外告警」）、`CAM-TIME-02`（前 8 分钟，「时间窗内较早告警」）、`CAM-TIME-03`（当前时刻，「时间窗内当前告警」）。宽窗口三条都在，窄窗口只有后两条。不改 `make demo-alert-status-filter`。步骤见 `docs/DEMO_ALERT_TIME_RANGE.md`。
+
 ## 进行中
 - 无
 

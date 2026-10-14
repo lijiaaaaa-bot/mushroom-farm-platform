@@ -68,7 +68,46 @@ const titleDraft = ref(plainQuery('q').trim());
 const titleFilter = ref(titleDraft.value);
 const highlightId = ref(plainQuery('alertId'));
 
-const addressKeys = ['status', 'level', 'shedCode', 'cameraCode', 'q', 'alertId'] as const;
+function invalidBound(value: string) {
+  return value !== '' && Number.isNaN(new Date(value).getTime());
+}
+
+function pad(value: number) {
+  return String(value).padStart(2, '0');
+}
+
+function toLocalInput(value: string) {
+  if (!value || invalidBound(value)) return value;
+  const date = new Date(value);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function readTimeQuery() {
+  const from = plainQuery('from').trim();
+  const to = plainQuery('to').trim();
+  const fromBad = invalidBound(from);
+  const toBad = invalidBound(to);
+  const orderBad = !fromBad && !toBad && Boolean(from) && Boolean(to) && new Date(from).getTime() > new Date(to).getTime();
+  if (fromBad || toBad || orderBad) {
+    return { from: '', to: '', invalid: true, draftFrom: from, draftTo: to };
+  }
+  return {
+    from: from ? new Date(from).toISOString() : '',
+    to: to ? new Date(to).toISOString() : '',
+    invalid: false,
+    draftFrom: from ? toLocalInput(from) : '',
+    draftTo: to ? toLocalInput(to) : '',
+  };
+}
+
+const initialTime = readTimeQuery();
+const fromDraft = ref(initialTime.draftFrom);
+const toDraft = ref(initialTime.draftTo);
+const fromFilter = ref(initialTime.from);
+const toFilter = ref(initialTime.to);
+const timeInvalid = ref(initialTime.invalid);
+
+const addressKeys = ['status', 'level', 'shedCode', 'cameraCode', 'q', 'from', 'to', 'alertId'] as const;
 
 function listParams() {
   return {
@@ -78,6 +117,8 @@ function listParams() {
     ...(shedCodeFilter.value ? { shedCode: shedCodeFilter.value } : {}),
     ...(cameraCodeFilter.value ? { cameraCode: cameraCodeFilter.value } : {}),
     ...(titleFilter.value ? { q: titleFilter.value } : {}),
+    ...(fromFilter.value ? { from: fromFilter.value } : {}),
+    ...(toFilter.value ? { to: toFilter.value } : {}),
   };
 }
 
@@ -89,6 +130,8 @@ function addressQuery(cameraCode: string, titleKeyword: string) {
   if (highlightId.value) query.alertId = highlightId.value;
   if (cameraCode) query.cameraCode = cameraCode;
   if (titleKeyword) query.q = titleKeyword;
+  if (fromFilter.value) query.from = fromFilter.value;
+  if (toFilter.value) query.to = toFilter.value;
   return query;
 }
 
@@ -113,6 +156,8 @@ function detailTo(row: AlertRow) {
   if (shedCodeFilter.value) query.shedCode = shedCodeFilter.value;
   if (cameraCodeFilter.value) query.cameraCode = cameraCodeFilter.value;
   if (titleFilter.value) query.q = titleFilter.value;
+  if (fromFilter.value) query.from = fromFilter.value;
+  if (toFilter.value) query.to = toFilter.value;
   if (!Object.keys(query).length) return `/alerts/${row.id}`;
   return { path: `/alerts/${row.id}`, query };
 }
@@ -139,6 +184,59 @@ function clearTitle() {
 function clearCamera() {
   cameraDraft.value = '';
   return applyCamera();
+}
+
+function timeActive() {
+  return Boolean(fromFilter.value || toFilter.value);
+}
+
+function boundLabel(value: string) {
+  return new Date(value).toLocaleString('zh-CN');
+}
+
+function timeScopeLabel() {
+  const parts: string[] = [];
+  if (fromFilter.value) parts.push(boundLabel(fromFilter.value));
+  if (toFilter.value) parts.push(boundLabel(toFilter.value));
+  return parts.join(' 至 ');
+}
+
+async function applyTime() {
+  const from = fromDraft.value.trim();
+  const to = toDraft.value.trim();
+  const fromBad = invalidBound(from);
+  const toBad = invalidBound(to);
+  const orderBad = !fromBad && !toBad && Boolean(from) && Boolean(to) && new Date(from).getTime() > new Date(to).getTime();
+  if (fromBad || toBad || orderBad) {
+    timeInvalid.value = true;
+    rows.value = [];
+    loading.value = false;
+    error.value = '';
+    return;
+  }
+  const nextFrom = from ? new Date(from).toISOString() : '';
+  const nextTo = to ? new Date(to).toISOString() : '';
+  fromDraft.value = from ? toLocalInput(from) : '';
+  toDraft.value = to ? toLocalInput(to) : '';
+  if (nextFrom === fromFilter.value && nextTo === toFilter.value && !timeInvalid.value) return;
+  timeInvalid.value = false;
+  fromFilter.value = nextFrom;
+  toFilter.value = nextTo;
+  await router.replace({ path: route.path, query: addressQuery(cameraCodeFilter.value, titleFilter.value) });
+}
+
+function clearTime() {
+  fromDraft.value = '';
+  toDraft.value = '';
+  const wasInvalid = timeInvalid.value;
+  timeInvalid.value = false;
+  if (!fromFilter.value && !toFilter.value) {
+    if (wasInvalid) void load();
+    return;
+  }
+  fromFilter.value = '';
+  toFilter.value = '';
+  return router.replace({ path: route.path, query: addressQuery(cameraCodeFilter.value, titleFilter.value) });
 }
 
 function bindRow(id: string, el: unknown) {
@@ -169,10 +267,27 @@ function applyRouteQuery() {
     titleDraft.value = title;
     titleFilter.value = title;
   }
+  const time = readTimeQuery();
+  fromDraft.value = time.draftFrom;
+  toDraft.value = time.draftTo;
+  timeInvalid.value = time.invalid;
+  if (time.from !== fromFilter.value) fromFilter.value = time.from;
+  if (time.to !== toFilter.value) toFilter.value = time.to;
+  if (time.invalid) {
+    fromFilter.value = '';
+    toFilter.value = '';
+    rows.value = [];
+  }
   highlightId.value = plainQuery('alertId');
 }
 
 async function load() {
+  if (timeInvalid.value) {
+    rows.value = [];
+    loading.value = false;
+    error.value = '';
+    return;
+  }
   loading.value = true;
   error.value = '';
   try {
@@ -219,7 +334,7 @@ async function act(id: string, action: 'ack' | 'close' | 'claim' | 'false-positi
   }
 }
 
-watch([statusFilter, levelFilter, shedCodeFilter, cameraCodeFilter, titleFilter], () => {
+watch([statusFilter, levelFilter, shedCodeFilter, cameraCodeFilter, titleFilter, fromFilter, toFilter], () => {
   void load();
 });
 
@@ -301,12 +416,34 @@ onMounted(load);
         </label>
         <button class="btn-ghost self-end" type="button" data-testid="alert-title-apply" @click="applyTitle">搜索</button>
         <button class="btn-ghost self-end" type="button" data-testid="alert-title-clear" @click="clearTitle">清除搜索</button>
+        <label class="text-sm">开始时间
+          <input
+            v-model="fromDraft"
+            class="field mt-1"
+            type="datetime-local"
+            aria-label="开始时间"
+            data-testid="alert-time-from"
+          />
+        </label>
+        <label class="text-sm">结束时间
+          <input
+            v-model="toDraft"
+            class="field mt-1"
+            type="datetime-local"
+            aria-label="结束时间"
+            data-testid="alert-time-to"
+          />
+        </label>
+        <button class="btn-ghost self-end" type="button" data-testid="alert-time-apply" @click="applyTime">查询</button>
+        <button class="btn-ghost self-end" type="button" data-testid="alert-time-clear" @click="clearTime">清除时间</button>
         <p v-if="shedCodeFilter" class="self-end text-sm text-mist" data-testid="alert-shed-scope">棚 {{ shedCodeFilter }}</p>
         <p v-if="cameraCodeFilter" class="self-end text-sm text-mist" data-testid="alert-camera-scope">摄像头 {{ cameraCodeFilter }}</p>
         <p v-if="titleFilter" class="self-end text-sm text-mist" data-testid="alert-title-scope">标题 {{ titleFilter }}</p>
+        <p v-if="timeActive() && !timeInvalid" class="self-end text-sm text-mist" data-testid="alert-time-scope">时间 {{ timeScopeLabel() }}</p>
       </div>
-      <p v-if="loading" class="text-mist">加载中…</p>
-      <p v-else-if="!error && !rows.length" class="text-mist">暂无告警。</p>
+      <p v-if="timeInvalid" class="text-sm text-danger" data-testid="alert-time-error">时间筛选无效</p>
+      <p v-else-if="loading" class="text-mist">加载中…</p>
+      <p v-else-if="!error && !rows.length" class="text-mist" data-testid="alert-empty">{{ timeActive() ? '没有符合条件的告警。' : '暂无告警。' }}</p>
       <table v-else-if="rows.length" class="data-table">
         <thead>
           <tr><th>等级</th><th>状态</th><th>原因</th><th>认领人</th><th>棚区</th><th>摄像头</th><th>标题</th><th>时间</th><th>操作</th></tr>

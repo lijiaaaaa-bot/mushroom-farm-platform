@@ -213,6 +213,15 @@ describe('AlertDetailView', () => {
     );
     both.unmount();
 
+    const timed = await mountDetail(
+      'alert-1',
+      '?status=open&from=2026-10-14T03:00:00.000Z&to=2026-10-14T05:00:00.000Z',
+    );
+    expect(decodeURIComponent(timed.get('[data-testid="alert-back"]').attributes('href') || '')).toBe(
+      '/alerts?status=open&from=2026-10-14T03:00:00.000Z&to=2026-10-14T05:00:00.000Z',
+    );
+    timed.unmount();
+
     const invalid = await mountDetail('alert-1', '?status=nope&cameraCode=%20CAM-FILTER-02%20');
     expect(invalid.get('[data-testid="alert-back"]').attributes('href')).toBe(
       '/alerts?cameraCode=CAM-FILTER-02',
