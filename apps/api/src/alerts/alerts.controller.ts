@@ -287,6 +287,11 @@ export class AlertsController {
     return this.alerts.listRules(user);
   }
 
+  @Get('alert-rules/:id')
+  getRule(@Param('id') id: string, @CurrentUser() user: AuthUser) {
+    return this.alerts.getRule(user, id);
+  }
+
   @Post('alert-rules')
   @Roles('super_admin', 'production_admin')
   async createRule(

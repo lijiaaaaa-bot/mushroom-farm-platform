@@ -190,6 +190,45 @@ describe('alert-rules HTTP', () => {
     });
   });
 
+  it('returns one rule and hides a shed outside the viewer scope', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/alert-rules')
+      .set('x-test-role', 'super_admin')
+      .send({ ...body, name: '列表可见规则', shedCode: 'S01', windowMinutes: 360 });
+    expect(created.status).toBe(201);
+
+    const opened = await request(app.getHttpServer())
+      .get(`/api/v1/alert-rules/${created.body.id}`)
+      .set('x-test-role', 'viewer');
+    expect(opened.status).toBe(200);
+    expect(opened.body).toMatchObject({
+      id: created.body.id,
+      name: '列表可见规则',
+      metric: 'temperature_high',
+      threshold: 35,
+      level: 'warning',
+      enabled: true,
+      windowMinutes: 360,
+      shedCode: 'S01',
+    });
+
+    const other = await request(app.getHttpServer())
+      .post('/api/v1/alert-rules')
+      .set('x-test-role', 'super_admin')
+      .send({ ...body, name: '他棚规则', shedCode: 'S02' });
+    expect(other.status).toBe(201);
+
+    const denied = await request(app.getHttpServer())
+      .get(`/api/v1/alert-rules/${other.body.id}`)
+      .set('x-test-role', 'viewer');
+    expect(denied.status).toBe(403);
+
+    const missing = await request(app.getHttpServer())
+      .get('/api/v1/alert-rules/missing-rule')
+      .set('x-test-role', 'super_admin');
+    expect(missing.status).toBe(404);
+  });
+
   it('rejects a rule whose metric is not in the contract', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/alert-rules')

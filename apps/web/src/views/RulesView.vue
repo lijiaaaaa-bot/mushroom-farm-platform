@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import {
   ALERT_LEVEL_LABEL,
   ALERT_LEVELS,
@@ -28,12 +29,17 @@ interface EditableRule extends Rule {
   draftWindow: number;
 }
 
+const route = useRoute();
 const rows = ref<EditableRule[]>([]);
 const error = ref('');
 const loading = ref(true);
 const metrics = ALERT_METRICS;
 const levels = ALERT_LEVELS;
 const canWrite = computed(() => canWriteRules(currentUser.value?.role));
+const highlightId = computed(() => {
+  const value = route.query.ruleId;
+  return typeof value === 'string' ? value : '';
+});
 const form = ref({
   name: '',
   metric: 'temperature_high' as AlertMetric,
@@ -103,6 +109,10 @@ function toggleEnabled(row: EditableRule) {
   return patchRule(row.id, { enabled: !row.enabled });
 }
 
+function shedText(code: string | null) {
+  return code?.trim() ? code : '全场';
+}
+
 onMounted(load);
 </script>
 
@@ -131,17 +141,25 @@ onMounted(load);
           <tr>
             <th>名称</th>
             <th>指标</th>
+            <th>棚区</th>
             <th>阈值</th>
             <th>等级</th>
             <th>窗口分钟</th>
             <th>启用</th>
             <th v-if="canWrite"></th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
-          <tr v-for="row in rows" :key="row.id">
-            <td>{{ row.name }}</td>
-            <td>{{ ALERT_METRIC_LABEL[row.metric] }}</td>
+          <tr
+            v-for="row in rows"
+            :key="row.id"
+            :data-rule-id="row.id"
+            :data-highlight="row.id === highlightId ? 'true' : undefined"
+          >
+            <td data-field="name">{{ row.name }}</td>
+            <td data-field="metric">{{ ALERT_METRIC_LABEL[row.metric] }}</td>
+            <td class="font-mono" data-field="shed">{{ shedText(row.shedCode) }}</td>
             <td>
               <input
                 v-if="canWrite"
@@ -176,9 +194,20 @@ onMounted(load);
               <button class="btn-ghost" type="button" @click="toggleEnabled(row)">{{ row.enabled ? '停用' : '启用' }}</button>
               <button class="btn-ghost" type="button" @click="saveRow(row)">保存</button>
             </td>
+            <td>
+              <router-link class="text-accent" :to="`/alert-rules/${row.id}`" data-testid="rule-open">打开</router-link>
+            </td>
           </tr>
         </tbody>
       </table>
     </section>
   </div>
 </template>
+
+<style scoped>
+tr[data-highlight='true'] {
+  background: #fff7e6;
+  outline: 2px solid #f59e0b;
+  outline-offset: -2px;
+}
+</style>

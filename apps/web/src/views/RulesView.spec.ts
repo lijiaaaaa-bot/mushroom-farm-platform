@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils';
+import { createMemoryHistory, createRouter } from 'vue-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { currentUser, type SessionUser } from '../auth';
 import RulesView from './RulesView.vue';
@@ -37,8 +38,17 @@ function asUser(role: SessionUser['role']) {
   };
 }
 
-async function mountView() {
-  const wrapper = mount(RulesView);
+async function mountView(query: Record<string, string> = {}) {
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [
+      { path: '/alert-rules', component: RulesView },
+      { path: '/alert-rules/:id', component: { template: '<div />' } },
+    ],
+  });
+  await router.push({ path: '/alert-rules', query });
+  await router.isReady();
+  const wrapper = mount(RulesView, { global: { plugins: [router] } });
   await flushPromises();
   return wrapper;
 }
@@ -91,6 +101,8 @@ describe('RulesView', () => {
     });
     expect(wrapper.text()).toContain('高温规则');
     expect(wrapper.text()).toContain('温度过高');
+    expect(wrapper.get('[data-field="shed"]').text()).toBe('全场');
+    expect(wrapper.get('[data-testid="rule-open"]').attributes('href')).toBe('/alert-rules/rule-1');
     expect(wrapper.text()).not.toContain('暂无阈值规则');
     wrapper.unmount();
 
@@ -141,15 +153,27 @@ describe('RulesView', () => {
   });
 
   it('hides create and edit controls for shed manager and viewer', async () => {
-    httpGet.mockResolvedValue({ data: [{ ...rule, enabled: true }] });
+    httpGet.mockResolvedValue({ data: [{ ...rule, enabled: true, shedCode: 'S01' }] });
     for (const role of ['shed_manager', 'viewer'] as const) {
       asUser(role);
       const wrapper = await mountView();
       expect(wrapper.text()).toContain('当前角色只能查看阈值规则。');
       expect(wrapper.text()).toContain('高温规则');
+      expect(wrapper.get('[data-field="shed"]').text()).toBe('S01');
+      expect(wrapper.text()).toContain('35');
+      expect(wrapper.get('[data-testid="rule-open"]').attributes('href')).toBe('/alert-rules/rule-1');
       expect(wrapper.find('form').exists()).toBe(false);
       expect(wrapper.find('button').exists()).toBe(false);
       wrapper.unmount();
     }
+  });
+
+  it('highlights the rule named in the address', async () => {
+    httpGet.mockResolvedValue({ data: [rule, { ...rule, id: 'rule-2', name: '另一条', shedCode: 'S02' }] });
+    const wrapper = await mountView({ ruleId: 'rule-2' });
+    expect(wrapper.get('tr[data-rule-id="rule-2"]').attributes('data-highlight')).toBe('true');
+    expect(wrapper.get('tr[data-rule-id="rule-1"]').attributes('data-highlight')).toBeUndefined();
+    expect(wrapper.get('tr[data-rule-id="rule-2"]').get('[data-field="shed"]').text()).toBe('S02');
+    wrapper.unmount();
   });
 });
