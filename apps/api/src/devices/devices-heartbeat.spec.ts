@@ -13,7 +13,11 @@ import { Alert } from '../entities/alert.entity';
 import { Device } from '../entities/device.entity';
 import { Shed } from '../entities/shed.entity';
 import { DevicesController } from './devices.controller';
-import { DevicesService } from './devices.service';
+import {
+  deviceOfflineSweepMs,
+  DevicesService,
+  offlineThresholdLabel,
+} from './devices.service';
 
 function memoryDevices() {
   const rows: Device[] = [];
@@ -170,6 +174,39 @@ function assignUser(
   next();
 }
 
+describe('offline sweep interval', () => {
+  const previousAfter = process.env.DEVICE_OFFLINE_AFTER_MS;
+  const previousSweep = process.env.DEVICE_OFFLINE_SWEEP_MS;
+
+  afterEach(() => {
+    if (previousAfter === undefined) delete process.env.DEVICE_OFFLINE_AFTER_MS;
+    else process.env.DEVICE_OFFLINE_AFTER_MS = previousAfter;
+    if (previousSweep === undefined) delete process.env.DEVICE_OFFLINE_SWEEP_MS;
+    else process.env.DEVICE_OFFLINE_SWEEP_MS = previousSweep;
+  });
+
+  it('keeps a one-minute sweep when the timeout is the default five minutes', () => {
+    delete process.env.DEVICE_OFFLINE_AFTER_MS;
+    delete process.env.DEVICE_OFFLINE_SWEEP_MS;
+    expect(deviceOfflineSweepMs()).toBe(60_000);
+    expect(offlineThresholdLabel(5 * 60 * 1000)).toBe('5 分钟');
+  });
+
+  it('shortens the sweep when the timeout is under a minute', () => {
+    delete process.env.DEVICE_OFFLINE_SWEEP_MS;
+    expect(deviceOfflineSweepMs(2_000)).toBe(1_000);
+    expect(deviceOfflineSweepMs(500)).toBe(250);
+    expect(offlineThresholdLabel(2_000)).toBe('2 秒');
+  });
+
+  it('honors DEVICE_OFFLINE_SWEEP_MS when it is at least 200ms', () => {
+    process.env.DEVICE_OFFLINE_SWEEP_MS = '500';
+    expect(deviceOfflineSweepMs(5 * 60 * 1000)).toBe(500);
+    process.env.DEVICE_OFFLINE_SWEEP_MS = '10';
+    expect(deviceOfflineSweepMs(5 * 60 * 1000)).toBe(60_000);
+  });
+});
+
 describe('device heartbeat and offline alerts', () => {
   let app: INestApplication;
   let devices: ReturnType<typeof memoryDevices>;
@@ -257,6 +294,7 @@ describe('device heartbeat and offline alerts', () => {
       status: 'open',
       shedCode: 'S01',
       cameraCode: 'BOX-1',
+      message: '棚区 S01 设备 BOX-1 超时未心跳（阈值 5 分钟）',
     });
 
     await service.markStaleOffline(new Date('2026-09-23T00:10:00.000Z'));
@@ -291,6 +329,80 @@ describe('device heartbeat and offline alerts', () => {
       closeNote: '心跳恢复，自动关闭',
       closeReason: 'resolved',
     });
+  });
+
+  it('uses a short DEVICE_OFFLINE_AFTER_MS and labels the threshold in seconds', async () => {
+    const previousAfter = process.env.DEVICE_OFFLINE_AFTER_MS;
+    const previousSweep = process.env.DEVICE_OFFLINE_SWEEP_MS;
+    process.env.DEVICE_OFFLINE_AFTER_MS = '2000';
+    delete process.env.DEVICE_OFFLINE_SWEEP_MS;
+    try {
+      const service = app.get(DevicesService);
+      await service.heartbeat(
+        'S01',
+        'CAM-HB-OFF-01',
+        'camera',
+        true,
+        '2026-10-14T00:00:00.000Z',
+      );
+      await service.markStaleOffline(new Date('2026-10-14T00:00:02.000Z'));
+      expect(devices.rows[0].onlineStatus).toBe('online');
+
+      await service.markStaleOffline(new Date('2026-10-14T00:00:02.001Z'));
+      expect(devices.rows[0].onlineStatus).toBe('offline');
+      expect(alerts.rows).toHaveLength(1);
+      expect(alerts.rows[0]).toMatchObject({
+        metric: 'device_offline',
+        title: '设备离线',
+        level: 'warning',
+        status: 'open',
+        cameraCode: 'CAM-HB-OFF-01',
+        message: '棚区 S01 设备 CAM-HB-OFF-01 超时未心跳（阈值 2 秒）',
+      });
+    } finally {
+      if (previousAfter === undefined)
+        delete process.env.DEVICE_OFFLINE_AFTER_MS;
+      else process.env.DEVICE_OFFLINE_AFTER_MS = previousAfter;
+      if (previousSweep === undefined)
+        delete process.env.DEVICE_OFFLINE_SWEEP_MS;
+      else process.env.DEVICE_OFFLINE_SWEEP_MS = previousSweep;
+    }
+  });
+
+  it('skips another sweep until the interval has elapsed', async () => {
+    const previousAfter = process.env.DEVICE_OFFLINE_AFTER_MS;
+    const previousSweep = process.env.DEVICE_OFFLINE_SWEEP_MS;
+    delete process.env.DEVICE_OFFLINE_AFTER_MS;
+    delete process.env.DEVICE_OFFLINE_SWEEP_MS;
+    const service = app.get(DevicesService);
+    await service.heartbeat(
+      'S01',
+      'BOX-SWEEP',
+      'ai_box',
+      true,
+      '2026-09-23T00:00:00.000Z',
+    );
+    await service.sweepOfflineDevices(new Date('2026-09-23T00:06:00.000Z'));
+    expect(devices.rows[0].onlineStatus).toBe('offline');
+    expect(alerts.rows).toHaveLength(1);
+
+    await service.heartbeat(
+      'S01',
+      'BOX-SWEEP',
+      'ai_box',
+      true,
+      '2026-09-23T00:06:01.000Z',
+    );
+    expect(devices.rows[0].onlineStatus).toBe('online');
+    expect(alerts.rows[0].status).toBe('closed');
+
+    await service.sweepOfflineDevices(new Date('2026-09-23T00:06:31.000Z'));
+    expect(devices.rows[0].onlineStatus).toBe('online');
+    expect(alerts.rows.filter((row) => row.status === 'open')).toHaveLength(0);
+    if (previousAfter === undefined) delete process.env.DEVICE_OFFLINE_AFTER_MS;
+    else process.env.DEVICE_OFFLINE_AFTER_MS = previousAfter;
+    if (previousSweep === undefined) delete process.env.DEVICE_OFFLINE_SWEEP_MS;
+    else process.env.DEVICE_OFFLINE_SWEEP_MS = previousSweep;
   });
 
   it('opens an alert when the device reports offline and does not alert a camera that never heartbeated', async () => {

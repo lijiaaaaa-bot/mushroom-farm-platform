@@ -78,6 +78,7 @@
 - 镜头可改备注和状态：`make demo-camera-edit` 登记 `CAM-EDIT-01`（棚区 S01，名称可编辑镜头，备注编辑前）。已存在则不改名称和心跳。再 `PATCH` 备注为「备注已改」、状态为在线。`GET /api/v1/devices?pageSize=100` 与 `GET /api/v1/devices/:id` 两处一致。`/devices` 与 `/devices/:id` 可保存这两项。不发识别，不发心跳，不改已有演示命令。步骤见 `docs/DEMO_CAMERA_EDIT.md`。
 - 镜头可停用：`make demo-camera-stop` 登记 `CAM-STOP-01`（棚区 S01，名称可停用镜头，备注停用前）。已存在则不改名称和心跳。再 `PATCH` `enabled` 为 false。`GET /api/v1/devices?pageSize=100` 与 `GET /api/v1/devices/:id` 两处启用都是停用，备注和在线状态不变，详情仍可打开。`/devices` 与 `/devices/:id` 可停用，也可再启用。不发识别，不发心跳，不删除档案，不改已有演示命令。步骤见 `docs/DEMO_CAMERA_STOP.md`。
 - 镜头可删除：`make demo-camera-delete` 登记 `CAM-DEL-01`（棚区 S01，名称可删除镜头，备注删除前）。已存在则不改名称和心跳。列表能看到后，`PATCH` 备注为「删除前已改」，再 `DELETE`。列表不再有这一台，`GET /api/v1/devices/:id` 是 404「设备不存在」。没有软删除列。告警和识别仍按镜头码留着。`/devices` 与 `/devices/:id` 可删除。不发识别，不发心跳，不改已有演示命令。步骤见 `docs/DEMO_CAMERA_DELETE.md`。
+- 心跳超时后设备离线并留下告警：`make demo-heartbeat-offline-alert` 登记 `CAM-HB-OFF-01`（棚区 S01，名称心跳超时镜头，备注心跳超时演示）。已存在则不改档案。再 POST 一次在线心跳。API 以 `DEVICE_OFFLINE_AFTER_MS=2000` 启动时，扫描间隔约 1 秒，这一行变为离线，并留下未闭合的「设备离线」告警。`/devices` 与 `/alerts/:id`。默认仍是 5 分钟，命令不空等。不发识别，不改 `heartbeat.http.json`，不改已有演示命令。步骤见 `docs/DEMO_HEARTBEAT_OFFLINE_ALERT.md`。PR #119。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/119
 
 ## 进行中
 - 无

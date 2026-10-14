@@ -5,7 +5,7 @@ import {
   NotFoundException,
   Optional,
 } from '@nestjs/common';
-import { Cron, CronExpression } from '@nestjs/schedule';
+import { Interval } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuthUser } from '../common/auth-user';
@@ -45,8 +45,37 @@ export function deviceOfflineAfterMs(
   return parsed;
 }
 
+/**
+ * 默认每 60 秒扫一次，与原来的每分钟任务相同。
+ * 超时短于 1 分钟时，扫描间隔跟着变短（200 毫秒到 1 秒），演示不必空等整分钟。
+ * DEVICE_OFFLINE_SWEEP_MS 可再覆盖；小于 200 的值忽略。
+ */
+export function deviceOfflineSweepMs(
+  timeoutMs = deviceOfflineAfterMs(),
+  raw = process.env.DEVICE_OFFLINE_SWEEP_MS,
+): number {
+  if (raw !== undefined && raw !== '') {
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && parsed >= 200) return parsed;
+  }
+  if (timeoutMs >= 60_000) return 60_000;
+  return Math.min(1_000, Math.max(200, Math.floor(timeoutMs / 2)));
+}
+
+export function offlineThresholdLabel(timeoutMs: number): string {
+  if (timeoutMs < 60_000) {
+    const seconds = Math.max(1, Math.round(timeoutMs / 1000));
+    return `${seconds} 秒`;
+  }
+  const minutes = Math.max(1, Math.round(timeoutMs / 60_000));
+  return `${minutes} 分钟`;
+}
+
 @Injectable()
 export class DevicesService {
+  private offlineSweepAt = 0;
+  private offlineSweeping = false;
+
   constructor(
     @InjectRepository(Device) private readonly devices: Repository<Device>,
     @InjectRepository(Shed) private readonly sheds: Repository<Shed>,
@@ -341,7 +370,21 @@ export class DevicesService {
     return this.heartbeatResult(device, false);
   }
 
-  @Cron(CronExpression.EVERY_MINUTE)
+  /** 每秒看一次该不该扫。默认超时仍是大约每分钟才真正扫设备。 */
+  @Interval(1000)
+  async sweepOfflineDevices(now = new Date()) {
+    if (this.offlineSweeping) return;
+    const every = deviceOfflineSweepMs();
+    if (now.getTime() - this.offlineSweepAt < every) return;
+    this.offlineSweepAt = now.getTime();
+    this.offlineSweeping = true;
+    try {
+      await this.markStaleOffline(now);
+    } finally {
+      this.offlineSweeping = false;
+    }
+  }
+
   async markStaleOffline(now = new Date()) {
     const cutoff = now.getTime() - deviceOfflineAfterMs();
     const online = await this.devices.find({
@@ -429,7 +472,6 @@ export class DevicesService {
     const existing = await this.openOfflineAlerts(device.code);
     if (existing.length) return false;
     const timeoutMs = deviceOfflineAfterMs();
-    const minutes = Math.max(1, Math.round(timeoutMs / 60_000));
     const level: AlertLevel =
       timeoutMs >= 15 * 60 * 1000 ? 'severe' : 'warning';
     const saved = await this.alerts.save(
@@ -441,7 +483,7 @@ export class DevicesService {
         level,
         status: 'open',
         title: '设备离线',
-        message: `棚区 ${device.shedCode} 设备 ${device.code} ${reason}（阈值 ${minutes} 分钟）`,
+        message: `棚区 ${device.shedCode} 设备 ${device.code} ${reason}（阈值 ${offlineThresholdLabel(timeoutMs)}）`,
         metricValue: null,
         threshold: timeoutMs,
         ackedBy: null,
