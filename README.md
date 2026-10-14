@@ -24,7 +24,8 @@ make web      # http://127.0.0.1:43123
 确认或关闭这条待确认告警，刷新后状态仍在：[`docs/DEMO_ACK_CLOSE_ALERT.md`](docs/DEMO_ACK_CLOSE_ALERT.md)（`make demo-ack-one-alert`、`make demo-close-one-alert`）。  
 改二氧化碳阈值后再发一条超限识别，告警列表出现对应告警：[`docs/DEMO_THRESHOLD_ALERT.md`](docs/DEMO_THRESHOLD_ALERT.md)（`make demo-threshold-alert`）。  
 按摄像头编号筛选告警列表，清除后两台摄像头都回来：[`docs/DEMO_ALERT_CAMERA_FILTER.md`](docs/DEMO_ALERT_CAMERA_FILTER.md)（`make demo-alert-camera-filter`）。  
-按状态筛选告警列表，改回全部后两条都回来：[`docs/DEMO_ALERT_STATUS_FILTER.md`](docs/DEMO_ALERT_STATUS_FILTER.md)（`make demo-alert-status-filter`）。
+按状态筛选告警列表，改回全部后两条都回来：[`docs/DEMO_ALERT_STATUS_FILTER.md`](docs/DEMO_ALERT_STATUS_FILTER.md)（`make demo-alert-status-filter`）。  
+按标题关键词搜索告警列表，清除搜索后两条都回来：[`docs/DEMO_ALERT_TITLE_SEARCH.md`](docs/DEMO_ALERT_TITLE_SEARCH.md)（`make demo-alert-title-search`）。
 
 ## 接入
 

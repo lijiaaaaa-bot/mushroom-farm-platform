@@ -121,6 +121,31 @@ describe('AlertDetailView', () => {
     invalid.unmount();
   });
 
+  it('returns to the title search and drops a blank keyword', async () => {
+    httpGet.mockResolvedValue({
+      data: { ...alert, title: '东侧标题搜索告警', cameraCode: 'CAM-TITLE-01' },
+    });
+    const searched = await mountDetail('alert-east', '?q=%E4%B8%9C%E4%BE%A7%E6%A0%87%E9%A2%98');
+    expect(decodeURIComponent(searched.get('[data-testid="alert-back"]').attributes('href') || '')).toBe(
+      '/alerts?q=东侧标题',
+    );
+    expect(searched.get('[data-field="title"]').text()).toBe('东侧标题搜索告警');
+    searched.unmount();
+
+    const padded = await mountDetail(
+      'alert-east',
+      '?q=%20%E4%B8%9C%E4%BE%A7%E6%A0%87%E9%A2%98%20&status=open',
+    );
+    expect(decodeURIComponent(padded.get('[data-testid="alert-back"]').attributes('href') || '')).toBe(
+      '/alerts?status=open&q=东侧标题',
+    );
+    padded.unmount();
+
+    const blank = await mountDetail('alert-east', '?q=%20%20');
+    expect(blank.get('[data-testid="alert-back"]').attributes('href')).toBe('/alerts');
+    blank.unmount();
+  });
+
   it('shows the error and no detail card when the alert cannot be loaded', async () => {
     httpGet.mockRejectedValue(new Error('down'));
     const wrapper = await mountDetail();

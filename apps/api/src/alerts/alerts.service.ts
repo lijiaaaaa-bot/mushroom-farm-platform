@@ -49,6 +49,12 @@ export class AlertsService {
     if (query.level) qb.andWhere('a.level = :level', { level: query.level });
     const cameraCode = query.cameraCode?.trim();
     if (cameraCode) qb.andWhere('a.cameraCode = :cameraCode', { cameraCode });
+    const titleKeyword = query.q?.trim();
+    if (titleKeyword) {
+      qb.andWhere('POSITION(LOWER(:titleKeyword) IN LOWER(a.title)) > 0', {
+        titleKeyword,
+      });
+    }
     const [items, total] = await qb
       .skip(page.skip)
       .take(page.pageSize)

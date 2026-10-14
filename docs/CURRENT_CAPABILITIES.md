@@ -134,7 +134,7 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 ## 告警与阈值规则
 
-告警 `/alerts`。`GET /api/v1/alerts`。页面可按状态、级别筛选，选全部不传，地址栏也不再带对应参数。状态下拉改成待确认、已确认或已关闭时，请求带 `status=open|acked|closed`，地址栏同步。摄像头编号填在「摄像头」里，点「筛选」后请求带 `cameraCode`，按编号精确匹配；空白或点「清除」则不传。地址栏 `?cameraCode=` 同样生效。值班棚详情带入的 `shedCode` 传给同一列表接口；`alertId` 只高亮该行，不是新的查询参数。侧栏再打开 `/alerts` 时不带这几项。列表里的标题链到 `/alerts/:id`。当前有状态、级别、棚号或摄像头筛选时，这条链接和详情页的「返回告警列表」带上同样的 `status`、`level`、`shedCode`、`cameraCode`。
+告警 `/alerts`。`GET /api/v1/alerts`。页面可按状态、级别筛选，选全部不传，地址栏也不再带对应参数。状态下拉改成待确认、已确认或已关闭时，请求带 `status=open|acked|closed`，地址栏同步。摄像头编号填在「摄像头」里，点「筛选」后请求带 `cameraCode`，按编号精确匹配；空白或点「清除」则不传。地址栏 `?cameraCode=` 同样生效。标题关键词填在「标题」里，点「搜索」后请求带 `q`，按标题子串匹配，不区分大小写，不看说明；空白或点「清除搜索」则不传。地址栏 `?q=` 同样生效。值班棚详情带入的 `shedCode` 传给同一列表接口；`alertId` 只高亮该行，不是新的查询参数。侧栏再打开 `/alerts` 时不带这几项。列表里的标题链到 `/alerts/:id`。当前有状态、级别、棚号、摄像头或标题关键词筛选时，这条链接和详情页的「返回告警列表」带上同样的 `status`、`level`、`shedCode`、`cameraCode`、`q`。
 
 `GET /api/v1/alerts/:id` 返回这一条（棚区、摄像头、级别、状态、标题、说明、指标、当前值、阈值、发生时间、认领人、关闭原因）。查看人员可读自己棚内的告警；棚外 403；没有这条 404。详情页用中文标签显示这些字段。手工新建的告警没有指标时，指标、当前值、阈值显示为「—」。
 
@@ -149,6 +149,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 `make demo-alert-camera-filter` 用 `POST /api/v1/alerts` 留下两条未闭合告警：棚区 S01 的 `CAM-FILTER-01`（标题「东侧过道告警」）和 `CAM-FILTER-02`（标题「西侧过道告警」）。同摄像头、同标题已有未闭合告警则沿用，不新建。然后 `GET /api/v1/alerts?cameraCode=CAM-FILTER-02` 只含这台摄像头，`GET /api/v1/alerts/:id` 仍能打开它；不带 `cameraCode` 的列表里两条都在。不发识别，不改阈值规则，不确认或关闭其他告警。登录后在 `/alerts` 填写摄像头编号并点「筛选」，点标题进详情，点「清除」回到多摄像头列表。步骤见 [`DEMO_ALERT_CAMERA_FILTER.md`](DEMO_ALERT_CAMERA_FILTER.md)。
 
 `make demo-alert-status-filter` 留下两条告警：棚区 S01 的 `CAM-STATUS-01`（标题「待确认筛选告警」，状态待确认）和 `CAM-STATUS-02`（标题「已关闭筛选告警」，状态已关闭）。待确认已在则沿用。已关闭已在则沿用；只有待确认或已确认时，用与 `make demo-close-one-alert` 相同的关闭接口和备注「已关闭」把它关掉，不关其他告警。然后 `GET /api/v1/alerts?status=open` 只有待确认且含第一条，`status=closed` 只有已关闭且含第二条，详情都能打开；不带 `status` 时两条都在。登录后在 `/alerts` 把状态下拉改成「待确认」或「已关闭」，点标题进详情，再改回「全部」。步骤见 [`DEMO_ALERT_STATUS_FILTER.md`](DEMO_ALERT_STATUS_FILTER.md)。
+
+`make demo-alert-title-search` 用 `POST /api/v1/alerts` 留下两条未闭合告警：棚区 S01 的 `CAM-TITLE-01`（标题「东侧标题搜索告警」）和 `CAM-TITLE-02`（标题「西侧过道对照告警」）。同摄像头、同标题已有未闭合告警则沿用，不新建。然后 `GET /api/v1/alerts?q=东侧标题` 只含标题里有这段文字的告警，`GET /api/v1/alerts/:id` 仍能打开匹配的那条；不带 `q`，或 `q` 只有空白时，两条都在。匹配不区分大小写，按标题子串，不看说明。不发识别，不改阈值规则，不确认或关闭其他告警。登录后在 `/alerts` 填写标题关键词并点「搜索」，点标题进详情，点「清除搜索」回到两条都在的列表。步骤见 [`DEMO_ALERT_TITLE_SEARCH.md`](DEMO_ALERT_TITLE_SEARCH.md)。
 
 | 动作 | 接口 | 结果 |
 |------|------|------|

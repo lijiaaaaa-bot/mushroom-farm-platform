@@ -27,6 +27,7 @@ class MemoryAlertQuery {
   private sheds: string[] | null = null;
   private status: string | null = null;
   private camera: string | null = null;
+  private titleKeyword: string | null = null;
   private skipN = 0;
   private takeN: number | null = null;
 
@@ -43,6 +44,7 @@ class MemoryAlertQuery {
       shedCode?: string;
       status?: string;
       cameraCode?: string;
+      titleKeyword?: string;
     },
   ) {
     if (condition.includes('1 = 0')) this.blocked = true;
@@ -50,6 +52,7 @@ class MemoryAlertQuery {
     if (params?.shedCode) this.sheds = [params.shedCode];
     if (params?.status) this.status = params.status;
     if (params?.cameraCode) this.camera = params.cameraCode;
+    if (params?.titleKeyword) this.titleKeyword = params.titleKeyword;
     return this;
   }
 
@@ -77,6 +80,12 @@ class MemoryAlertQuery {
     if (this.camera) {
       const camera = this.camera;
       items = items.filter((row) => row.cameraCode === camera);
+    }
+    if (this.titleKeyword) {
+      const needle = this.titleKeyword.toLowerCase();
+      items = items.filter((row) =>
+        (row.title || '').toLowerCase().includes(needle),
+      );
     }
     items.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
     return items;
@@ -179,6 +188,7 @@ describe('alert claim and false-positive close', () => {
     shedCode = 'S01',
     title = '高温',
     cameraCode?: string,
+    message?: string,
   ) {
     const response = await request(app.getHttpServer())
       .post('/api/v1/alerts')
@@ -187,7 +197,7 @@ describe('alert claim and false-positive close', () => {
         shedCode,
         level: 'severe',
         title,
-        message: `${title}说明`,
+        message: message ?? `${title}说明`,
         ...(cameraCode ? { cameraCode } : {}),
       });
     expect(response.status).toBe(201);
@@ -597,6 +607,90 @@ describe('alert claim and false-positive close', () => {
 
     const outsider = await request(app.getHttpServer())
       .get('/api/v1/alerts?cameraCode=CAM-FILTER-02&pageSize=50')
+      .set(auth('shed_manager', 'shed-c', 'S02'));
+    expect(outsider.status).toBe(200);
+    expect(outsider.body.items).toEqual([]);
+  });
+
+  it('filters the alert list by title keyword and keeps detail readable', async () => {
+    const east = await createAlert('S01', '东侧标题搜索告警', 'CAM-TITLE-01');
+    const west = await createAlert('S01', '西侧过道对照告警', 'CAM-TITLE-02');
+    const mentioned = await createAlert(
+      'S01',
+      '说明不含在标题',
+      'CAM-TITLE-03',
+      '正文里有东侧标题',
+    );
+    const latin = await createAlert('S01', 'EastKeyword', 'CAM-TITLE-04');
+    const percent = await createAlert('S01', '湿度100%告警', 'CAM-TITLE-05');
+
+    const filtered = await request(app.getHttpServer())
+      .get(`/api/v1/alerts?q=${encodeURIComponent('东侧标题')}&pageSize=50`)
+      .set(auth('super_admin', 'id-super'));
+    expect(filtered.status).toBe(200);
+    expect(filtered.body.total).toBe(1);
+    expect(filtered.body.items).toEqual([
+      expect.objectContaining({
+        id: east.id,
+        title: '东侧标题搜索告警',
+        cameraCode: 'CAM-TITLE-01',
+      }),
+    ]);
+
+    const padded = await request(app.getHttpServer())
+      .get(`/api/v1/alerts?q=${encodeURIComponent('  东侧标题  ')}&pageSize=50`)
+      .set(auth('super_admin', 'id-super'));
+    expect(padded.body.items.map((row: { id: string }) => row.id)).toEqual([
+      east.id,
+    ]);
+
+    const folded = await request(app.getHttpServer())
+      .get('/api/v1/alerts?q=eastkeyword&pageSize=50')
+      .set(auth('super_admin', 'id-super'));
+    expect(folded.body.items.map((row: { id: string }) => row.id)).toEqual([
+      latin.id,
+    ]);
+
+    const literal = await request(app.getHttpServer())
+      .get(`/api/v1/alerts?q=${encodeURIComponent('%')}&pageSize=50`)
+      .set(auth('super_admin', 'id-super'));
+    expect(literal.body.items.map((row: { id: string }) => row.id)).toEqual([
+      percent.id,
+    ]);
+
+    const blank = await request(app.getHttpServer())
+      .get(`/api/v1/alerts?q=${encodeURIComponent('   ')}&pageSize=50`)
+      .set(auth('super_admin', 'id-super'));
+    expect(blank.body.items.map((row: { id: string }) => row.id)).toEqual(
+      expect.arrayContaining([
+        east.id,
+        west.id,
+        mentioned.id,
+        latin.id,
+        percent.id,
+      ]),
+    );
+
+    const restored = await request(app.getHttpServer())
+      .get('/api/v1/alerts?pageSize=50')
+      .set(auth('super_admin', 'id-super'));
+    expect(restored.body.items.map((row: { id: string }) => row.id)).toEqual(
+      expect.arrayContaining([east.id, west.id, mentioned.id]),
+    );
+
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/alerts/${east.id}`)
+      .set(auth('super_admin', 'id-super'));
+    expect(detail.status).toBe(200);
+    expect(detail.body).toMatchObject({
+      id: east.id,
+      title: '东侧标题搜索告警',
+      cameraCode: 'CAM-TITLE-01',
+      shedCode: 'S01',
+    });
+
+    const outsider = await request(app.getHttpServer())
+      .get(`/api/v1/alerts?q=${encodeURIComponent('东侧标题')}&pageSize=50`)
       .set(auth('shed_manager', 'shed-c', 'S02'));
     expect(outsider.status).toBe(200);
     expect(outsider.body.items).toEqual([]);

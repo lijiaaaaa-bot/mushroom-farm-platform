@@ -63,10 +63,12 @@ const listReturn = computed(() => {
   const level = allowedQuery('level', alertLevelSchema.options);
   const shed = plainQuery('shedCode');
   const camera = plainQuery('cameraCode');
+  const keyword = plainQuery('q');
   if (status) query.status = status;
   if (level) query.level = level;
   if (shed) query.shedCode = shed;
   if (camera) query.cameraCode = camera;
+  if (keyword) query.q = keyword;
   if (!Object.keys(query).length) return '/alerts';
   return { path: '/alerts', query };
 });
