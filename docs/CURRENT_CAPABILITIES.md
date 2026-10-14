@@ -234,7 +234,7 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 同一份当日清单还可按棚区 `shedCode` 和时间窗 `from`、`to` 收窄。棚区空白表示全部。`from`、`to` 按识别时间比较，含两端；两个都传时改用这段窗口，不再只限 `date` 那一天；窗口里每个摄像头仍只留最新一条。只传一端、时间无效或开始晚于结束时接口返回 400，页面写「时间筛选无效」，不保留上一张表。没有命中时写「没有符合条件的采摘记录。」。页面写出「棚区 …」和「共 N 条」；有时间窗时还写出「时间 … 至 …」。`make demo-harvest-filter` 读取同一份样例，写两次：`CAM-HF-S01`（棚区 S01，前 3 小时，成熟数 5，蘑菇数 12）和 `CAM-HF-S02`（棚区 S02，当前时刻，成熟数 9，蘑菇数 17）。宽窗口（前 4 小时至后 1 分钟）两条都在；同一窗口 `shedCode=S01` 没有 S02，条数和成熟数汇总都更少；窄窗口（前 30 分钟至后 1 分钟）没有前 3 小时那条，条数和成熟数汇总也更少。样例文件不改。不生成采摘任务。步骤见 [`DEMO_HARVEST_FILTER.md`](DEMO_HARVEST_FILTER.md)。
 
-任务清单与排班：`GET /api/v1/harvest/tasks?date=`，`POST /api/v1/harvest/tasks/generate`，`PATCH /api/v1/harvest/tasks/:id`。生成规则：当日成熟数大于 0 的摄像头进入清单；已有任务只更新数量，保留人员和班次；不再成熟、且仍是未排的待采任务才从清单去掉。排班字段：人员、班次 `morning` / `afternoon`、状态 `open` / `scheduled` / `done`。页面给出上午、下午、未排条数。
+任务清单与排班：`GET /api/v1/harvest/tasks?date=`，`POST /api/v1/harvest/tasks/generate`，`PATCH /api/v1/harvest/tasks/:id`。生成规则：当日成熟数大于 0 的摄像头进入清单；已有任务只更新数量，保留人员和班次；不再成熟、且仍是未排的待采任务才从清单去掉。排班字段：人员、班次 `morning` / `afternoon`、状态 `open` / `scheduled` / `done`。页面 `/harvest` 的「每日采摘任务清单」给出上午、下午、未排条数。查看人员只读；超管、生产管理员、棚区负责人可点「生成当日清单」和「保存排班」。`make demo-harvest-task` 读取 `recognition.demo-one.json`，写入 `CAM-HT-01`（棚区 S01，成熟数 5，蘑菇数 12）和 `CAM-HT-02`（棚区 S01，成熟数 9，蘑菇数 17）。生成后这两行都在。再把 `CAM-HT-01` 排给王早、上午，把 `CAM-HT-02` 排给李午、下午。保存后列表能读到人员和班次，上午、下午、未排条数随排班变化。样例文件不改。不改 `make demo-harvest-list` 与 `make demo-harvest-filter`。步骤见 [`DEMO_HARVEST_TASK.md`](DEMO_HARVEST_TASK.md)。
 
 两套成熟估计，响应都带标签「估计」。数字是未来日的**成熟数**，不是公斤。
 
