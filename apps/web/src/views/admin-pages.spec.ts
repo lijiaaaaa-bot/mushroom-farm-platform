@@ -843,6 +843,132 @@ describe('AlertsView', () => {
     blank.unmount();
   });
 
+  it('filters by device id, keeps status, and restores both devices on 全部', async () => {
+    const eastDevice = {
+      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      code: 'CAM-DEVF-01',
+      name: '东侧设备',
+    };
+    const westDevice = {
+      id: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      code: 'CAM-DEVF-02',
+      name: '西侧设备',
+    };
+    const east = {
+      ...alert,
+      id: 'alert-east',
+      cameraCode: 'CAM-DEVF-01',
+      title: '东侧设备告警',
+    };
+    const west = {
+      ...alert,
+      id: 'alert-west',
+      cameraCode: 'CAM-DEVF-02',
+      title: '西侧设备告警',
+    };
+    httpGet.mockImplementation((url: string, config?: { params?: { deviceId?: string; status?: string; page?: number } }) => {
+      if (url === '/devices') {
+        return Promise.resolve({ data: { items: [eastDevice, westDevice], total: 2 } });
+      }
+      const deviceId = config?.params?.deviceId;
+      const status = config?.params?.status;
+      const items = [east, west].filter((row) => {
+        if (status && row.status !== status) return false;
+        if (deviceId === eastDevice.id) return row.cameraCode === eastDevice.code;
+        if (deviceId === westDevice.id) return row.cameraCode === westDevice.code;
+        return !deviceId;
+      });
+      return Promise.resolve({ data: { items, total: items.length } });
+    });
+    const wrapper = await mountView(AlertsView);
+    const options = wrapper.get('[data-testid="alert-device-filter"]').findAll('option');
+    expect(options.map((node) => node.text())).toEqual([
+      '全部',
+      '东侧设备（CAM-DEVF-01）',
+      '西侧设备（CAM-DEVF-02）',
+    ]);
+    expect(wrapper.findAll('[data-testid="alert-detail-link"]').map((node) => node.text())).toEqual([
+      '东侧设备告警',
+      '西侧设备告警',
+    ]);
+
+    await wrapper.get('[data-testid="alert-device-filter"]').setValue(westDevice.id);
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: undefined, level: undefined, deviceId: westDevice.id },
+    });
+    expect(memoryRouter.currentRoute.value.fullPath).toBe(`/alerts?deviceId=${westDevice.id}`);
+    expect(wrapper.get('[data-testid="alert-device-scope"]').text()).toBe('设备 西侧设备（CAM-DEVF-02）');
+    expect(wrapper.findAll('[data-testid="alert-detail-link"]').map((node) => node.text())).toEqual([
+      '西侧设备告警',
+    ]);
+    expect(wrapper.text()).not.toContain('东侧设备告警');
+    expect(wrapper.get('[data-testid="alert-detail-link"]').attributes('href')).toBe(
+      `/alerts/alert-west?deviceId=${westDevice.id}`,
+    );
+
+    await wrapper.get('[data-testid="alert-status-filter"]').setValue('open');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: 'open', level: undefined, deviceId: westDevice.id },
+    });
+    expect(memoryRouter.currentRoute.value.query.status).toBe('open');
+    expect(memoryRouter.currentRoute.value.query.deviceId).toBe(westDevice.id);
+
+    await wrapper.get('[data-testid="alert-device-filter"]').setValue('');
+    await flushPromises();
+    const calls = httpGet.mock.calls;
+    const last = calls[calls.length - 1];
+    expect(last?.[0]).toBe('/alerts');
+    expect(last?.[1].params.deviceId).toBeUndefined();
+    expect(last?.[1].params.status).toBe('open');
+    expect(wrapper.find('[data-testid="alert-device-scope"]').exists()).toBe(false);
+    expect(wrapper.findAll('[data-testid="alert-detail-link"]').map((node) => node.text())).toEqual([
+      '东侧设备告警',
+      '西侧设备告警',
+    ]);
+    wrapper.unmount();
+  });
+
+  it('applies deviceId from the address and omits a blank value', async () => {
+    const eastDevice = {
+      id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      code: 'CAM-DEVF-01',
+      name: '东侧设备',
+    };
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/devices') {
+        return Promise.resolve({ data: { items: [eastDevice], total: 1 } });
+      }
+      return Promise.resolve({
+        data: {
+          items: [{ ...alert, id: 'alert-east', cameraCode: 'CAM-DEVF-01', title: '东侧设备告警' }],
+          total: 1,
+        },
+      });
+    });
+    const wrapper = await mountView(AlertsView, { deviceId: eastDevice.id });
+    expect((wrapper.get('[data-testid="alert-device-filter"]').element as HTMLSelectElement).value).toBe(
+      eastDevice.id,
+    );
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: undefined, level: undefined, deviceId: eastDevice.id },
+    });
+    expect(wrapper.get('[data-testid="alert-device-scope"]').text()).toBe('设备 东侧设备（CAM-DEVF-01）');
+    wrapper.unmount();
+
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/devices') return Promise.resolve({ data: { items: [], total: 0 } });
+      return Promise.resolve({ data: { items: [alert], total: 1 } });
+    });
+    const blank = await mountView(AlertsView, { deviceId: '   ' });
+    expect(httpGet).toHaveBeenCalledWith('/alerts', {
+      params: { pageSize: 50, status: undefined, level: undefined },
+    });
+    expect(blank.find('[data-testid="alert-device-scope"]').exists()).toBe(false);
+    blank.unmount();
+  });
+
   it('searches by title keyword, keeps the detail link, and restores both titles on clear', async () => {
     const east = {
       ...alert,

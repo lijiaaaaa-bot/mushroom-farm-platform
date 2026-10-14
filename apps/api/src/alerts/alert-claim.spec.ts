@@ -12,6 +12,7 @@ import { configureApp } from '../configure-app';
 import { Alert } from '../entities/alert.entity';
 import { AlertRead } from '../entities/alert-read.entity';
 import { AlertRule } from '../entities/alert-rule.entity';
+import { Device } from '../entities/device.entity';
 import { AlertsController } from './alerts.controller';
 import { AlertsService } from './alerts.service';
 
@@ -27,6 +28,7 @@ class MemoryAlertQuery {
   private sheds: string[] | null = null;
   private status: string | null = null;
   private camera: string | null = null;
+  private deviceCode: string | null = null;
   private titleKeyword: string | null = null;
   private from: Date | null = null;
   private to: Date | null = null;
@@ -46,6 +48,7 @@ class MemoryAlertQuery {
       shedCode?: string;
       status?: string;
       cameraCode?: string;
+      deviceCode?: string;
       titleKeyword?: string;
       from?: Date;
       to?: Date;
@@ -56,6 +59,7 @@ class MemoryAlertQuery {
     if (params?.shedCode) this.sheds = [params.shedCode];
     if (params?.status) this.status = params.status;
     if (params?.cameraCode) this.camera = params.cameraCode;
+    if (params?.deviceCode) this.deviceCode = params.deviceCode;
     if (params?.titleKeyword) this.titleKeyword = params.titleKeyword;
     if (params?.from) this.from = params.from;
     if (params?.to) this.to = params.to;
@@ -86,6 +90,12 @@ class MemoryAlertQuery {
     if (this.camera) {
       const camera = this.camera;
       items = items.filter((row) => row.cameraCode === camera);
+    }
+    if (this.deviceCode) {
+      const code = this.deviceCode;
+      items = items.filter(
+        (row) => row.cameraCode === code || row.sensorCode === code,
+      );
     }
     if (this.titleKeyword) {
       const needle = this.titleKeyword.toLowerCase();
@@ -180,10 +190,12 @@ function auth(role: string, id: string, sheds = '') {
 describe('alert claim and false-positive close', () => {
   let app: INestApplication;
   const alerts = memoryAlerts();
+  const devices: Array<{ id: string; code: string; shedCode: string }> = [];
   const auditWrite = jest.fn();
 
   beforeEach(async () => {
     alerts.rows.splice(0, alerts.rows.length);
+    devices.splice(0, devices.length);
     auditWrite.mockReset();
     const moduleRef = await Test.createTestingModule({
       controllers: [AlertsController],
@@ -192,6 +204,13 @@ describe('alert claim and false-positive close', () => {
         { provide: APP_GUARD, useClass: RolesGuard },
         { provide: getRepositoryToken(AlertRule), useValue: {} },
         { provide: getRepositoryToken(Alert), useValue: alerts },
+        {
+          provide: getRepositoryToken(Device),
+          useValue: {
+            findOne: async ({ where }: { where: { id: string } }) =>
+              devices.find((row) => row.id === where.id) ?? null,
+          },
+        },
         {
           provide: getRepositoryToken(AlertRead),
           useValue: {
@@ -878,6 +897,113 @@ describe('alert claim and false-positive close', () => {
       )
       .set(auth('super_admin', 'id-super'));
     expect(reversed.status).toBe(400);
+  });
+
+  it('filters the list by device id and keeps camera, status, and time filters', async () => {
+    const eastDevice = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const westDevice = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    const sensorDevice = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+    devices.push(
+      { id: eastDevice, code: 'CAM-DEVF-01', shedCode: 'S01' },
+      { id: westDevice, code: 'CAM-DEVF-02', shedCode: 'S01' },
+      { id: sensorDevice, code: 'SENSOR-DEVF-01', shedCode: 'S02' },
+    );
+    const east = await createAlert('S01', '东侧设备告警', 'CAM-DEVF-01');
+    const west = await createAlert('S01', '西侧设备告警', 'CAM-DEVF-02');
+    alerts.rows.push({
+      id: 'sensor-alert',
+      shedCode: 'S02',
+      cameraCode: null,
+      sensorCode: 'SENSOR-DEVF-01',
+      level: 'warning',
+      status: 'open',
+      title: '传感器设备告警',
+      message: '传感器',
+      createdAt: new Date('2026-10-14T04:00:00.000Z'),
+    } as Alert);
+
+    const byEast = await request(app.getHttpServer())
+      .get(`/api/v1/alerts?deviceId=${eastDevice}&pageSize=50`)
+      .set(auth('super_admin', 'id-super'));
+    expect(byEast.status).toBe(200);
+    expect(byEast.body.items.map((row: { id: string }) => row.id)).toEqual([
+      east.id,
+    ]);
+    expect(
+      byEast.body.items.every(
+        (row: { cameraCode: string | null }) =>
+          row.cameraCode === 'CAM-DEVF-01',
+      ),
+    ).toBe(true);
+
+    const byWest = await request(app.getHttpServer())
+      .get(`/api/v1/alerts?deviceId=%20${westDevice}%20&pageSize=50`)
+      .set(auth('super_admin', 'id-super'));
+    expect(byWest.status).toBe(200);
+    expect(byWest.body.items.map((row: { id: string }) => row.id)).toEqual([
+      west.id,
+    ]);
+
+    const bySensor = await request(app.getHttpServer())
+      .get(`/api/v1/alerts?deviceId=${sensorDevice}&pageSize=50`)
+      .set(auth('super_admin', 'id-super'));
+    expect(bySensor.body.items.map((row: { id: string }) => row.id)).toEqual([
+      'sensor-alert',
+    ]);
+
+    const openEast = await request(app.getHttpServer())
+      .get(
+        `/api/v1/alerts?deviceId=${eastDevice}&status=open&from=2020-01-01T00:00:00.000Z&to=2030-01-01T00:00:00.000Z&pageSize=50`,
+      )
+      .set(auth('super_admin', 'id-super'));
+    expect(openEast.status).toBe(200);
+    expect(openEast.body.items.map((row: { id: string }) => row.id)).toEqual([
+      east.id,
+    ]);
+
+    const closedEast = await request(app.getHttpServer())
+      .get(`/api/v1/alerts?deviceId=${eastDevice}&status=closed&pageSize=50`)
+      .set(auth('super_admin', 'id-super'));
+    expect(closedEast.body.items).toEqual([]);
+
+    const clash = await request(app.getHttpServer())
+      .get(
+        `/api/v1/alerts?deviceId=${eastDevice}&cameraCode=CAM-DEVF-02&pageSize=50`,
+      )
+      .set(auth('super_admin', 'id-super'));
+    expect(clash.body.items).toEqual([]);
+
+    const byCamera = await request(app.getHttpServer())
+      .get('/api/v1/alerts?cameraCode=CAM-DEVF-02&pageSize=50')
+      .set(auth('super_admin', 'id-super'));
+    expect(byCamera.body.items.map((row: { id: string }) => row.id)).toEqual([
+      west.id,
+    ]);
+
+    const blank = await request(app.getHttpServer())
+      .get('/api/v1/alerts?deviceId=%20%20&pageSize=50')
+      .set(auth('super_admin', 'id-super'));
+    expect(blank.status).toBe(200);
+    expect(blank.body.total).toBe(3);
+
+    const missing = await request(app.getHttpServer())
+      .get(
+        '/api/v1/alerts?deviceId=dddddddd-dddd-4ddd-8ddd-dddddddddddd&pageSize=50',
+      )
+      .set(auth('super_admin', 'id-super'));
+    expect(missing.status).toBe(200);
+    expect(missing.body.items).toEqual([]);
+
+    const invalid = await request(app.getHttpServer())
+      .get('/api/v1/alerts?deviceId=not-a-device&pageSize=50')
+      .set(auth('super_admin', 'id-super'));
+    expect(invalid.status).toBe(400);
+
+    const outsider = await request(app.getHttpServer())
+      .get(`/api/v1/alerts?deviceId=${sensorDevice}&pageSize=50`)
+      .set(auth('viewer', 'viewer-s01', 'S01'));
+    expect(outsider.status).toBe(200);
+    expect(outsider.body.items).toEqual([]);
   });
 
   it('forbids a viewer from confirming a pending alert', async () => {

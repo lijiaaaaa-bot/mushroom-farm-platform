@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AlertRule } from '../entities/alert-rule.entity';
 import { AlertRead } from '../entities/alert-read.entity';
 import { Alert } from '../entities/alert.entity';
+import { Device } from '../entities/device.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { AlertEngineService } from './alert-engine.service';
 import { AlertPushModule } from './alert-push.module';
@@ -11,7 +12,13 @@ import { AlertsService } from './alerts.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Alert, AlertRead, AlertRule, RecognitionRecord]),
+    TypeOrmModule.forFeature([
+      Alert,
+      AlertRead,
+      AlertRule,
+      Device,
+      RecognitionRecord,
+    ]),
     AlertPushModule,
   ],
   controllers: [AlertsController],
