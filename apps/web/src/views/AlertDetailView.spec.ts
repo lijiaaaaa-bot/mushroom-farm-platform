@@ -125,9 +125,32 @@ describe('AlertDetailView', () => {
     expect(wrapper.get('[data-field="metric"]').text()).toBe('温度过高');
     expect(wrapper.get('[data-field="value"]').text()).toBe('30℃');
     expect(wrapper.get('[data-field="threshold"]').text()).toBe('28℃');
+    expect(wrapper.find('[data-field="sensor"]').exists()).toBe(false);
     expect(wrapper.get('[data-field="claimedBy"]').text()).toBe('—');
     expect(wrapper.get('[data-field="closeReason"]').text()).toBe('—');
     expect(wrapper.text()).not.toContain('暂无告警');
+    wrapper.unmount();
+  });
+
+  it('shows the sensor on a telemetry threshold alert', async () => {
+    httpGet.mockResolvedValue({
+      data: {
+        ...alert,
+        cameraCode: null,
+        sensorCode: 'SENSOR-TELEM-01',
+        metricValue: 32,
+        title: '温度过高告警',
+        message: '棚区 S01 传感器 SENSOR-TELEM-01 温度过高 32，阈值 28',
+      },
+    });
+    const wrapper = await mountDetail();
+
+    expect(wrapper.get('[data-field="title"]').text()).toBe('温度过高告警');
+    expect(wrapper.get('[data-field="status"]').text()).toBe('待确认');
+    expect(wrapper.get('[data-field="camera"]').text()).toBe('—');
+    expect(wrapper.get('[data-field="sensor"]').text()).toBe('SENSOR-TELEM-01');
+    expect(wrapper.get('[data-field="value"]').text()).toBe('32℃');
+    expect(wrapper.get('[data-field="threshold"]').text()).toBe('28℃');
     wrapper.unmount();
   });
 

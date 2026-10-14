@@ -8,6 +8,7 @@ import {
 } from '@mushroom/contracts';
 import { AlertRule } from '../entities/alert-rule.entity';
 import { Alert } from '../entities/alert.entity';
+import { EnvironmentReading } from '../entities/environment-reading.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import {
   deliverSevereAlert,
@@ -56,6 +57,7 @@ export class AlertEngineService {
           metric: rule.metric,
           shedCode: record.shedCode,
           cameraCode: record.cameraCode,
+          sensorCode: null,
           level: rule.level,
           status: 'open',
           title: `${label}告警`,
@@ -85,6 +87,63 @@ export class AlertEngineService {
       this.logger.log(
         `告警 ${rule.metric} ${record.shedCode}/${record.cameraCode}`,
       );
+      await deliverSevereAlert(this.push, saved);
+    }
+  }
+
+  async evaluateEnvironment(reading: EnvironmentReading): Promise<void> {
+    const sensorCode = reading.sensorCode?.trim();
+    if (!sensorCode) return;
+    const rules = await this.rules.find({ where: { enabled: true } });
+    for (const rule of rules) {
+      if (rule.shedCode && rule.shedCode !== reading.shedCode) continue;
+      if (!isAlertMetric(rule.metric)) continue;
+      const value = this.environmentValue(rule.metric, reading);
+      if (value === null || !this.triggered(rule.metric, value, rule.threshold))
+        continue;
+      const open = await this.alerts.findOne({
+        where: {
+          ruleId: rule.id,
+          sensorCode,
+          status: In(['open', 'acked']),
+        },
+      });
+      if (open) continue;
+      const label = ALERT_METRIC_LABEL[rule.metric];
+      const saved = await this.alerts.save(
+        this.alerts.create({
+          ruleId: rule.id,
+          metric: rule.metric,
+          shedCode: reading.shedCode,
+          cameraCode: null,
+          sensorCode,
+          level: rule.level,
+          status: 'open',
+          title: `${label}告警`,
+          message: this.placedMessage(
+            rule.metric,
+            label,
+            `棚区 ${reading.shedCode} 传感器 ${sensorCode}`,
+            value,
+            rule.threshold,
+          ),
+          metricValue: value,
+          threshold: rule.threshold,
+          ackedBy: null,
+          ackedAt: null,
+          ackNote: null,
+          closedBy: null,
+          closedAt: null,
+          closeNote: null,
+          closeReason: null,
+          claimedBy: null,
+          claimedAt: null,
+          claimNote: null,
+          recognitionId: null,
+          snapshotObjectKey: null,
+        }),
+      );
+      this.logger.log(`告警 ${rule.metric} ${reading.shedCode}/${sensorCode}`);
       await deliverSevereAlert(this.push, saved);
     }
   }
@@ -149,6 +208,26 @@ export class AlertEngineService {
     }
   }
 
+  private environmentValue(
+    metric: AlertMetric,
+    reading: EnvironmentReading,
+  ): number | null {
+    switch (metric) {
+      case 'temperature_high':
+      case 'temperature_low':
+        return reading.temperature;
+      case 'humidity_high':
+      case 'humidity_low':
+        return reading.humidity;
+      case 'co2_high':
+        return reading.co2;
+      case 'substrate_moisture_low':
+        return reading.substrateMoisture;
+      default:
+        return null;
+    }
+  }
+
   private triggered(
     metric: AlertMetric,
     value: number,
@@ -167,13 +246,29 @@ export class AlertEngineService {
     value: number,
     threshold: number,
   ): string {
+    return this.placedMessage(
+      metric,
+      label,
+      `棚区 ${record.shedCode} 摄像头 ${record.cameraCode}`,
+      value,
+      threshold,
+    );
+  }
+
+  private placedMessage(
+    metric: AlertMetric,
+    label: string,
+    place: string,
+    value: number,
+    threshold: number,
+  ): string {
     const shown =
       metric === 'mature_ratio' ? `${Math.round(value * 100)}%` : `${value}`;
     const limit =
       metric === 'mature_ratio'
         ? `${Math.round(threshold * 100)}%`
         : `${threshold}`;
-    return `棚区 ${record.shedCode} 摄像头 ${record.cameraCode} ${label} ${shown}，阈值 ${limit}`;
+    return `${place} ${label} ${shown}，阈值 ${limit}`;
   }
 }
 

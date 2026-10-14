@@ -19,6 +19,7 @@ interface AlertRow {
   id: string;
   shedCode: string;
   cameraCode: string | null;
+  sensorCode?: string | null;
   level: AlertLevel;
   status: AlertStatus;
   title: string;
@@ -333,6 +334,7 @@ onMounted(load);
                 :to="detailTo(row)"
                 data-testid="alert-detail-link"
               >{{ row.title }}</router-link>
+              <p v-if="row.sensorCode" class="font-mono text-xs" data-testid="alert-sensor">传感器 {{ row.sensorCode }}</p>
               <router-link
                 v-if="row.snapshotObjectKey"
                 class="ml-2 text-xs text-accent"

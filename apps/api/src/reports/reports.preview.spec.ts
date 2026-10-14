@@ -305,6 +305,7 @@ function alert(
     metric: null,
     shedCode,
     cameraCode: 'CAM-1',
+    sensorCode: null,
     level: 'warning',
     status,
     title: '高温',

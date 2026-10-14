@@ -189,6 +189,7 @@ describe('environment ingest', () => {
   const recognitionSave = jest.fn();
   const heartbeat = jest.fn();
   const applyEnvironment = jest.fn();
+  const evaluateEnvironment = jest.fn();
   const redisKeys = new Set<string>();
   let redisMode: 'nx' | 'down' = 'nx';
   const rejects: { errors: string[] }[] = [];
@@ -200,6 +201,7 @@ describe('environment ingest', () => {
     rejects.splice(0, rejects.length);
     recognitionSave.mockReset();
     heartbeat.mockReset();
+    evaluateEnvironment.mockReset();
     applyEnvironment.mockReset();
     applyEnvironment.mockResolvedValue(undefined);
     heartbeat.mockResolvedValue(undefined);
@@ -251,7 +253,10 @@ describe('environment ingest', () => {
         },
         { provide: MinioStorageService, useValue: {} },
         { provide: DevicesService, useValue: { heartbeat } },
-        { provide: AlertEngineService, useValue: { evaluate: jest.fn() } },
+        {
+          provide: AlertEngineService,
+          useValue: { evaluate: jest.fn(), evaluateEnvironment },
+        },
         {
           provide: GrowthTrendService,
           useValue: { applyEnvironment },
@@ -346,6 +351,15 @@ describe('environment ingest', () => {
       id: first.body.id,
     });
     expect(readings.rows).toHaveLength(1);
+    expect(evaluateEnvironment).toHaveBeenCalledTimes(1);
+    expect(evaluateEnvironment).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: first.body.id,
+        shedCode: 'S01',
+        sensorCode: 'SENSOR-S01',
+        temperature: golden.body.temperature,
+      }),
+    );
   });
 
   it('returns the existing row when Redis is down and the unique key already exists', async () => {
