@@ -7,7 +7,7 @@
 ## 本地运行
 
 ```bash
-make up       # Postgres / Redis / MinIO / Mosquitto
+make up       # Postgres / Redis / MinIO / Mosquitto。步骤见 docs/DEMO_MAKE_UP.md
 make migrate
 make api      # http://127.0.0.1:41821
 make web      # http://127.0.0.1:43123

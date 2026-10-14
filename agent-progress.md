@@ -3,6 +3,7 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
+- 2026-10-14：`make up` 可复现。Postgres、Redis、Mosquitto 与 Debian 基础镜像钉 sha256。对象存储 `mushroom-object-store:20260916` 为 `pull_policy: build`，不再向 Docker Hub 拉取这个名字。`make images-probe` 核对摘要和 silo 包。演示页绿色 `#1B7A4E`、警告色 `#9A6700` 在白底上达到 4.5:1。大屏夜色严重文字 `#ff6b6b`。新建告警字段有可访问名称。步骤 `docs/DEMO_MAKE_UP.md`。不改已有演示命令。分支 `cursor/make-up-images-awr-3bc8`。
 - 2026-10-14：告警抓拍写入对象存储，详情页显示这张图。`make demo-alert-snapshot-minio` 用 `CAM-SNAP-01`、温度 30 和样例 JPEG 留下未闭合告警，终端打印对象键，`GET /api/v1/alerts/:id/snapshot` 读回同一张 JPEG。详情有图、对象键和「打开抓拍」。列表有对象键时标题旁有「抓拍」。未闭合告警还没有对象键时，下一次同规则识别把键补上，不改状态。步骤 `docs/DEMO_ALERT_SNAPSHOT_MINIO.md`。不改已有演示命令。`make up` 的对象存储镜像仍是校验过的本地构建，没有改标签。仓内没有另找着名为 AWR 的残差。分支 `cursor/alert-snapshot-minio-87e7`。
 - 2026-10-14：确认或关闭告警时填写处理说明。详情页输入非空「处理说明」，确认写入 `ackNote`，关闭写入 `closeNote`。刷新详情仍显示这句。`make demo-alert-handle-note` 确认 `CAM-NOTE-01` 的「处理说明告警」，说明是「现场已开窗通风」，并再读一次。步骤 `docs/DEMO_ALERT_HANDLE_NOTE.md`。不改已有演示命令。分支 `cursor/alert-handle-note-fde1`。
 - 2026-10-14：告警列表按标题关键词搜索。`make demo-alert-title-search` 留下「东侧标题搜索告警」和「西侧过道对照告警」。搜索「东侧标题」只剩匹配标题，详情仍可打开，清除搜索后两条都在。步骤 `docs/DEMO_ALERT_TITLE_SEARCH.md`。不改已有演示命令。分支 `cursor/alert-title-search-9e54`。
@@ -25,6 +26,7 @@
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
+| 2026-10-14 | `make up` 拉取的 Postgres、Redis、Mosquitto 与对象存储基础镜像钉 sha256。`mushroom-object-store:20260916` 使用 `pull_policy: build`。登录与告警链接绿色 `#1B7A4E`，警告色 `#9A6700`。大屏夜色严重文字 `#ff6b6b`。新建告警字段有可访问名称。步骤 `docs/DEMO_MAKE_UP.md`。不改已有演示命令 | `make images-probe` 退出码 0。`make test` 退出码 0（contracts 10，脚本 node:test 103，API jest 137，web vitest 161）。`make gates` 退出码 0。Vite 上打开 `/login`，Lighthouse Accessibility 与 Best Practices 分数均为 100 | 本环境没有 Docker，未执行 `make up`。CI ingest-smoke 会拉起 compose。不合并 |
 | 2026-10-14 | 识别触发告警时写入 `alerts.snapshot_object_key`。`GET /api/v1/alerts/:id/snapshot` 从 MinIO 读回。详情显示图片、对象键和「打开抓拍」。列表有键时标题旁链到同一详情。`make demo-alert-snapshot-minio` 核对对象键与样例 JPEG。`make smoke` 增加 `demo-alert-snapshot`。未闭合告警缺键时下一次同规则识别补上 | `make test` 退出码 0（contracts 10，脚本 node:test 103，API jest 137，web vitest 158）；`make gates` 退出码 0 | 本环境无 Docker，未对已启动的 API 执行该命令，未打开登录后的详情页。CI 待绿后再标为可审。不合并 |
 | 2026-10-14 | 确认或关闭前填写非空处理说明。详情确认写入 `ackNote`，关闭写入 `closeNote`，空白不提交。已确认显示确认时的说明，已关闭显示关闭时的说明。`make demo-alert-handle-note` 从待确认「处理说明告警」确认，说明「现场已开窗通风」，连续读两次详情。列表上的处理说明同样随确认或关闭提交。不发识别，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 98，API jest 130，web vitest 154）；`make gates` 退出码 0 | 本环境无 Docker，未对已启动的 API 执行该命令，未打开登录后的详情页。CI 待绿后再标为可审。不合并 |
 | 2026-10-14 | `make demo-alert-title-search`：留下「东侧标题搜索告警」与「西侧过道对照告警」。`q=东侧标题` 只返回标题匹配的行；详情可打开；不带 `q` 或 `q` 只有空白时两条都在。页面「搜索 / 清除搜索」走同一参数。不发识别，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 93，API jest 129，web vitest 149）；`make gates` 退出码 0 | 本环境无 Docker，未对已启动的 API 执行该命令，未打开登录后的 `/alerts`。CI 待绿后再标为可审。不合并 |

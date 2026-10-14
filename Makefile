@@ -1,11 +1,19 @@
-.PHONY: up api web test smoke smoke-evidence migrate contracts lint gates gates-selftest backup object-tier demo-one-ingest demo-register-and-ingest demo-register-and-heartbeat demo-one-alert demo-ack-one-alert demo-close-one-alert demo-threshold-alert demo-alert-camera-filter demo-alert-status-filter demo-alert-title-search demo-alert-handle-note demo-alert-snapshot-minio
+.PHONY: up images images-probe api web test smoke smoke-evidence migrate contracts lint gates gates-selftest backup object-tier demo-one-ingest demo-register-and-ingest demo-register-and-heartbeat demo-one-alert demo-ack-one-alert demo-close-one-alert demo-threshold-alert demo-alert-camera-filter demo-alert-status-filter demo-alert-title-search demo-alert-handle-note demo-alert-snapshot-minio demo-contrast
 
 contracts:
 	npm --prefix packages/contracts install
 	npm --prefix packages/contracts run build
 
-up:
-	docker compose up -d --wait
+# 打印 make up 要拉取的摘要，以及本地构建的对象存储。浮动标签或被禁仓库则退出码非 0。
+images:
+	node scripts/compose-images.mjs
+
+# 在 images 的文件检查之外，向 Docker Hub 与 GitHub Release 核对摘要和 silo 包仍可取。
+images-probe: images
+	node scripts/compose-images.mjs --probe
+
+up: images
+	docker compose up -d --build --wait
 
 migrate:
 	node scripts/migrate.mjs
@@ -92,6 +100,11 @@ demo-alert-title-search: contracts
 # 确认一条待确认告警并写入处理说明，再读两次详情。步骤见 docs/DEMO_ALERT_HANDLE_NOTE.md。
 demo-alert-handle-note: contracts
 	node scripts/demo-alert-handle-note.mjs
+
+# 登录按钮、告警链接和警告色文字的对比度，以及新建告警表单的可访问名称。步骤见 docs/DEMO_MAKE_UP.md。
+demo-contrast: contracts
+	npm --prefix apps/web install
+	npm --prefix apps/web test -- src/demo-path-contrast.spec.ts
 
 # 发一条带样例 JPEG 的温度过高告警，详情能打开对象存储里的抓拍。步骤见 docs/DEMO_ALERT_SNAPSHOT_MINIO.md。
 demo-alert-snapshot-minio: contracts

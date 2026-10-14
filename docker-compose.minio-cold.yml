@@ -5,8 +5,9 @@
 # 未设置该变量时脚本只打印计划。说明见 docs/OPS_STORAGE_BACKUP.md。
 services:
   minio-cold:
-    # 与热盘同一本地镜像。make up 不起冷端。
+    # 与热盘同一本地镜像。make up 不起冷端。不向仓库拉取这个名字。
     image: mushroom-object-store:20260916
+    pull_policy: build
     build:
       context: ./infra/object-store
     command: server /data --console-address ":9001"

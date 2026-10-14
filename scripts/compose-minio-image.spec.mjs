@@ -3,43 +3,23 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import {
+  DEBIAN_IMAGE,
+  OBJECT_STORAGE_IMAGE,
+  PULLED_IMAGES,
+  checkComposeImages,
+} from './compose-images.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-/** 本地构建。make up 不拉取 pgsty/silo 或 quay.io/minio/minio。 */
-export const OBJECT_STORAGE_IMAGE = 'mushroom-object-store:20260916';
-
-const COMPOSE_FILES = ['docker-compose.yml', 'docker-compose.minio-cold.yml'];
-const BLOCKED_IMAGE_REPOS = ['pgsty/silo', 'quay.io/minio/minio', 'minio/minio'];
-
-export function objectStorageImages(composeText) {
-  const images = [];
-  let inService = false;
-  for (const line of composeText.split('\n')) {
-    const service = line.match(/^  ([a-z0-9-]+):\s*$/);
-    if (service) {
-      inService = service[1] === 'minio' || service[1] === 'minio-cold';
-      continue;
-    }
-    if (!inService) continue;
-    const image = line.match(/^    image:\s*(\S+)\s*$/);
-    if (image) images.push(image[1]);
-  }
-  return images;
-}
-
-test('hot and cold compose build the local object storage image', () => {
-  for (const rel of COMPOSE_FILES) {
-    const text = readFileSync(join(root, rel), 'utf8');
-    assert.deepEqual(objectStorageImages(text), [OBJECT_STORAGE_IMAGE], rel);
-    assert.match(text, /context: \.\/infra\/object-store/, rel);
-    const imageLines = text.split('\n').filter((line) => line.trim().startsWith('image:'));
-    for (const blocked of BLOCKED_IMAGE_REPOS) {
-      for (const line of imageLines) {
-        assert.equal(line.includes(blocked), false, `${rel} ${line}`);
-      }
-    }
-  }
+test('make up pins pulled images and builds object storage locally', () => {
+  const { errors } = checkComposeImages();
+  assert.deepEqual(errors, []);
+  assert.match(PULLED_IMAGES.postgres, /@sha256:[a-f0-9]{64}$/);
+  assert.match(PULLED_IMAGES.redis, /@sha256:[a-f0-9]{64}$/);
+  assert.match(PULLED_IMAGES.mosquitto, /@sha256:[a-f0-9]{64}$/);
+  assert.equal(OBJECT_STORAGE_IMAGE.includes('@'), false);
+  assert.match(DEBIAN_IMAGE, /^debian:bookworm-slim@sha256:[a-f0-9]{64}$/);
 });
 
 test('object store Dockerfile pins the release tarball checksums', () => {

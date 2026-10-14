@@ -27,7 +27,7 @@ async function submit() {
 </script>
 
 <template>
-  <div class="grid min-h-screen place-items-center px-4">
+  <main class="grid min-h-screen place-items-center px-4">
     <form class="panel w-full max-w-md space-y-4" @submit.prevent="submit">
       <p class="text-xs tracking-[0.2em] text-accent">EDGE AI RESULTS IN</p>
       <h1 class="text-2xl font-semibold">食用菌种植管理平台</h1>
@@ -46,5 +46,5 @@ async function submit() {
       </button>
       <p class="text-xs text-mist">开发种子账号 admin / Admin@123456</p>
     </form>
-  </div>
+  </main>
 </template>
