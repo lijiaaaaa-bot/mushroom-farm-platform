@@ -273,6 +273,10 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 设备报表可筛在线（全部 / 在线 / 离线），告警报表可筛状态（全部 / 待确认 / 已确认 / 已关闭，文案与告警页一致）。选中后预览与 `export.xlsx` 传 `online=online` 或 `offline`、`status=open` / `acked` / `closed`；选全部不传。接口按该值过滤：`online` 只认 `online` 与 `offline`，告警状态按 `open`、`acked`、`closed` 精确匹配。
 
+地址栏带 `kind` 时，`/reports` 按查询参数填好报表、粒度、日期、棚区和已有的在线或状态筛选，并自己请求预览。没有 `kind` 时仍要点「预览」。点「导出」或上方快捷下载成功后，页面写「已开始下载」和文件名。空文件仍写「该报表没有可导出的数据」。
+
+`make demo-report-xlsx` 读取 `recognition.demo-one.json`，把本次请求改成棚区 `S02`、摄像头 `CAM-RPT-01`、蘑菇数量 17、成熟数量 9，只 POST 一次识别。样例文件里的 `CAM-DEMO-01` 不改。然后核对上海当天的园区生长预览：`shedCode=S02` 时至少一行且没有其他棚，蘑菇数量至少 17，成熟数量至少 9；不带棚区时行数不少于这一份。`GET /api/v1/reports/export.xlsx` 用同一组 S02 参数返回 xlsx，工作表是「园区生长」，里面有 S02。登录后打开终端打印的 `/reports?kind=growth&...&shedCode=S02`。不确认、不关闭告警。步骤见 [`DEMO_REPORT_XLSX.md`](DEMO_REPORT_XLSX.md)。
+
 浏览器打印：预览区出现后，按钮调用 `window.print()`，打印当前页。没有单独的打印样式表。
 
 页面上另有五个快捷下载，和上面的预览不是同一条读路径：

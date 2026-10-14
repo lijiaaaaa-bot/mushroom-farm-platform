@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { ALERT_STATUS_LABEL, alertStatusSchema } from '@mushroom/contracts';
 import { errorText, http } from '../api';
 
@@ -43,6 +43,42 @@ const alertStatus = ref('');
 const alertStatuses = alertStatusSchema.options;
 const preview = ref<Preview | null>(null);
 const previewError = ref('');
+const downloadNote = ref('');
+
+function queryText(search: URLSearchParams, key: string) {
+  return search.get(key)?.trim() || '';
+}
+
+function applySearch(search: URLSearchParams) {
+  const kindValue = queryText(search, 'kind');
+  const known = kinds.find(([value]) => value === kindValue);
+  if (!known) return false;
+  kind.value = known[0];
+  const grainValue = queryText(search, 'grain');
+  if (grainValue === 'day' || grainValue === 'week' || grainValue === 'month') {
+    grain.value = grainValue;
+  }
+  const fromValue = queryText(search, 'from');
+  const toValue = queryText(search, 'to');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(fromValue)) from.value = fromValue;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(toValue)) to.value = toValue;
+  shedCode.value = queryText(search, 'shedCode');
+  const onlineValue = queryText(search, 'online');
+  online.value = onlineValue === 'online' || onlineValue === 'offline' ? onlineValue : '';
+  const statusValue = queryText(search, 'status');
+  alertStatus.value = (alertStatuses as readonly string[]).includes(statusValue) ? statusValue : '';
+  return true;
+}
+
+function syncAddress() {
+  const url = new URL(window.location.href);
+  url.pathname = '/reports';
+  url.search = '';
+  for (const [key, value] of Object.entries(params())) {
+    if (value) url.searchParams.set(key, String(value));
+  }
+  window.history.replaceState({}, '', `${url.pathname}${url.search}`);
+}
 
 function params() {
   return {
@@ -59,6 +95,8 @@ function params() {
 async function loadPreview() {
   previewError.value = '';
   emptyNote.value = '';
+  downloadNote.value = '';
+  syncAddress();
   try {
     const response = await http.get<Preview>('/reports/preview', { params: params() });
     preview.value = response.data;
@@ -71,6 +109,8 @@ async function loadPreview() {
 async function exportPreview() {
   previewError.value = '';
   emptyNote.value = '';
+  downloadNote.value = '';
+  syncAddress();
   try {
     const response = await http.get<Blob>('/reports/export.xlsx', {
       params: params(),
@@ -87,6 +127,7 @@ async function exportPreview() {
     link.download = `${kind.value}.xlsx`;
     link.click();
     URL.revokeObjectURL(url);
+    downloadNote.value = `已开始下载 ${kind.value}.xlsx`;
   } catch (cause) {
     previewError.value = errorText(cause);
   }
@@ -99,6 +140,7 @@ function printPreview() {
 async function download(path: string) {
   error.value = '';
   emptyNote.value = '';
+  downloadNote.value = '';
   try {
     const response = await http.get<Blob>(`/reports/${path}`, { responseType: 'blob' });
     const blob = response.data;
@@ -112,10 +154,17 @@ async function download(path: string) {
     link.download = path;
     link.click();
     URL.revokeObjectURL(url);
+    downloadNote.value = `已开始下载 ${path}`;
   } catch (cause) {
     error.value = errorText(cause);
   }
 }
+
+onMounted(() => {
+  const search = new URLSearchParams(window.location.search);
+  if (!applySearch(search)) return;
+  void loadPreview();
+});
 </script>
 
 <template>
@@ -127,6 +176,7 @@ async function download(path: string) {
         下载{{ label }}
       </button>
     </div>
+    <p v-if="downloadNote" class="text-sm text-mist" data-testid="report-download">{{ downloadNote }}</p>
     <p v-if="emptyNote" class="text-sm text-mist">{{ emptyNote }}</p>
     <p v-if="error" class="text-sm text-danger">{{ error }}</p>
     <form class="grid gap-3 border-t border-line pt-3 sm:grid-cols-3" data-testid="report-filters" @submit.prevent="loadPreview">

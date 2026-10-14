@@ -1218,6 +1218,7 @@ describe('HarvestView', () => {
 describe('ReportsView', () => {
   beforeEach(() => {
     httpGet.mockReset();
+    window.history.replaceState({}, '', '/');
     vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:report');
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
     vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
@@ -1236,6 +1237,7 @@ describe('ReportsView', () => {
 
     expect(httpGet).toHaveBeenCalledWith('/reports/growth.xlsx', { responseType: 'blob' });
     expect(URL.createObjectURL).toHaveBeenCalled();
+    expect(wrapper.get('[data-testid="report-download"]').text()).toBe('已开始下载 growth.xlsx');
     expect(wrapper.text()).not.toContain('该报表没有可导出的数据');
     expect(wrapper.text()).not.toContain('请求失败');
     wrapper.unmount();
@@ -1249,6 +1251,7 @@ describe('ReportsView', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('该报表没有可导出的数据。');
+    expect(wrapper.text()).not.toContain('已开始下载');
     expect(URL.createObjectURL).not.toHaveBeenCalled();
     wrapper.unmount();
   });
@@ -1262,6 +1265,7 @@ describe('ReportsView', () => {
 
     expect(wrapper.text()).toContain('请求失败');
     expect(wrapper.text()).not.toContain('该报表没有可导出的数据');
+    expect(wrapper.text()).not.toContain('已开始下载');
     expect(URL.createObjectURL).not.toHaveBeenCalled();
     wrapper.unmount();
   });
