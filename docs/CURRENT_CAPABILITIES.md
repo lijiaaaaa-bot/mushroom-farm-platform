@@ -216,7 +216,9 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 ## 生长趋势
 
-页面 `/growth-trends`。日趋势 `GET /api/v1/growth-trends?days=7|30`（只接受 7 或 30），读 `metric_buckets_day`。小时趋势 `GET /api/v1/growth-trends/hours` 读 `metric_buckets_hour`。环境曲线 `GET /api/v1/growth-trends/environment` 读环境小时桶。页面只画已有点。棚隔离。
+页面 `/growth-trends`。日趋势 `GET /api/v1/growth-trends?days=7|30`（只接受 7 或 30），读 `metric_buckets_day`。每个点有蘑菇数量、成熟数量、菌盖直径均值和样本数。小时趋势 `GET /api/v1/growth-trends/hours` 读 `metric_buckets_hour`，点上同样有成熟数量。环境曲线 `GET /api/v1/growth-trends/environment` 读环境小时桶。页面只画已有点；有点时写出「棚区 … · 7 天」或「30 天」「24 小时」，并画蘑菇数量、成熟数量、菌盖直径均值，表里能读到这些数。棚隔离。
+
+`make demo-growth-trend` 读取 `recognition.demo-growth-trend.json`，写入 `CAM-GT-01`（棚区 S01）三天：前 5 日蘑菇 8、成熟 2；前 2 日蘑菇 14、成熟 5；当日蘑菇 21、成熟 8。同一上海日的幂等键已在则不另建一行。病害数量 0，温度 22.5℃，成熟占比低于种子规则「成熟占比一般」的 0.6。7 日和 30 日都能看到这三天，蘑菇数和成熟数后一天更大。`cameraCode=CAM-GT-NONE` 没有点。步骤见 [`DEMO_GROWTH_TREND.md`](DEMO_GROWTH_TREND.md)。
 
 写路径：识别入库按 `recognizedAt`（Asia/Shanghai）增量 upsert 小时桶与日桶，同一幂等键不双计。环境入库按 `observedAt` 同样增量写入。`daily_aggregates` 已停写并删除（迁移 `010_drop_daily_aggregates.sql`）。
 

@@ -11,6 +11,7 @@ interface Point {
   day: string;
   hour?: string;
   mushroomCount: number;
+  matureCount?: number;
   capDiameterMean: number | null;
   sampleCount: number;
 }
@@ -56,8 +57,10 @@ const cameraQuery = computed(() =>
 );
 const data = ref<TrendResponse | null>(null);
 const countEl = ref<HTMLDivElement | null>(null);
+const matureEl = ref<HTMLDivElement | null>(null);
 const diameterEl = ref<HTMLDivElement | null>(null);
 let countChart: echarts.ECharts | null = null;
+let matureChart: echarts.ECharts | null = null;
 let diameterChart: echarts.ECharts | null = null;
 
 const current = computed(() => {
@@ -95,6 +98,17 @@ const diameterLines = computed(() =>
     }))
     .filter((line) => line.points.length > 0),
 );
+
+const matureLines = computed(() =>
+  lines.value
+    .map((line) => ({
+      name: line.name,
+      points: line.points.filter((point) => typeof point.matureCount === 'number'),
+    }))
+    .filter((line) => line.points.length > 0),
+);
+
+const windowLabel = computed(() => (grain.value === 'hour' ? '24 小时' : `${days.value} 天`));
 
 const tableRows = computed(() =>
   lines.value.flatMap((line) =>
@@ -155,6 +169,16 @@ function render() {
     diameterChart ??= echarts.init(diameterEl.value);
     diameterChart.setOption(
       chartOption(diameterLines.value, (point) => point.capDiameterMean),
+      true,
+    );
+  }
+  if (!matureLines.value.length || !matureEl.value) {
+    matureChart?.dispose();
+    matureChart = null;
+  } else {
+    matureChart ??= echarts.init(matureEl.value);
+    matureChart.setOption(
+      chartOption(matureLines.value, (point) => point.matureCount ?? null),
       true,
     );
   }
@@ -287,6 +311,10 @@ function diameterText(value: number | null) {
   return value === null ? '—' : String(value);
 }
 
+function matureText(value: number | undefined) {
+  return typeof value === 'number' ? String(value) : '—';
+}
+
 onMounted(() => {
   void reload();
 });
@@ -297,6 +325,7 @@ watch(mode, () => {
 
 onBeforeUnmount(() => {
   countChart?.dispose();
+  matureChart?.dispose();
   diameterChart?.dispose();
 });
 </script>
@@ -323,6 +352,9 @@ onBeforeUnmount(() => {
           24 小时
         </button>
       </div>
+      <p data-trend-window class="text-sm text-ink">
+        棚区 {{ shedCode || '—' }} · {{ windowLabel }}
+      </p>
       <p v-if="cameraQuery" class="text-sm text-mist">摄像头 {{ cameraQuery }}</p>
       <div class="flex gap-2">
         <button type="button" data-mode="shed" :class="mode === 'shed' ? 'btn-primary' : 'btn-ghost'" @click="mode = 'shed'">
@@ -348,6 +380,11 @@ onBeforeUnmount(() => {
         <div ref="countEl" class="h-72 w-full"></div>
       </section>
       <section class="panel bg-white">
+        <h2 class="mb-2 text-sm text-mist">成熟数量</h2>
+        <div v-if="matureLines.length" ref="matureEl" class="h-72 w-full"></div>
+        <p v-else class="text-sm text-mist">有数量日聚合，成熟数量为空，未绘制成熟曲线。</p>
+      </section>
+      <section class="panel bg-white">
         <h2 class="mb-2 text-sm text-mist">菌盖直径均值</h2>
         <div v-if="diameterLines.length" ref="diameterEl" class="h-72 w-full"></div>
         <p v-else class="text-sm text-mist">有数量日聚合，菌盖直径均值为空，未绘制直径曲线。</p>
@@ -359,6 +396,7 @@ onBeforeUnmount(() => {
               <th>{{ grain === 'hour' ? '小时' : '日期' }}</th>
               <th>对象</th>
               <th>蘑菇数量</th>
+              <th>成熟数量</th>
               <th>菌盖直径均值</th>
               <th>样本</th>
             </tr>
@@ -368,6 +406,7 @@ onBeforeUnmount(() => {
               <td class="font-mono">{{ row.day }}</td>
               <td class="font-mono">{{ row.name }}</td>
               <td class="font-mono">{{ row.mushroomCount }}</td>
+              <td class="font-mono">{{ matureText(row.matureCount) }}</td>
               <td class="font-mono">{{ diameterText(row.capDiameterMean) }}</td>
               <td class="font-mono">{{ row.sampleCount }}</td>
             </tr>

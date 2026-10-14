@@ -31,6 +31,7 @@ const series = {
         {
           day: '2026-09-23',
           mushroomCount: 12,
+          matureCount: 3,
           capDiameterMean: 5,
           sampleCount: 2,
         },
@@ -42,6 +43,7 @@ const series = {
             {
               day: '2026-09-23',
               mushroomCount: 12,
+              matureCount: 3,
               capDiameterMean: 5,
               sampleCount: 2,
             },
@@ -93,12 +95,56 @@ describe('GrowthTrendsView', () => {
     });
     expect(wrapper.text()).toContain('12');
     expect(wrapper.text()).toContain('2026-09-23');
+    expect(wrapper.text()).toContain('棚区 S01 · 7 天');
+    expect(wrapper.text()).toContain('成熟数量');
+    expect(wrapper.text()).toContain('3');
     expect(wrapper.text()).not.toContain('没有日聚合');
     expect(init).toHaveBeenCalled();
     const countOption = setOption.mock.calls[0][0] as {
       series: Array<{ data: Array<number | null> }>;
     };
     expect(countOption.series[0].data).toEqual([12]);
+    wrapper.unmount();
+  });
+
+  it('draws two days when mushroom and mature counts both change', async () => {
+    mockTrends({
+      days: 7,
+      from: '2026-09-17',
+      to: '2026-09-23',
+      sheds: [
+        {
+          shedCode: 'S01',
+          points: [
+            {
+              day: '2026-09-18',
+              mushroomCount: 8,
+              matureCount: 2,
+              capDiameterMean: 3.2,
+              sampleCount: 1,
+            },
+            {
+              day: '2026-09-23',
+              mushroomCount: 21,
+              matureCount: 8,
+              capDiameterMean: 5.4,
+              sampleCount: 1,
+            },
+          ],
+          cameras: [],
+        },
+      ],
+    });
+    const wrapper = await mountView();
+    expect(wrapper.text()).toContain('2026-09-18');
+    expect(wrapper.text()).toContain('2026-09-23');
+    expect(wrapper.text()).toContain('21');
+    const seriesData = setOption.mock.calls.map(
+      (call) => (call[0] as { series: Array<{ data: number[] }> }).series[0].data,
+    );
+    expect(seriesData).toContainEqual([8, 21]);
+    expect(seriesData).toContainEqual([2, 8]);
+    expect(seriesData).toContainEqual([3.2, 5.4]);
     wrapper.unmount();
   });
 
@@ -139,6 +185,7 @@ describe('GrowthTrendsView', () => {
                   {
                     hour: '2026-09-24T03:00:00.000Z',
                     mushroomCount: 6,
+                    matureCount: 9,
                     capDiameterMean: 4,
                     sampleCount: 1,
                   },
@@ -158,6 +205,8 @@ describe('GrowthTrendsView', () => {
       params: { hours: 24, shedCode: 'S01' },
     });
     expect(wrapper.text()).toContain('6');
+    expect(wrapper.text()).toContain('棚区 S01 · 24 小时');
+    expect(wrapper.text()).toContain('9');
     wrapper.unmount();
   });
 
@@ -170,6 +219,7 @@ describe('GrowthTrendsView', () => {
     expect(httpGet).toHaveBeenCalledWith('/growth-trends', {
       params: { days: 30, shedCode: 'S01' },
     });
+    expect(wrapper.text()).toContain('棚区 S01 · 30 天');
     wrapper.unmount();
   });
 
@@ -191,6 +241,7 @@ describe('GrowthTrendsView', () => {
       params: { days: 30, shedCode: 'S01' },
     });
     expect(wrapper.text()).toContain('摄像头 CAM-1');
+    expect(wrapper.text()).toContain('棚区 S01 · 30 天');
     expect(wrapper.text()).toContain('CAM-1');
     expect(wrapper.text()).not.toContain('没有日聚合');
     wrapper.unmount();
