@@ -314,6 +314,63 @@ describe('camera registration', () => {
     expect(blocked.status).toBe(403);
   });
 
+  it('lists a newly created camera and returns the same row from its detail', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/devices')
+      .set('x-test-role', 'production_admin')
+      .send({
+        code: 'CAM-NEW-01',
+        name: '新增镜头',
+        type: 'camera',
+        shedCode: 'S01',
+        note: '新增可演示',
+      });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({
+      code: 'CAM-NEW-01',
+      name: '新增镜头',
+      type: 'camera',
+      shedCode: 'S01',
+      note: '新增可演示',
+      onlineStatus: 'offline',
+      lastHeartbeatAt: null,
+      lastSeenAt: null,
+    });
+
+    const list = await request(app.getHttpServer())
+      .get('/api/v1/devices?pageSize=100')
+      .set('x-test-role', 'production_admin');
+    expect(list.status).toBe(200);
+    const row = list.body.items.find(
+      (item: { code?: string }) => item.code === 'CAM-NEW-01',
+    );
+    expect(row).toMatchObject({
+      id: created.body.id,
+      code: 'CAM-NEW-01',
+      name: '新增镜头',
+      type: 'camera',
+      shedCode: 'S01',
+      note: '新增可演示',
+      onlineStatus: 'offline',
+    });
+
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'production_admin');
+    expect(detail.status).toBe(200);
+    expect(detail.body).toMatchObject({
+      id: row.id,
+      code: row.code,
+      name: row.name,
+      type: row.type,
+      shedCode: row.shedCode,
+      note: row.note,
+      onlineStatus: row.onlineStatus,
+      lastHeartbeatAt: row.lastHeartbeatAt ?? null,
+      lastSeenAt: row.lastSeenAt ?? null,
+    });
+  });
+
   it('rejects a duplicate code and blocks roles that cannot register', async () => {
     await request(app.getHttpServer())
       .post('/api/v1/devices')
