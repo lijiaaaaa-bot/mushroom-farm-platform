@@ -35,7 +35,7 @@
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
-| 2026-10-14 | `make demo-camera-delete`：登记 `CAM-DEL-01`，列表可见后 PATCH 备注「删除前已改」，再 DELETE。列表没有这一台，详情 404「设备不存在」。查看员和棚区负责人 403。同一编码可再登记。页面删除后列表重新读取，详情回到 `/devices`。不发识别，不发心跳，不改已有演示命令 | 待 `make test` 与 `make gates` | 草稿不合并 |
+| 2026-10-14 | `make demo-camera-delete`：登记 `CAM-DEL-01`，列表可见后 PATCH 备注「删除前已改」，再 DELETE。列表没有这一台，详情 404「设备不存在」。查看员和棚区负责人 403。同一编码可再登记。页面删除后列表重新读取，详情回到 `/devices`。不发识别，不发心跳，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 166，API jest 152，web vitest 179）；`make gates` 退出码 0。PR #116 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。草稿不合并 |
 | 2026-10-14 | `make demo-camera-stop`：登记 `CAM-STOP-01`，再 PATCH `enabled: false`。列表与详情启用都是停用，档案仍在。`enabled` 不是布尔时 400。页面停用后重新读取。心跳不把停用改回启用。不发识别，不发心跳，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 159，API jest 151，web vitest 177）；`make gates` 退出码 0。PR #115 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。草稿不合并 |
 | 2026-10-14 | `make demo-camera-edit`：登记 `CAM-EDIT-01`，再 PATCH 备注「备注已改」和状态在线。列表与详情一致。页面保存后重新读取。没有心跳和时间戳时超时任务不改手改的在线。不发识别，不发心跳，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 150，API jest 150，web vitest 175）；`make gates` 退出码 0。PR #114 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。不合并 |
 | 2026-10-14 | `make demo-camera-create`：`POST /api/v1/devices` 新增 `CAM-NEW-01`（棚区 S01，名称新增镜头，备注新增可演示）。409 时不改档案。再读 `GET /api/v1/devices?pageSize=100` 与 `GET /api/v1/devices/:id`，字段一致。`/devices` 登记后列表有这一行，并可打开详情。不发识别，不发心跳，不新建告警，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 141，API jest 149，web vitest 172）；`make gates` 退出码 0。PR #113 | 本环境无 Docker、无 Postgres，未对已启动的 API 执行该命令，未打开登录后的 `/devices`。不合并 |
