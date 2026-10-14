@@ -1,5 +1,7 @@
 # 本地构建对象存储。二进制是 GitHub Release 的 linux 包，sha256 对上才装入镜像。
-FROM debian:bookworm-slim
+# 基础镜像摘要钉死。构建只下载下面的 Release 包，不使用仓库里的对象存储镜像。
+ARG DEBIAN_IMAGE=debian:bookworm-slim@sha256:7c7b2c966bc9ee8cedfeef67e0e279108992c77681fa595db4a9d65c06ccc587
+FROM ${DEBIAN_IMAGE}
 
 ARG TARGETARCH
 ARG SILO_TAG=RELEASE.2026-09-16T00-00-00Z

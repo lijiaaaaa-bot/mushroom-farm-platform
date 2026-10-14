@@ -66,6 +66,7 @@
 - 告警列表可按标题关键词搜索：`GET /api/v1/alerts` 接受 `q`，按标题子串匹配，不区分大小写；空白不传。`/alerts` 填关键词后点「搜索」，只显示标题匹配的行；标题仍进 `/alerts/:id`；点「清除搜索」回到全部。`make demo-alert-title-search` 留下「东侧标题搜索告警」和「西侧过道对照告警」，并核对搜索、详情和清除。不发识别，不改已有演示命令。步骤见 `docs/DEMO_ALERT_TITLE_SEARCH.md`。
 - 确认或关闭告警时可填写非空处理说明：详情页「处理说明」随 `POST /api/v1/alerts/:id/ack` 写入 `ackNote`，随 `POST /api/v1/alerts/:id/close` 写入 `closeNote`。空白不提交。详情重新读取后显示这句，刷新仍在。`make demo-alert-handle-note` 从待确认的「处理说明告警」（`CAM-NOTE-01`）确认，备注「现场已开窗通风」，并再读一次详情。不发识别，不改已有演示命令。步骤见 `docs/DEMO_ALERT_HANDLE_NOTE.md`。PR #105。
 - 告警抓拍写入对象存储，详情页显示这张图：识别触发告警时记下 `snapshotObjectKey`。`GET /api/v1/alerts/:id/snapshot` 从 MinIO 读回。`/alerts/:id` 显示图片、对象键和「打开抓拍」。列表有对象键时标题旁有「抓拍」。`make demo-alert-snapshot-minio` 用摄像头 `CAM-SNAP-01`、温度 30 和样例 JPEG 留下一条告警，并核对对象键与读回字节。未闭合告警还没有对象键时，下一次同规则识别把键补上，不改状态。步骤见 `docs/DEMO_ALERT_SNAPSHOT_MINIO.md`。
+- `make up` 拉取的 Postgres、Redis、Mosquitto 与对象存储基础镜像都带 sha256。对象存储镜像 `mushroom-object-store:20260916` 使用 `pull_policy: build`，不向 Docker Hub 拉取这个名字。`make images-probe` 核对摘要和 silo 包仍可取。登录按钮与告警链接的绿色改为 `#1B7A4E`，警告色文字改为 `#9A6700`，白底和页面底上达到 4.5:1。新建告警的棚区、摄像头、级别、标题、说明有可访问名称。步骤见 `docs/DEMO_MAKE_UP.md`。
 
 ## 进行中
 - 无

@@ -245,14 +245,14 @@ onMounted(load);
       <a class="text-accent" href="/phase2/wecom">企微/钉钉推送</a>
     </p>
     <form v-if="canOperate(currentUser?.role)" class="panel grid gap-3 md:grid-cols-6" @submit.prevent="createAlert">
-      <input v-model="form.shedCode" class="field" placeholder="棚区" />
-      <input v-model="form.cameraCode" class="field" placeholder="摄像头" />
-      <select v-model="form.level" class="field">
+      <input v-model="form.shedCode" class="field" placeholder="棚区" aria-label="棚区" />
+      <input v-model="form.cameraCode" class="field" placeholder="摄像头" aria-label="摄像头" />
+      <select v-model="form.level" class="field" aria-label="级别">
         <option v-for="level in levels" :key="level" :value="level">{{ ALERT_LEVEL_LABEL[level] }}</option>
       </select>
-      <input v-model="form.title" class="field md:col-span-2" placeholder="标题" required />
+      <input v-model="form.title" class="field md:col-span-2" placeholder="标题" aria-label="标题" required />
       <button class="btn-primary" type="submit">新建告警</button>
-      <textarea v-model="form.message" class="field md:col-span-5" placeholder="说明" required />
+      <textarea v-model="form.message" class="field md:col-span-5" placeholder="说明" aria-label="说明" required />
       <label class="text-sm">
         处理说明
         <input
@@ -308,7 +308,7 @@ onMounted(load);
       <p v-else-if="!error && !rows.length" class="text-mist">暂无告警。</p>
       <table v-else-if="rows.length" class="data-table">
         <thead>
-          <tr><th>等级</th><th>状态</th><th>原因</th><th>认领人</th><th>棚区</th><th>摄像头</th><th>标题</th><th>时间</th><th></th></tr>
+          <tr><th>等级</th><th>状态</th><th>原因</th><th>认领人</th><th>棚区</th><th>摄像头</th><th>标题</th><th>时间</th><th>操作</th></tr>
         </thead>
         <tbody>
           <tr

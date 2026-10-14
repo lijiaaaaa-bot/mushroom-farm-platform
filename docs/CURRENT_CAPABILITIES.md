@@ -262,10 +262,10 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 | 组件 | 现状 |
 |------|------|
-| PostgreSQL | `make up` 使用 `postgres:16-alpine`，库 `mushroom`。业务表含识别、环境、告警、设备、棚、桶、批次、采摘任务 |
+| PostgreSQL | `make up` 使用钉死摘要的 `postgres:16-alpine`（摘要在 `docker-compose.yml`，`make images` 打印），库 `mushroom`。业务表含识别、环境、告警、设备、棚、桶、批次、采摘任务 |
 | Timescale | 可选。`docker compose -f docker-compose.yml -f docker-compose.timescale.yml` 只换 Postgres 镜像。`009_timescale_optional.sql` 在 `make migrate` 时执行：没有扩展只写 NOTICE，有扩展也不在这条迁移里建 hypertable。`infra/timescale/enable.sql` 不进 `make migrate` |
-| Redis | Compose `redis:7-alpine`，端口 6379。接入幂等 `SETNX`。Redis 不可用时仍靠唯一约束去重 |
-| MinIO | `make up` 构建本地镜像 `mushroom-object-store:20260916`（`infra/object-store/Dockerfile`）。二进制是 GitHub Release `RELEASE.2026-09-16T00-00-00Z` 的 linux 包，sha256 校验后装入。不拉取 `pgsty/silo`，也不拉取 `quay.io/minio/minio`。端口 9000 / 控制台 9001，桶默认 `mushroom-snapshots`。数据在命名卷 `minio-hot`（`MINIO_HOT_DATA` 可改为 SSD 路径）。抓拍字节在这里，PostgreSQL 存对象键。Mosquitto 端口 1883，匿名 |
+| Redis | Compose 钉死摘要的 `redis:7-alpine`，端口 6379。接入幂等 `SETNX`。Redis 不可用时仍靠唯一约束去重 |
+| MinIO | `make up` 构建本地镜像 `mushroom-object-store:20260916`（`infra/object-store/Dockerfile`，`pull_policy: build`，不向 Docker Hub 拉取这个名字）。基础镜像是钉死摘要的 `debian:bookworm-slim`。二进制是 GitHub Release `RELEASE.2026-09-16T00-00-00Z` 的 linux 包，sha256 校验后装入。不拉取 `pgsty/silo`，也不拉取 `quay.io/minio/minio`。端口 9000 / 控制台 9001，桶默认 `mushroom-snapshots`。数据在命名卷 `minio-hot`（`MINIO_HOT_DATA` 可改为 SSD 路径）。抓拍字节在这里，PostgreSQL 存对象键。Mosquitto 是钉死摘要的 `eclipse-mosquitto:2`，端口 1883，匿名。步骤见 `docs/DEMO_MAKE_UP.md` |
 | 冷 MinIO | 可选。与热盘同一本地镜像。`docker-compose.minio-cold.yml`，端口 9002 / 控制台 9003，卷 `minio-cold`（`MINIO_COLD_DATA` 可改为 HDD 路径）。`make up` 不起冷端 |
 | 登录日志 | 表 `login_logs`（迁移 `012_login_logs.sql`）。成功与失败都写：用户、结果、时间、IP、User-Agent。`GET /api/v1/login-logs` |
 | Postgres 备份 | `make backup` → `backups/mushroom-<时间>.sql`。Redis 不备份。MinIO 字节不在该文件中 |

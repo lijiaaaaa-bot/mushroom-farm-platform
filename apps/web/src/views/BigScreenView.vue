@@ -1722,6 +1722,13 @@ onBeforeUnmount(() => {
   color: #6fce8a;
 }
 
+.screen[data-skin='tb-night'] .tile.hot .tile-value,
+.screen[data-skin='tb-night'] .zone-error,
+.screen[data-skin='tb-night'] .tick[data-tone='severe'],
+.screen[data-skin='tb-night'] .wall-cell.disease .wall-disease {
+  color: #ff6b6b;
+}
+
 .screen[data-skin='tb-night'] .point,
 .screen[data-skin='tb-night'] .point.on,
 .screen[data-skin='tb-night'] .point:hover {
