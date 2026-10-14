@@ -288,6 +288,7 @@ function device(
     lastSeenAt: null,
     lastHeartbeatAt: new Date('2026-09-24T00:00:00.000Z'),
     note: null,
+    enabled: true,
     meta: {},
     createdAt: new Date('2026-09-24T00:00:00.000Z'),
   };

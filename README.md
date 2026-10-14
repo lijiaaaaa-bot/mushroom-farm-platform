@@ -31,7 +31,8 @@ make web      # http://127.0.0.1:43123
 发两条环境遥测，最新值出现在环境读数页：[`docs/DEMO_TELEMETRY_LATEST.md`](docs/DEMO_TELEMETRY_LATEST.md)（`make demo-telemetry-latest`）。  
 发一条超阈值环境遥测，告警列表和详情出现这条告警：[`docs/DEMO_TELEMETRY_THRESHOLD_ALERT.md`](docs/DEMO_TELEMETRY_THRESHOLD_ALERT.md)（`make demo-telemetry-threshold-alert`）。  
 新增一台镜头，设备列表和镜头详情都能看到：[`docs/DEMO_CAMERA_CREATE.md`](docs/DEMO_CAMERA_CREATE.md)（`make demo-camera-create`）。  
-改一台镜头的备注和状态，列表和详情都能看到：[`docs/DEMO_CAMERA_EDIT.md`](docs/DEMO_CAMERA_EDIT.md)（`make demo-camera-edit`）。
+改一台镜头的备注和状态，列表和详情都能看到：[`docs/DEMO_CAMERA_EDIT.md`](docs/DEMO_CAMERA_EDIT.md)（`make demo-camera-edit`）。  
+停用一台镜头，列表和详情仍显示停用：[`docs/DEMO_CAMERA_STOP.md`](docs/DEMO_CAMERA_STOP.md)（`make demo-camera-stop`）。
 
 ## 接入
 

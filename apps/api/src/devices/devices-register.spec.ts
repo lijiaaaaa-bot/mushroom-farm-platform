@@ -43,6 +43,7 @@ function memoryDevices() {
           lastSeenAt: null,
           lastHeartbeatAt: null,
           note: null,
+          enabled: true,
           meta: {},
           ...item,
           id: item.id ?? `device-${rows.length + 1}`,
@@ -516,5 +517,111 @@ describe('camera registration', () => {
     await service.markStaleOffline(new Date('2026-10-14T02:06:00.000Z'));
     expect(devices.rows[0].onlineStatus).toBe('offline');
     expect(devices.rows[0].note).toBe('备注已改');
+  });
+
+  it('deactivates a camera and keeps it on the list and the detail', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/devices')
+      .set('x-test-role', 'production_admin')
+      .send({
+        code: 'CAM-STOP-01',
+        name: '可停用镜头',
+        type: 'camera',
+        shedCode: 'S01',
+        note: '停用前',
+      });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({
+      code: 'CAM-STOP-01',
+      name: '可停用镜头',
+      note: '停用前',
+      onlineStatus: 'offline',
+      enabled: true,
+      lastHeartbeatAt: null,
+    });
+
+    const stopped = await request(app.getHttpServer())
+      .patch(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'super_admin')
+      .send({ enabled: false });
+    expect(stopped.status).toBe(200);
+    expect(stopped.body).toMatchObject({
+      id: created.body.id,
+      code: 'CAM-STOP-01',
+      name: '可停用镜头',
+      note: '停用前',
+      onlineStatus: 'offline',
+      enabled: false,
+      lastHeartbeatAt: null,
+      lastSeenAt: null,
+    });
+
+    const listed = await request(app.getHttpServer())
+      .get('/api/v1/devices')
+      .query({ pageSize: 100 })
+      .set('x-test-role', 'viewer');
+    expect(listed.status).toBe(200);
+    expect(listed.body.items).toEqual([
+      expect.objectContaining({
+        id: created.body.id,
+        code: 'CAM-STOP-01',
+        note: '停用前',
+        onlineStatus: 'offline',
+        enabled: false,
+      }),
+    ]);
+
+    const detail = await request(app.getHttpServer())
+      .get(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'viewer');
+    expect(detail.status).toBe(200);
+    expect(detail.body).toMatchObject({
+      id: created.body.id,
+      note: '停用前',
+      onlineStatus: 'offline',
+      enabled: false,
+      lastHeartbeatAt: null,
+    });
+
+    const invalid = await request(app.getHttpServer())
+      .patch(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'super_admin')
+      .send({ enabled: 'off' });
+    expect(invalid.status).toBe(400);
+    expect(devices.rows[0].enabled).toBe(false);
+    expect(devices.rows[0].note).toBe('停用前');
+
+    const denied = await request(app.getHttpServer())
+      .patch(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'viewer')
+      .send({ enabled: true });
+    expect(denied.status).toBe(403);
+    const lead = await request(app.getHttpServer())
+      .patch(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'shed_manager')
+      .send({ enabled: true });
+    expect(lead.status).toBe(403);
+    expect(devices.rows[0].enabled).toBe(false);
+
+    const service = app.get(DevicesService);
+    await service.heartbeat(
+      'S01',
+      'CAM-STOP-01',
+      'camera',
+      true,
+      '2026-10-14T02:00:00.000Z',
+    );
+    expect(devices.rows[0].enabled).toBe(false);
+    expect(devices.rows[0].onlineStatus).toBe('online');
+    expect(devices.rows[0].note).toBe('停用前');
+
+    const enabled = await request(app.getHttpServer())
+      .patch(`/api/v1/devices/${created.body.id}`)
+      .set('x-test-role', 'production_admin')
+      .send({ enabled: true });
+    expect(enabled.status).toBe(200);
+    expect(enabled.body.enabled).toBe(true);
+    expect(enabled.body.onlineStatus).toBe('online');
+    expect(enabled.body.note).toBe('停用前');
   });
 });

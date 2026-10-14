@@ -34,6 +34,7 @@ function memoryDevices() {
         onlineStatus: 'offline' as const,
         lastSeenAt: null,
         lastHeartbeatAt: null,
+        enabled: true,
         meta: {},
         ...input,
         id: input.id ?? `device-${rows.length + 1}`,
@@ -173,6 +174,7 @@ describe('device batch import HTTP', () => {
       lastSeenAt: null,
       lastHeartbeatAt: null,
       note: null,
+      enabled: true,
       meta: {},
       createdAt: new Date(),
     });

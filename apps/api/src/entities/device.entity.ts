@@ -38,6 +38,9 @@ export class Device {
   @Column({ type: 'text', nullable: true })
   note: string | null;
 
+  @Column({ default: true })
+  enabled: boolean;
+
   @Column({ type: 'jsonb', default: {} })
   meta: Record<string, unknown>;
 
