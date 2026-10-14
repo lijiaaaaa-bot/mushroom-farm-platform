@@ -165,12 +165,13 @@ export class AlertsController {
         errors: parsed.errors,
       });
     }
-    const alert = await this.alerts.ack(user, id, parsed.value.note);
+    const note = parsed.value.note || undefined;
+    const alert = await this.alerts.ack(user, id, note);
     await this.audit.write({
       user,
       action: 'alert.ack',
       resource: `alert:${alert.id}`,
-      detail: { note: parsed.value.note ?? null },
+      detail: { note: note ?? null },
       ip: request.ip,
     });
     return alert;
@@ -192,13 +193,14 @@ export class AlertsController {
         errors: parsed.errors,
       });
     }
-    const alert = await this.alerts.close(user, id, parsed.value.note);
+    const note = parsed.value.note || undefined;
+    const alert = await this.alerts.close(user, id, note);
     await this.audit.write({
       user,
       action: 'alert.close',
       resource: `alert:${alert.id}`,
       detail: {
-        note: parsed.value.note ?? null,
+        note: note ?? null,
         closeReason: alert.closeReason,
       },
       ip: request.ip,

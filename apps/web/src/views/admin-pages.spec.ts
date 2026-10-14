@@ -364,6 +364,36 @@ describe('AlertsView', () => {
     refreshed.unmount();
   });
 
+  it('sends a trimmed handling note when confirming from the list', async () => {
+    asUser('shed_manager');
+    httpGet.mockResolvedValue({ data: { items: [alert], total: 1 } });
+    httpPost.mockResolvedValue({ data: {} });
+    const wrapper = await mountView(AlertsView);
+
+    expect(wrapper.text()).toContain('处理说明');
+    await wrapper.get('[data-testid="alert-list-handle-note"]').setValue('  现场已开窗通风  ');
+    await wrapper.get('[data-testid="alert-ack"]').trigger('click');
+    await flushPromises();
+
+    expect(httpPost).toHaveBeenCalledWith('/alerts/alert-1/ack', { note: '现场已开窗通风' });
+    wrapper.unmount();
+  });
+
+  it('does not confirm from the list when the handling note is blank', async () => {
+    asUser('shed_manager');
+    httpGet.mockResolvedValue({ data: { items: [alert], total: 1 } });
+    const wrapper = await mountView(AlertsView);
+
+    await wrapper.get('[data-testid="alert-list-handle-note"]').setValue('   ');
+    expect(wrapper.get('[data-testid="alert-ack"]').attributes('disabled')).toBeDefined();
+    expect(wrapper.get('[data-testid="alert-close"]').attributes('disabled')).toBeDefined();
+    await wrapper.get('[data-testid="alert-ack"]').trigger('click');
+    await flushPromises();
+
+    expect(httpPost).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
   it('sends status and level when selected and omits both when set back to 全部', async () => {
     httpGet.mockResolvedValue({ data: { items: [alert], total: 1 } });
     const wrapper = await mountView(AlertsView);

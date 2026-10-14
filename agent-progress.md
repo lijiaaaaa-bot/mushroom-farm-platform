@@ -3,6 +3,7 @@
 > 写在窗外，按条追加；禁止整份重写成空话摘要。
 
 ## 当前
+- 2026-10-14：确认或关闭告警时填写处理说明。详情页输入非空「处理说明」，确认写入 `ackNote`，关闭写入 `closeNote`。刷新详情仍显示这句。`make demo-alert-handle-note` 确认 `CAM-NOTE-01` 的「处理说明告警」，说明是「现场已开窗通风」，并再读一次。步骤 `docs/DEMO_ALERT_HANDLE_NOTE.md`。不改已有演示命令。分支 `cursor/alert-handle-note-fde1`。
 - 2026-10-14：告警列表按标题关键词搜索。`make demo-alert-title-search` 留下「东侧标题搜索告警」和「西侧过道对照告警」。搜索「东侧标题」只剩匹配标题，详情仍可打开，清除搜索后两条都在。步骤 `docs/DEMO_ALERT_TITLE_SEARCH.md`。不改已有演示命令。分支 `cursor/alert-title-search-9e54`。
 - 2026-10-14：告警列表按状态筛选。`make demo-alert-status-filter` 留下 `CAM-STATUS-01`（待确认）和 `CAM-STATUS-02`（已关闭）。选待确认没有已关闭那条，选已关闭没有待确认，改回全部两条都在，详情仍可打开。步骤 `docs/DEMO_ALERT_STATUS_FILTER.md`。不改已有演示命令。分支 `cursor/alert-status-filter-55a2`。
 - 2026-10-14：告警列表按摄像头编号筛选。`make demo-alert-camera-filter` 留下 `CAM-FILTER-01` 与 `CAM-FILTER-02`。筛选后者只剩这一台，详情仍可打开，清除后两台都在。步骤 `docs/DEMO_ALERT_CAMERA_FILTER.md`。不改已有演示命令。分支 `cursor/alert-camera-filter-0f76`。
@@ -23,6 +24,7 @@
 ## 日志
 | 日期 | 做了什么 | 如何验收 | 未决 |
 |------|----------|----------|------|
+| 2026-10-14 | 确认或关闭前填写非空处理说明。详情确认写入 `ackNote`，关闭写入 `closeNote`，空白不提交。已确认显示确认时的说明，已关闭显示关闭时的说明。`make demo-alert-handle-note` 从待确认「处理说明告警」确认，说明「现场已开窗通风」，连续读两次详情。列表上的处理说明同样随确认或关闭提交。不发识别，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 98，API jest 130，web vitest 154）；`make gates` 退出码 0 | 本环境无 Docker，未对已启动的 API 执行该命令，未打开登录后的详情页。CI 待绿后再标为可审。不合并 |
 | 2026-10-14 | `make demo-alert-title-search`：留下「东侧标题搜索告警」与「西侧过道对照告警」。`q=东侧标题` 只返回标题匹配的行；详情可打开；不带 `q` 或 `q` 只有空白时两条都在。页面「搜索 / 清除搜索」走同一参数。不发识别，不改已有演示命令 | `make test` 退出码 0（contracts 10，脚本 node:test 93，API jest 129，web vitest 149）；`make gates` 退出码 0 | 本环境无 Docker，未对已启动的 API 执行该命令，未打开登录后的 `/alerts`。CI 待绿后再标为可审。不合并 |
 | 2026-10-14 | `make demo-alert-status-filter`：留下待确认 `CAM-STATUS-01` 与已关闭 `CAM-STATUS-02`。`status=open` 只有待确认；`status=closed` 只有已关闭；不带 `status` 时两条都在。详情可打开。页面下拉同步地址，改回全部后两条都在。关闭用与 `demo-close-one-alert` 相同的备注，不关其他告警 | `make test` 退出码 0（contracts 10，脚本 node:test 88，API jest 128，web vitest 146）；`make gates` 退出码 0。PR #103 | CI 待绿后再标为可审。不合并 |
 | 2026-10-14 | `make demo-alert-camera-filter`：`POST /api/v1/alerts` 留下 `CAM-FILTER-01` 与 `CAM-FILTER-02`。`cameraCode=CAM-FILTER-02` 只返回这台；详情可打开；不带该参数时两条都在。页面「筛选 / 清除」走同一参数。不发识别，不改已有演示命令。列表测试最后一次请求改用下标，避开 `Array.at` | 本地 `make test` 退出码 0（contracts 10，脚本 node:test 82，API jest 127，web vitest 143）；`make gates` 退出码 0。PR #102 | CI 待绿后再标为可审。不合并 |

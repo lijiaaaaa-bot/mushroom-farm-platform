@@ -189,9 +189,11 @@ describe('AlertDetailView', () => {
 
     expect(wrapper.get('[data-field="status"]').text()).toBe('待确认');
     expect(wrapper.get('[data-testid="alert-ack"]').text()).toBe('确认');
+    expect(wrapper.find('[data-testid="alert-handle-note"]').exists()).toBe(true);
     const acked = { ...alert, status: 'acked' as const, ackNote: '已确认' };
     httpPost.mockResolvedValue({ data: acked });
     httpGet.mockResolvedValueOnce({ data: acked });
+    await wrapper.get('[data-testid="alert-handle-note"]').setValue('已确认');
     await wrapper.get('[data-testid="alert-ack"]').trigger('click');
     await flushPromises();
 
@@ -199,6 +201,7 @@ describe('AlertDetailView', () => {
     expect(httpGet).toHaveBeenLastCalledWith('/alerts/alert-1');
     expect(wrapper.get('[data-field="status"]').text()).toBe('已确认');
     expect(wrapper.get('[data-field="ackNote"]').text()).toBe('已确认');
+    expect(wrapper.get('[data-field="handleNote"]').text()).toBe('已确认');
     expect(wrapper.find('[data-testid="alert-ack"]').exists()).toBe(false);
     expect(wrapper.get('[data-testid="alert-close"]').text()).toBe('关闭');
     wrapper.unmount();
@@ -207,6 +210,7 @@ describe('AlertDetailView', () => {
     const refreshed = await mountDetail();
     expect(refreshed.get('[data-field="status"]').text()).toBe('已确认');
     expect(refreshed.get('[data-field="ackNote"]').text()).toBe('已确认');
+    expect(refreshed.get('[data-field="handleNote"]').text()).toBe('已确认');
     expect(refreshed.find('[data-testid="alert-ack"]').exists()).toBe(false);
     refreshed.unmount();
   });
@@ -224,6 +228,7 @@ describe('AlertDetailView', () => {
     };
     httpPost.mockResolvedValue({ data: closed });
     httpGet.mockResolvedValueOnce({ data: closed });
+    await wrapper.get('[data-testid="alert-handle-note"]').setValue('已关闭');
     await wrapper.get('[data-testid="alert-close"]').trigger('click');
     await flushPromises();
 
@@ -231,6 +236,7 @@ describe('AlertDetailView', () => {
     expect(wrapper.get('[data-field="status"]').text()).toBe('已关闭');
     expect(wrapper.get('[data-field="closeReason"]').text()).toBe('正常关闭');
     expect(wrapper.get('[data-field="closeNote"]').text()).toBe('已关闭');
+    expect(wrapper.get('[data-field="handleNote"]').text()).toBe('已关闭');
     expect(wrapper.find('[data-testid="alert-actions"]').exists()).toBe(false);
     wrapper.unmount();
 
@@ -250,6 +256,7 @@ describe('AlertDetailView', () => {
     const wrapper = await mountDetail();
     const reads = httpGet.mock.calls.length;
 
+    await wrapper.get('[data-testid="alert-handle-note"]').setValue('已确认');
     await wrapper.get('[data-testid="alert-ack"]').trigger('click');
     await flushPromises();
 
@@ -269,6 +276,82 @@ describe('AlertDetailView', () => {
     expect(wrapper.find('[data-testid="alert-actions"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="alert-ack"]').exists()).toBe(false);
     expect(wrapper.find('[data-testid="alert-close"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="alert-handle-note"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('keeps a typed handling note on the detail after ack and after refresh', async () => {
+    asUser('shed_manager');
+    httpGet.mockResolvedValueOnce({ data: alert });
+    const wrapper = await mountDetail();
+    const acked = { ...alert, status: 'acked' as const, ackNote: '现场已开窗通风' };
+    httpPost.mockResolvedValue({ data: acked });
+    httpGet.mockResolvedValueOnce({ data: acked });
+
+    await wrapper.get('[data-testid="alert-handle-note"]').setValue('  现场已开窗通风  ');
+    await wrapper.get('[data-testid="alert-ack"]').trigger('click');
+    await flushPromises();
+
+    expect(httpPost).toHaveBeenCalledWith('/alerts/alert-1/ack', { note: '现场已开窗通风' });
+    expect(wrapper.get('[data-field="handleNote"]').text()).toBe('现场已开窗通风');
+    expect(wrapper.get('[data-field="status"]').text()).toBe('已确认');
+    wrapper.unmount();
+
+    httpGet.mockResolvedValue({ data: acked });
+    const refreshed = await mountDetail();
+    expect(refreshed.get('[data-field="handleNote"]').text()).toBe('现场已开窗通风');
+    expect(refreshed.get('[data-field="ackNote"]').text()).toBe('现场已开窗通风');
+    expect((refreshed.get('[data-testid="alert-handle-note"]').element as HTMLTextAreaElement).value).toBe('');
+    refreshed.unmount();
+  });
+
+  it('keeps a typed handling note on the detail after close and after refresh', async () => {
+    asUser('production_admin');
+    httpGet.mockResolvedValueOnce({ data: alert });
+    const wrapper = await mountDetail();
+    const closed = {
+      ...alert,
+      status: 'closed' as const,
+      closeReason: 'resolved' as const,
+      closeNote: '已恢复通风',
+      ackNote: '关闭时自动确认',
+    };
+    httpPost.mockResolvedValue({ data: closed });
+    httpGet.mockResolvedValueOnce({ data: closed });
+
+    await wrapper.get('[data-testid="alert-handle-note"]').setValue('已恢复通风');
+    await wrapper.get('[data-testid="alert-close"]').trigger('click');
+    await flushPromises();
+
+    expect(httpPost).toHaveBeenCalledWith('/alerts/alert-1/close', { note: '已恢复通风' });
+    expect(wrapper.get('[data-field="handleNote"]').text()).toBe('已恢复通风');
+    expect(wrapper.get('[data-field="closeNote"]').text()).toBe('已恢复通风');
+    expect(wrapper.find('[data-testid="alert-handle-note"]').exists()).toBe(false);
+    wrapper.unmount();
+
+    httpGet.mockResolvedValue({ data: closed });
+    const refreshed = await mountDetail();
+    expect(refreshed.get('[data-field="handleNote"]').text()).toBe('已恢复通风');
+    expect(refreshed.get('[data-field="status"]').text()).toBe('已关闭');
+    expect(refreshed.find('[data-testid="alert-handle-note"]').exists()).toBe(false);
+    refreshed.unmount();
+  });
+
+  it('does not confirm or close when the handling note is blank', async () => {
+    asUser('shed_manager');
+    httpGet.mockResolvedValue({ data: alert });
+    const wrapper = await mountDetail();
+
+    await wrapper.get('[data-testid="alert-handle-note"]').setValue('   ');
+    expect(wrapper.get('[data-testid="alert-ack"]').attributes('disabled')).toBeDefined();
+    expect(wrapper.get('[data-testid="alert-close"]').attributes('disabled')).toBeDefined();
+    await wrapper.get('[data-testid="alert-ack"]').trigger('click');
+    await wrapper.get('[data-testid="alert-close"]').trigger('click');
+    await flushPromises();
+
+    expect(httpPost).not.toHaveBeenCalled();
+    expect(wrapper.get('[data-field="status"]').text()).toBe('待确认');
+    expect(wrapper.find('[data-field="handleNote"]').exists()).toBe(false);
     wrapper.unmount();
   });
 });

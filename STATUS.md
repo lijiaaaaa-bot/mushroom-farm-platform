@@ -64,6 +64,7 @@
 - 告警列表可按摄像头编号筛选：`GET /api/v1/alerts` 接受 `cameraCode`，精确匹配；空白不传。`/alerts` 填编号后点「筛选」，只显示该摄像头；标题仍进 `/alerts/:id`；点「清除」回到多摄像头列表。`make demo-alert-camera-filter` 留下 `CAM-FILTER-01` 与 `CAM-FILTER-02` 两条告警，并核对筛选、详情和清除。不发识别，不改已有演示命令。步骤见 `docs/DEMO_ALERT_CAMERA_FILTER.md`。
 - 告警列表可按状态筛选：状态下拉选「待确认」只请求 `status=open`，选「已关闭」只请求 `status=closed`，改回「全部」不传 `status`。标题仍进详情，返回后筛选还在。`make demo-alert-status-filter` 留下 `CAM-STATUS-01` 待确认和 `CAM-STATUS-02` 已关闭，并核对两种筛选、详情和全部。关闭备注与 `make demo-close-one-alert` 相同，不关其他告警。步骤见 `docs/DEMO_ALERT_STATUS_FILTER.md`。
 - 告警列表可按标题关键词搜索：`GET /api/v1/alerts` 接受 `q`，按标题子串匹配，不区分大小写；空白不传。`/alerts` 填关键词后点「搜索」，只显示标题匹配的行；标题仍进 `/alerts/:id`；点「清除搜索」回到全部。`make demo-alert-title-search` 留下「东侧标题搜索告警」和「西侧过道对照告警」，并核对搜索、详情和清除。不发识别，不改已有演示命令。步骤见 `docs/DEMO_ALERT_TITLE_SEARCH.md`。
+- 确认或关闭告警时可填写非空处理说明：详情页「处理说明」随 `POST /api/v1/alerts/:id/ack` 写入 `ackNote`，随 `POST /api/v1/alerts/:id/close` 写入 `closeNote`。空白不提交。详情重新读取后显示这句，刷新仍在。`make demo-alert-handle-note` 从待确认的「处理说明告警」（`CAM-NOTE-01`）确认，备注「现场已开窗通风」，并再读一次详情。不发识别，不改已有演示命令。步骤见 `docs/DEMO_ALERT_HANDLE_NOTE.md`。
 
 ## 进行中
 - 无
