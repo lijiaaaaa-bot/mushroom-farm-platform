@@ -40,7 +40,7 @@
 
 三条 HTTP 都要 `X-Ingest-Token`。MQTT 与 HTTP 走同一套解析。多出来的字段按契约 `.strict()` 拒绝，错误码 `UNKNOWN_FIELD`。识别与环境补传窗口 90 天（`LIMITS.recognizedAtPastDays`），超出拒收。
 
-发一条样例识别：`make demo-one-ingest`。样例是 `packages/contracts/fixtures/recognition.demo-one.json`（棚区编号、摄像头编号、识别时间、蘑菇数量、成熟数量、各菌盖直径、病害数量、病害等级、AI抓拍图、环境温湿度、CO₂、基质含水率）。脚本把识别时间改成当前时刻，幂等键改成 `demo-one-<毫秒>`，只 POST 一次 `POST /api/v1/ingest/recognition`，终端打印记录 id。登录 `admin` / `Admin@123456` 后打开 `/recognitions?cameraCode=CAM-DEMO-01`。同一条按识别时间出现在 `/big-screen` 抓拍墙。步骤见 [`DEMO_ONE_INGEST.md`](DEMO_ONE_INGEST.md)。MQTT 备选是 `node scripts/demo-one-http-recognition.mjs --channel mqtt`，主题 `mushroom/S01/CAM-DEMO-01/recognition`。
+发一条样例识别：`make demo-one-ingest`。样例是 `packages/contracts/fixtures/recognition.demo-one.json`（棚区编号、摄像头编号、识别时间、蘑菇数量、成熟数量、各菌盖直径、病害数量、病害等级、AI抓拍图、环境温湿度、CO₂、基质含水率）。脚本把识别时间改成当前时刻，幂等键改成 `demo-one-<毫秒>`，只 POST 一次 `POST /api/v1/ingest/recognition`，终端打印记录 id 和抓拍对象键。成功还要求 `GET /api/v1/ingest/recognitions/<id>/snapshot` 读回的字节与样例 JPEG 一致；读不到则命令失败。登录 `admin` / `Admin@123456` 后打开 `/recognitions?cameraCode=CAM-DEMO-01`。同一条按识别时间出现在 `/big-screen` 抓拍墙。步骤见 [`DEMO_ONE_INGEST.md`](DEMO_ONE_INGEST.md)。MQTT 备选是 `node scripts/demo-one-http-recognition.mjs --channel mqtt`，主题 `mushroom/S01/CAM-DEMO-01/recognition`。
 
 幂等：Redis `SETNX`，键存活 7 天（`IDEMPOTENCY_TTL_SECONDS`），再加数据库唯一约束。识别优先用报文 `idempotencyKey`，否则按棚、摄像头、识别时间哈希。环境优先用显式键，否则按棚、传感器、观测时间哈希。同一键再发返回已有记录，不双计。心跳在 `reportedAt` 不新于已存心跳时记为重复。
 
@@ -187,8 +187,8 @@
 | PostgreSQL | `make up` 使用 `postgres:16-alpine`，库 `mushroom`。业务表含识别、环境、告警、设备、棚、桶、批次、采摘任务 |
 | Timescale | 可选。`docker compose -f docker-compose.yml -f docker-compose.timescale.yml` 只换 Postgres 镜像。`009_timescale_optional.sql` 在 `make migrate` 时执行：没有扩展只写 NOTICE，有扩展也不在这条迁移里建 hypertable。`infra/timescale/enable.sql` 不进 `make migrate` |
 | Redis | Compose `redis:7-alpine`，端口 6379。接入幂等 `SETNX`。Redis 不可用时仍靠唯一约束去重 |
-| MinIO | Compose 镜像 `pgsty/silo:RELEASE.2026-09-16T00-00-00Z`，端口 9000 / 控制台 9001，桶默认 `mushroom-snapshots`。数据在命名卷 `minio-hot`（`MINIO_HOT_DATA` 可改为 SSD 路径）。抓拍字节在这里，PostgreSQL 存对象键。Mosquitto 端口 1883，匿名 |
-| 冷 MinIO | 可选。与热盘同一 `pgsty/silo` 标签。`docker-compose.minio-cold.yml`，端口 9002 / 控制台 9003，卷 `minio-cold`（`MINIO_COLD_DATA` 可改为 HDD 路径）。`make up` 不起冷端 |
+| MinIO | `make up` 构建本地镜像 `mushroom-object-store:20260916`（`infra/object-store/Dockerfile`）。二进制是 GitHub Release `RELEASE.2026-09-16T00-00-00Z` 的 linux 包，sha256 校验后装入。不拉取 `pgsty/silo`，也不拉取 `quay.io/minio/minio`。端口 9000 / 控制台 9001，桶默认 `mushroom-snapshots`。数据在命名卷 `minio-hot`（`MINIO_HOT_DATA` 可改为 SSD 路径）。抓拍字节在这里，PostgreSQL 存对象键。Mosquitto 端口 1883，匿名 |
+| 冷 MinIO | 可选。与热盘同一本地镜像。`docker-compose.minio-cold.yml`，端口 9002 / 控制台 9003，卷 `minio-cold`（`MINIO_COLD_DATA` 可改为 HDD 路径）。`make up` 不起冷端 |
 | 登录日志 | 表 `login_logs`（迁移 `012_login_logs.sql`）。成功与失败都写：用户、结果、时间、IP、User-Agent。`GET /api/v1/login-logs` |
 | Postgres 备份 | `make backup` → `backups/mushroom-<时间>.sql`。Redis 不备份。MinIO 字节不在该文件中 |
 

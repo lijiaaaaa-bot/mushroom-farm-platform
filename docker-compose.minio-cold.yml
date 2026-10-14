@@ -5,8 +5,10 @@
 # 未设置该变量时脚本只打印计划。说明见 docs/OPS_STORAGE_BACKUP.md。
 services:
   minio-cold:
-    # 与热盘同一 Silo 标签。
-    image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
+    # 与热盘同一本地镜像。make up 不起冷端。
+    image: mushroom-object-store:20260916
+    build:
+      context: ./infra/object-store
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_COLD_ROOT_USER:-minioadmin}
@@ -16,6 +18,11 @@ services:
       - "9003:9001"
     volumes:
       - ${MINIO_COLD_DATA:-minio-cold}:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:9000/minio/health/ready"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
 
 volumes:
   minio-cold:

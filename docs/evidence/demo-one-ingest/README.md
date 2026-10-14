@@ -1,0 +1,1 @@
+`recognitions-cam-demo-01.png`：2026-10-14 云端执行 `make up`、`make migrate`、`make api`、`make web`、`make demo-one-ingest` 后，用本机 Chrome 打开已登录的 http://127.0.0.1:43123/recognitions?cameraCode=CAM-DEMO-01 截取，画面含 CAM-DEMO-01。
