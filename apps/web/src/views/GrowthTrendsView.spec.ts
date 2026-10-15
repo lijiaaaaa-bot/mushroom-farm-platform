@@ -247,6 +247,170 @@ describe('GrowthTrendsView', () => {
     wrapper.unmount();
   });
 
+  it('opens week grain with fewer period labels than the day series', async () => {
+    httpGet.mockImplementation((url: string, config?: { params?: { grain?: string } }) => {
+      if (url === '/sheds') return Promise.resolve({ data: sheds });
+      if (config?.params?.grain === 'month') {
+        return Promise.resolve({
+          data: {
+            days: 30,
+            grain: 'month',
+            from: '2026-09-16',
+            to: '2026-10-15',
+            sheds: [
+              {
+                shedCode: 'S01',
+                points: [],
+                cameras: [
+                  {
+                    cameraCode: 'CAM-GG-01',
+                    points: [
+                      {
+                        day: '2026-10',
+                        mushroomCount: 21,
+                        matureCount: 8,
+                        capDiameterMean: 5,
+                        sampleCount: 4,
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        });
+      }
+      if (config?.params?.grain === 'week') {
+        return Promise.resolve({
+          data: {
+            days: 30,
+            grain: 'week',
+            from: '2026-09-16',
+            to: '2026-10-15',
+            sheds: [
+              {
+                shedCode: 'S01',
+                points: [],
+                cameras: [
+                  {
+                    cameraCode: 'CAM-GG-01',
+                    points: [
+                      {
+                        day: '2026-09-28',
+                        mushroomCount: 14,
+                        matureCount: 5,
+                        capDiameterMean: 4,
+                        sampleCount: 2,
+                      },
+                      {
+                        day: '2026-10-05',
+                        mushroomCount: 21,
+                        matureCount: 8,
+                        capDiameterMean: 4.2,
+                        sampleCount: 2,
+                      },
+                    ],
+                  },
+                ],
+              },
+            ],
+          },
+        });
+      }
+      return Promise.resolve({
+        data: {
+          days: 30,
+          grain: 'day',
+          from: '2026-09-16',
+          to: '2026-10-15',
+          sheds: [
+            {
+              shedCode: 'S01',
+              points: [],
+              cameras: [
+                {
+                  cameraCode: 'CAM-GG-01',
+                  points: [
+                    {
+                      day: '2026-09-28',
+                      mushroomCount: 8,
+                      matureCount: 2,
+                      capDiameterMean: 3.2,
+                      sampleCount: 1,
+                    },
+                    {
+                      day: '2026-09-30',
+                      mushroomCount: 14,
+                      matureCount: 5,
+                      capDiameterMean: 4,
+                      sampleCount: 1,
+                    },
+                    {
+                      day: '2026-10-05',
+                      mushroomCount: 8,
+                      matureCount: 2,
+                      capDiameterMean: 3.4,
+                      sampleCount: 1,
+                    },
+                    {
+                      day: '2026-10-07',
+                      mushroomCount: 21,
+                      matureCount: 8,
+                      capDiameterMean: 5,
+                      sampleCount: 1,
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      });
+    });
+    const wrapper = await mountView({
+      days: '30',
+      shedCode: 'S01',
+      cameraCode: 'CAM-GG-01',
+    });
+    expect(wrapper.text()).toContain('粒度 日 · 共 4 个点');
+    expect(wrapper.text()).toContain('2026-10-07');
+    expect(wrapper.get('[data-grain="day"]').classes()).toContain('btn-primary');
+
+    await wrapper.get('[data-grain="week"]').trigger('click');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/growth-trends', {
+      params: { days: 30, grain: 'week', shedCode: 'S01' },
+    });
+    expect(wrapper.text()).toContain('棚区 S01 · 周');
+    expect(wrapper.text()).toContain('粒度 周 · 共 2 个点');
+    expect(wrapper.text()).toContain('2026-09-28（周）');
+    expect(wrapper.text()).toContain('2026-10-05（周）');
+    expect(wrapper.text()).not.toContain('2026-10-07');
+    expect(wrapper.text()).not.toContain('2026-09-30');
+    const weekAxis = setOption.mock.calls[setOption.mock.calls.length - 1][0] as {
+      xAxis: { data: string[] };
+    };
+    expect(weekAxis.xAxis.data).toEqual(['2026-09-28（周）', '2026-10-05（周）']);
+
+    await wrapper.get('[data-grain="month"]').trigger('click');
+    await flushPromises();
+    expect(httpGet).toHaveBeenCalledWith('/growth-trends', {
+      params: { days: 30, grain: 'month', shedCode: 'S01' },
+    });
+    expect(wrapper.text()).toContain('棚区 S01 · 月');
+    expect(wrapper.text()).toContain('粒度 月 · 共 1 个点');
+    expect(wrapper.text()).toContain('2026-10（月）');
+    expect(wrapper.text()).not.toContain('（周）');
+    expect(wrapper.get('[data-grain="month"]').classes()).toContain('btn-primary');
+    expect(wrapper.get('[data-grain="week"]').classes()).not.toContain('btn-primary');
+
+    await wrapper.get('[data-grain="day"]').trigger('click');
+    await flushPromises();
+    expect(wrapper.text()).toContain('粒度 日 · 共 4 个点');
+    expect(wrapper.text()).toContain('2026-10-07');
+    wrapper.unmount();
+  });
+
   it('states that there is no authorized shed', async () => {
     httpGet.mockImplementation((url: string) => {
       if (url === '/sheds') return Promise.resolve({ data: [] });

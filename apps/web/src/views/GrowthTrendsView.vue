@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import * as echarts from 'echarts';
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { errorText, http } from '../api';
 
 type WindowDays = 7 | 30;
@@ -29,6 +29,7 @@ interface ShedSeries {
 
 interface TrendResponse {
   days: WindowDays;
+  grain?: 'day' | 'week' | 'month';
   from: string;
   to: string;
   sheds: ShedSeries[];
@@ -44,13 +45,16 @@ interface Line {
   points: Point[];
 }
 
+type TrendGrain = 'day' | 'hour' | 'week' | 'month';
+
 const route = useRoute();
+const router = useRouter();
 const loading = ref(true);
 const error = ref('');
 const sheds = ref<ShedOption[]>([]);
 const shedCode = ref(typeof route.query.shedCode === 'string' ? route.query.shedCode : '');
 const days = ref<WindowDays>(route.query.days === '30' ? 30 : 7);
-const grain = ref<'day' | 'hour'>(route.query.grain === 'hour' ? 'hour' : 'day');
+const grain = ref<TrendGrain>(grainFromQuery(route.query.grain));
 const mode = ref<Mode>('shed');
 const cameraQuery = computed(() =>
   typeof route.query.cameraCode === 'string' ? route.query.cameraCode : '',
@@ -108,7 +112,32 @@ const matureLines = computed(() =>
     .filter((line) => line.points.length > 0),
 );
 
-const windowLabel = computed(() => (grain.value === 'hour' ? '24 小时' : `${days.value} 天`));
+const windowLabel = computed(() => {
+  if (grain.value === 'hour') return '24 小时';
+  if (grain.value === 'week') return '周';
+  if (grain.value === 'month') return '月';
+  return `${days.value} 天`;
+});
+
+const grainName = computed(() => {
+  if (grain.value === 'hour') return '小时';
+  if (grain.value === 'week') return '周';
+  if (grain.value === 'month') return '月';
+  return '日';
+});
+
+const columnLabel = computed(() => {
+  if (grain.value === 'hour') return '小时';
+  if (grain.value === 'week') return '周';
+  if (grain.value === 'month') return '月';
+  return '日期';
+});
+
+function periodText(day: string) {
+  if (grain.value === 'week') return `${day}（周）`;
+  if (grain.value === 'month') return `${day}（月）`;
+  return day;
+}
 
 const tableRows = computed(() =>
   lines.value.flatMap((line) =>
@@ -120,6 +149,15 @@ const tableRows = computed(() =>
   ),
 );
 
+const grainSummary = computed(() => {
+  const count = `共 ${tableRows.value.length} 个点`;
+  if (grain.value === 'week' || grain.value === 'month') {
+    const labels = [...new Set(tableRows.value.map((row) => periodText(row.day)))].join('、');
+    return `粒度 ${grainName.value} · ${count} · ${labels}`;
+  }
+  return `粒度 ${grainName.value} · ${count}`;
+});
+
 function chartOption(series: Line[], pick: (point: Point) => number | null) {
   const axisDays = [...new Set(series.flatMap((line) => line.points.map((point) => point.day)))].sort();
   const palette = ['#2F9E44', '#1B7A4E', '#d97706', '#3b82f6', '#c44536'];
@@ -130,7 +168,9 @@ function chartOption(series: Line[], pick: (point: Point) => number | null) {
     legend: { textStyle: { color: '#1e293b' } },
     xAxis: {
       type: 'category',
-      data: axisDays.map((day) => day.slice(5)),
+      data: axisDays.map((day) =>
+        grain.value === 'week' || grain.value === 'month' ? periodText(day) : day.slice(5),
+      ),
       axisLabel: { color: '#64748b' },
     },
     yAxis: {
@@ -230,9 +270,12 @@ async function loadTrends() {
     };
     return;
   }
-  const response = await http.get<TrendResponse>('/growth-trends', {
-    params: { days: days.value, shedCode: shedCode.value },
-  });
+  const params: { days: WindowDays; shedCode: string; grain?: 'week' | 'month' } = {
+    days: days.value,
+    shedCode: shedCode.value,
+  };
+  if (grain.value === 'week' || grain.value === 'month') params.grain = grain.value;
+  const response = await http.get<TrendResponse>('/growth-trends', { params });
   data.value = response.data;
 }
 
@@ -260,6 +303,42 @@ async function reload() {
   await paint();
 }
 
+function grainFromQuery(value: unknown): TrendGrain {
+  if (value === 'hour' || value === 'week' || value === 'month') return value;
+  return 'day';
+}
+
+async function rememberQuery() {
+  const query: Record<string, string> = {};
+  if (cameraQuery.value) query.cameraCode = cameraQuery.value;
+  if (shedCode.value) query.shedCode = shedCode.value;
+  if (grain.value === 'hour') query.grain = 'hour';
+  else {
+    query.days = String(days.value);
+    if (grain.value === 'week' || grain.value === 'month') query.grain = grain.value;
+  }
+  await router.replace({ path: '/growth-trends', query });
+}
+
+async function setGrain(next: 'day' | 'week' | 'month') {
+  const nextDays: WindowDays = next === 'day' ? days.value : 30;
+  if (grain.value === next && days.value === nextDays) return;
+  grain.value = next;
+  days.value = nextDays;
+  loading.value = true;
+  error.value = '';
+  try {
+    await loadTrends();
+    await rememberQuery();
+  } catch (cause) {
+    error.value = errorText(cause);
+    data.value = null;
+  } finally {
+    loading.value = false;
+  }
+  await paint();
+}
+
 async function setDays(next: WindowDays) {
   if (grain.value === 'day' && days.value === next) return;
   grain.value = 'day';
@@ -268,6 +347,7 @@ async function setDays(next: WindowDays) {
   error.value = '';
   try {
     await loadTrends();
+    await rememberQuery();
   } catch (cause) {
     error.value = errorText(cause);
     data.value = null;
@@ -284,6 +364,7 @@ async function setHours() {
   error.value = '';
   try {
     await loadTrends();
+    await rememberQuery();
   } catch (cause) {
     error.value = errorText(cause);
     data.value = null;
@@ -305,6 +386,15 @@ async function onShedChange() {
     loading.value = false;
   }
   await paint();
+}
+
+function emptyCopy() {
+  if (!data.value) return '';
+  const span = `${data.value.from} 至 ${data.value.to}`;
+  if (grain.value === 'hour') return `${span} 没有小时桶，未绘制曲线。`;
+  const noun = grain.value === 'week' ? '周聚合' : grain.value === 'month' ? '月聚合' : '日聚合';
+  if (cameraQuery.value) return `${cameraQuery.value} 在 ${span} 没有${noun}，未绘制曲线。`;
+  return `${span} 没有${noun}，未绘制曲线。`;
 }
 
 function diameterText(value: number | null) {
@@ -342,6 +432,17 @@ onBeforeUnmount(() => {
         </select>
       </label>
       <div class="flex gap-2">
+        <button type="button" data-grain="day" :class="grain === 'day' ? 'btn-primary' : 'btn-ghost'" @click="setGrain('day')">
+          日
+        </button>
+        <button type="button" data-grain="week" :class="grain === 'week' ? 'btn-primary' : 'btn-ghost'" @click="setGrain('week')">
+          周
+        </button>
+        <button type="button" data-grain="month" :class="grain === 'month' ? 'btn-primary' : 'btn-ghost'" @click="setGrain('month')">
+          月
+        </button>
+      </div>
+      <div class="flex gap-2">
         <button type="button" data-days="7" :class="grain === 'day' && days === 7 ? 'btn-primary' : 'btn-ghost'" @click="setDays(7)">
           7 天
         </button>
@@ -355,6 +456,7 @@ onBeforeUnmount(() => {
       <p data-trend-window class="text-sm text-ink">
         棚区 {{ shedCode || '—' }} · {{ windowLabel }}
       </p>
+      <p v-if="data && hasPoints" data-grain-summary class="text-sm text-ink">{{ grainSummary }}</p>
       <p v-if="cameraQuery" class="text-sm text-mist">摄像头 {{ cameraQuery }}</p>
       <div class="flex gap-2">
         <button type="button" data-mode="shed" :class="mode === 'shed' ? 'btn-primary' : 'btn-ghost'" @click="mode = 'shed'">
@@ -369,11 +471,7 @@ onBeforeUnmount(() => {
     <p v-if="loading" class="text-mist">加载中…</p>
     <p v-else-if="error" class="text-danger">{{ error }}</p>
     <p v-else-if="!sheds.length" class="text-mist">没有可查看的棚区。</p>
-    <p v-else-if="data && !hasPoints" class="text-mist">
-      <template v-if="grain === 'hour'">{{ data.from }} 至 {{ data.to }} 没有小时桶，未绘制曲线。</template>
-      <template v-else-if="cameraQuery">{{ cameraQuery }} 在 {{ data.from }} 至 {{ data.to }} 没有日聚合，未绘制曲线。</template>
-      <template v-else>{{ data.from }} 至 {{ data.to }} 没有日聚合，未绘制曲线。</template>
-    </p>
+    <p v-else-if="data && !hasPoints" class="text-mist">{{ emptyCopy() }}</p>
     <template v-else-if="data && hasPoints">
       <section class="panel bg-white">
         <h2 class="mb-2 text-sm text-mist">蘑菇数量</h2>
@@ -393,7 +491,7 @@ onBeforeUnmount(() => {
         <table class="data-table">
           <thead>
             <tr>
-              <th>{{ grain === 'hour' ? '小时' : '日期' }}</th>
+              <th>{{ columnLabel }}</th>
               <th>对象</th>
               <th>蘑菇数量</th>
               <th>成熟数量</th>
@@ -403,7 +501,7 @@ onBeforeUnmount(() => {
           </thead>
           <tbody>
             <tr v-for="row in tableRows" :key="row.key">
-              <td class="font-mono">{{ row.day }}</td>
+              <td class="font-mono">{{ periodText(row.day) }}</td>
               <td class="font-mono">{{ row.name }}</td>
               <td class="font-mono">{{ row.mushroomCount }}</td>
               <td class="font-mono">{{ matureText(row.matureCount) }}</td>

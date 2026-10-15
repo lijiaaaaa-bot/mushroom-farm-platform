@@ -30,9 +30,10 @@ export class GrowthTrendsController {
   series(
     @CurrentUser() user: AuthUser,
     @Query('days') days?: string,
+    @Query('grain') grain?: string,
     @Query('shedCode') shedCode?: string,
     @Query('cameraCode') cameraCode?: string,
   ) {
-    return this.trends.series(user, { days, shedCode, cameraCode });
+    return this.trends.series(user, { days, grain, shedCode, cameraCode });
   }
 }

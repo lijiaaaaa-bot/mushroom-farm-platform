@@ -19,7 +19,12 @@ import {
 } from '../entities/metric-bucket.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { HarvestService } from '../harvest';
-import { AggregateSource, shiftShanghaiDay } from './growth-trend.aggregate';
+import {
+  AggregateSource,
+  rollupGrowthPoints,
+  shiftShanghaiDay,
+  trendPeriodKey,
+} from './growth-trend.aggregate';
 import {
   foldBuckets,
   METRIC_CAP_DIAMETER_MEAN,
@@ -586,6 +591,13 @@ describe('growth trend API', () => {
     );
   });
 
+  it('rejects a grain other than day, week, or month', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/growth-trends?grain=hour')
+      .set('x-test-role', 'super_admin');
+    expect(response.status).toBe(400);
+  });
+
   it('returns an empty shed list when the window has no aggregates', async () => {
     const response = await request(app.getHttpServer())
       .get('/api/v1/growth-trends?days=7&shedCode=S01&cameraCode=MISSING')
@@ -594,6 +606,200 @@ describe('growth trend API', () => {
     expect(response.body.sheds).toEqual([]);
     expect(response.body.from).toBe(shiftShanghaiDay(today, -6));
     expect(response.body.to).toBe(today);
+  });
+});
+
+describe('week and month grain', () => {
+  it('keeps the last day in a period and sums samples', () => {
+    const points = [
+      {
+        day: '2026-09-21',
+        mushroomCount: 8,
+        matureCount: 2,
+        capDiameterMean: 4,
+        sampleCount: 1,
+      },
+      {
+        day: '2026-09-23',
+        mushroomCount: 14,
+        matureCount: 5,
+        capDiameterMean: 6,
+        sampleCount: 1,
+      },
+      {
+        day: '2026-09-28',
+        mushroomCount: 8,
+        matureCount: 2,
+        capDiameterMean: 4,
+        sampleCount: 1,
+      },
+      {
+        day: '2026-09-30',
+        mushroomCount: 14,
+        matureCount: 5,
+        capDiameterMean: 6,
+        sampleCount: 1,
+      },
+      {
+        day: '2026-10-05',
+        mushroomCount: 8,
+        matureCount: 2,
+        capDiameterMean: 4,
+        sampleCount: 1,
+      },
+      {
+        day: '2026-10-07',
+        mushroomCount: 21,
+        matureCount: 8,
+        capDiameterMean: 6,
+        sampleCount: 1,
+      },
+    ];
+    const week = rollupGrowthPoints(points, 'week');
+    const month = rollupGrowthPoints(points, 'month');
+    expect(week.map((point) => point.day)).toEqual([
+      '2026-09-21',
+      '2026-09-28',
+      '2026-10-05',
+    ]);
+    expect(week.map((point) => point.mushroomCount)).toEqual([14, 14, 21]);
+    expect(week.map((point) => point.matureCount)).toEqual([5, 5, 8]);
+    expect(week.map((point) => point.sampleCount)).toEqual([2, 2, 2]);
+    expect(week.map((point) => point.capDiameterMean)).toEqual([5, 5, 5]);
+    expect(month.map((point) => point.day)).toEqual(['2026-09', '2026-10']);
+    expect(month.map((point) => point.mushroomCount)).toEqual([14, 21]);
+    expect(month.map((point) => point.sampleCount)).toEqual([4, 2]);
+    expect(points).toHaveLength(6);
+    expect(week).toHaveLength(3);
+    expect(month.length).toBeLessThan(week.length);
+  });
+
+  it('rolls the 30-day window into fewer week and month points', async () => {
+    const records = memoryRecords([]);
+    const buckets = memoryMetricBuckets();
+    const today = todayShanghai();
+    const thisMonday = trendPeriodKey(today, 'week');
+    const mondays = [3, 2, 1].map((weeksAgo) =>
+      shiftShanghaiDay(thisMonday, -7 * weeksAgo),
+    );
+    mondays.forEach((monday, index) => {
+      const wednesday = shiftShanghaiDay(monday, 2);
+      const closing = index === mondays.length - 1 ? 21 : 14;
+      const mature = closing === 21 ? 8 : 5;
+      for (const [day, mushroom, matureCount] of [
+        [monday, 8, 2],
+        [wednesday, closing, mature],
+      ] as const) {
+        seedGrowth(buckets, day, 'S01', '', mushroom, mushroom === 8 ? 4 : 6);
+        seedGrowth(
+          buckets,
+          day,
+          'S01',
+          'CAM-GG',
+          mushroom,
+          mushroom === 8 ? 4 : 6,
+        );
+        seedMetric(
+          buckets,
+          shanghaiDayRange(day).start,
+          'S01',
+          '',
+          METRIC_MATURE_COUNT,
+          matureCount,
+        );
+        seedMetric(
+          buckets,
+          shanghaiDayRange(day).start,
+          'S01',
+          'CAM-GG',
+          METRIC_MATURE_COUNT,
+          matureCount,
+        );
+      }
+    });
+    const moduleRef = await Test.createTestingModule({
+      controllers: [GrowthTrendsController],
+      providers: [
+        GrowthTrendService,
+        {
+          provide: getRepositoryToken(RecognitionRecord),
+          useValue: records,
+        },
+        {
+          provide: getRepositoryToken(MetricBucketHour),
+          useValue: memoryMetricBuckets(),
+        },
+        {
+          provide: getRepositoryToken(MetricBucketDay),
+          useValue: buckets,
+        },
+      ],
+    }).compile();
+    const grainApp = moduleRef.createNestApplication();
+    grainApp.use(assignUser);
+    configureApp(grainApp);
+    await grainApp.init();
+    try {
+      const load = (grain?: string) => {
+        const params = new URLSearchParams({
+          days: '30',
+          shedCode: 'S01',
+          cameraCode: 'CAM-GG',
+        });
+        if (grain) params.set('grain', grain);
+        return request(grainApp.getHttpServer())
+          .get(`/api/v1/growth-trends?${params.toString()}`)
+          .set('x-test-role', 'super_admin');
+      };
+      const day = await load();
+      const week = await load('week');
+      const month = await load('month');
+      expect(day.status).toBe(200);
+      expect(week.status).toBe(200);
+      expect(month.status).toBe(200);
+      expect(day.body.grain).toBe('day');
+      expect(week.body.grain).toBe('week');
+      expect(month.body.grain).toBe('month');
+      const pointsOf = (body: {
+        sheds: Array<{
+          cameras: Array<{
+            points: Array<{
+              day: string;
+              mushroomCount: number;
+              sampleCount: number;
+            }>;
+          }>;
+        }>;
+      }) => body.sheds[0].cameras[0].points;
+      const dayPoints = pointsOf(day.body);
+      const weekPoints = pointsOf(week.body);
+      const monthPoints = pointsOf(month.body);
+      expect(dayPoints).toHaveLength(6);
+      expect(weekPoints).toHaveLength(3);
+      expect(monthPoints.length).toBeGreaterThan(0);
+      expect(monthPoints.length).toBeLessThan(weekPoints.length);
+      expect(
+        new Set([dayPoints.length, weekPoints.length, monthPoints.length]).size,
+      ).toBe(3);
+      expect(weekPoints.map((point) => point.day)).toEqual(mondays);
+      expect(weekPoints.map((point) => point.mushroomCount)).toEqual([
+        14, 14, 21,
+      ]);
+      expect(weekPoints.every((point) => point.sampleCount === 2)).toBe(true);
+      expect(dayPoints.some((point) => point.mushroomCount === 8)).toBe(true);
+      expect(weekPoints.some((point) => point.mushroomCount === 8)).toBe(false);
+      const wednesdays = mondays.map((monday) => shiftShanghaiDay(monday, 2));
+      for (const wednesday of wednesdays) {
+        expect(dayPoints.map((point) => point.day)).toContain(wednesday);
+        expect(weekPoints.map((point) => point.day)).not.toContain(wednesday);
+      }
+      expect(
+        monthPoints.every((point) => /^\d{4}-\d{2}$/.test(point.day)),
+      ).toBe(true);
+      expect(monthPoints[monthPoints.length - 1].mushroomCount).toBe(21);
+    } finally {
+      await grainApp.close();
+    }
   });
 });
 
