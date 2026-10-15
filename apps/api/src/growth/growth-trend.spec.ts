@@ -1506,11 +1506,7 @@ describe('shed live stats', () => {
     expect(none.available).toBe(false);
     expect(none.mushroomCount).toBeNull();
     expect(none.pendingMatureCount).toBeNull();
-    const emptyShed = await service.liveStats(
-      admin,
-      { shedCode: 'S09' },
-      now,
-    );
+    const emptyShed = await service.liveStats(admin, { shedCode: 'S09' }, now);
     expect(emptyShed.available).toBe(false);
     const viewer: AuthUser = {
       id: 'viewer',
