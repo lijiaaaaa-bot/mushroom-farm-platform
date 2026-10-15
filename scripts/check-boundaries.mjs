@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 const features = [
   'alerts',
   'audit',
+  'backup',
   'batches',
   'auth',
   'dashboard',

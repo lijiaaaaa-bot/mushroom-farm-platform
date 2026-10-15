@@ -329,6 +329,21 @@ export const setUserEnabledSchema = z
   .strict();
 export type SetUserEnabledInput = z.infer<typeof setUserEnabledSchema>;
 
+/** 超管看到的 Postgres 备份状态。时间是最近一次成功，以及最近一次运行。 */
+export const backupRunStateSchema = z.enum(['success', 'failed', 'never']);
+export const backupStatusSchema = z
+  .object({
+    lastSuccessAt: z.string().datetime().nullable(),
+    lastRunAt: z.string().datetime().nullable(),
+    lastStatus: backupRunStateSchema,
+    lastFileName: z.string().min(1).nullable(),
+    lastBytes: z.number().int().nonnegative().nullable(),
+    lastError: z.string().min(1).max(500).nullable(),
+    triggeredBy: z.string().min(1).max(120).nullable(),
+  })
+  .strict();
+export type BackupStatus = z.infer<typeof backupStatusSchema>;
+
 export type ParseResult<T> =
   | { ok: true; value: T }
   | { ok: false; code: ErrorCode; errors: string[] };
@@ -763,6 +778,15 @@ export function parseSetUserEnabled(
   raw: unknown,
 ): ParseResult<SetUserEnabledInput> {
   const parsed = setUserEnabledSchema.safeParse(raw);
+  if (!parsed.success) {
+    const issue = zodErrors(parsed.error);
+    return fail(issue.code, issue.errors);
+  }
+  return { ok: true, value: parsed.data };
+}
+
+export function parseBackupStatus(raw: unknown): ParseResult<BackupStatus> {
+  const parsed = backupStatusSchema.safeParse(raw);
   if (!parsed.success) {
     const issue = zodErrors(parsed.error);
     return fail(issue.code, issue.errors);

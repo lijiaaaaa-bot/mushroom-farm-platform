@@ -82,7 +82,9 @@ test('viewer body resets the known account onto S01', () => {
   assert.ok(viewer.includes('基地大屏'));
   assert.ok(viewer.includes('值班看板'));
   const adminMenus = assertRbacScopes(scopes()).adminMenus;
-  assert.equal(adminMenus[adminMenus.length - 1], '用户');
+  assert.ok(adminMenus.includes('用户'));
+  assert.equal(adminMenus[adminMenus.length - 1], '数据备份');
+  assert.equal(viewer.includes('数据备份'), false);
 });
 
 test('scope check rejects a viewer who can read users or S02', () => {

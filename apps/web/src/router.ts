@@ -27,6 +27,7 @@ import RuleDetailView from './views/RuleDetailView.vue';
 import RulesView from './views/RulesView.vue';
 import ShedsView from './views/ShedsView.vue';
 import UsersView from './views/UsersView.vue';
+import BackupView from './views/BackupView.vue';
 import { readSessionRole } from './auth';
 import { navRoles, roleCanOpen } from './nav';
 import type { Role } from '@mushroom/contracts';
@@ -78,6 +79,7 @@ const router = createRouter({
         { path: 'sheds', component: ShedsView, meta: { title: '棚区' } },
         { path: 'audit', component: AuditView, meta: { title: '审计', roles: navRoles('/audit') } },
         { path: 'users', component: UsersView, meta: { title: '用户', roles: navRoles('/users') } },
+        { path: 'backup', component: BackupView, meta: { title: '数据备份', roles: navRoles('/backup') } },
         { path: 'phase2/big-screen', redirect: '/big-screen' },
       ],
     },

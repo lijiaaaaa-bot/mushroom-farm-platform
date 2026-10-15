@@ -342,6 +342,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 `make demo-user-enable-disable` 用 `admin` / `Admin@123456` 登录，保证 `user-enable-demo` / `Enable@123456`（显示名「启停演示」，角色查看，棚号 S01）。还没有这个用户名时新建。已有则不改密码、显示名、角色和棚号。启用列先是启用，该密码能登录。再 `PATCH` `enabled` 为 false。同一行仍在，启用列是停用，同一密码是 401。不改 `admin`、`viewer`、`user-create-demo`、`user-reset-demo`。不发识别，不发心跳，不改告警。步骤见 [`DEMO_USER_ENABLE_DISABLE.md`](DEMO_USER_ENABLE_DISABLE.md)。
 
+`/backup`（数据备份）只给超管。`GET /api/v1/backups/status` 与 `POST /api/v1/backups/run` 对生产管理员、棚区负责人和查看是 403。页面写出最近成功时间；没有成功记录时写「尚未成功备份」。最近一次是成功、失败或尚未运行。点「立即备份」后重新读取，成功时写「本次备份成功。最近成功时间是 …。」失败时保留上一次成功时间，并写「本次备份失败。」响应不含数据库连接串。`make demo-backup-run` 用 `admin` / `Admin@123456` 触发一次，最近成功时间从空或更早变为这次。查看 `viewer` / `Viewer@123456` 仍是 403。不发识别，不发心跳，不改告警。步骤见 [`DEMO_BACKUP_RUN.md`](DEMO_BACKUP_RUN.md)。
+
 ## 存储
 
 | 组件 | 现状 |
@@ -352,7 +354,7 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 | MinIO | `make up` 构建本地镜像 `mushroom-object-store:20260916`（`infra/object-store/Dockerfile`，`pull_policy: build`，不向 Docker Hub 拉取这个名字）。基础镜像是钉死摘要的 `debian:bookworm-slim`。二进制是 GitHub Release `RELEASE.2026-09-16T00-00-00Z` 的 linux 包，sha256 校验后装入。不拉取 `pgsty/silo`，也不拉取 `quay.io/minio/minio`。端口 9000 / 控制台 9001，桶默认 `mushroom-snapshots`。数据在命名卷 `minio-hot`（`MINIO_HOT_DATA` 可改为 SSD 路径）。抓拍字节在这里，PostgreSQL 存对象键。Mosquitto 是钉死摘要的 `eclipse-mosquitto:2`，端口 1883，匿名。步骤见 `docs/DEMO_MAKE_UP.md` |
 | 冷 MinIO | 可选。与热盘同一本地镜像。`docker-compose.minio-cold.yml`，端口 9002 / 控制台 9003，卷 `minio-cold`（`MINIO_COLD_DATA` 可改为 HDD 路径）。`make up` 不起冷端 |
 | 登录日志 | 表 `login_logs`（迁移 `012_login_logs.sql`）。成功与失败都写：用户、结果、时间、IP、User-Agent。`GET /api/v1/login-logs` |
-| Postgres 备份 | `make backup` → `backups/mushroom-<时间>.sql`。Redis 不备份。MinIO 字节不在该文件中 |
+| Postgres 备份 | `make backup` → `backups/mushroom-<时间>.sql`，并写入 `postgres_backup_runs`。超管在 `/backup` 看最近成功时间。Redis 不备份。MinIO 字节不在该文件中 |
 
 热冷复制脚本 `node scripts/object-tier.mjs`（`make object-tier`）。未设置 `MINIO_APPLY_TIER=1` 时只打印计划，退出码 0，不连接存储。设置之后必须同时有热端和冷端端点与密钥：把超过热天数的 `snapshots/` 复制到冷桶，读回字节一致才从热端删除。读回不一致或不可达时退出码非 0，当前对象留在热端。此脚本不调用 `setBucketLifecycle`。
 
