@@ -297,12 +297,13 @@ export class GrowthTrendService {
 
   async environmentSeries(
     user: AuthUser,
-    query: { hours?: string; shedCode?: string },
+    query: { hours?: string; shedCode?: string; sensorCode?: string },
     now = new Date(),
   ) {
     const hours = parseHours(query.hours);
     const scope = ShedScope.fromUser(user);
     const shedCode = blank(query.shedCode);
+    const sensorCode = blank(query.sensorCode);
     if (shedCode) scope.assert(shedCode);
     const endHour = shanghaiHourStart(now);
     const start = new Date(endHour.getTime() - (hours - 1) * 3_600_000);
@@ -311,6 +312,7 @@ export class GrowthTrendService {
       hours,
       from: start.toISOString(),
       to: endHour.toISOString(),
+      sensorCode: sensorCode ?? null,
       points: [] as EnvironmentHourPoint[],
       sheds: [] as Array<{ shedCode: string; points: EnvironmentHourPoint[] }>,
     };
@@ -323,12 +325,18 @@ export class GrowthTrendService {
       scope,
       shedCode,
     );
-    const shedRows = rows.filter((row) => row.cameraCode === '');
-    const sheds = groupEnvironment(shedRows);
+    const subjectRows = rows.filter((row) =>
+      sensorCode ? row.cameraCode === sensorCode : row.cameraCode === '',
+    );
+    const sheds = groupEnvironment(subjectRows);
+    const selected = shedCode
+      ? sheds.find((shed) => shed.shedCode === shedCode)
+      : undefined;
     return {
       ...empty,
       sheds,
-      points: meanEnvironmentHours(sheds),
+      points:
+        sensorCode && selected ? selected.points : meanEnvironmentHours(sheds),
     };
   }
 

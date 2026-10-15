@@ -22,8 +22,9 @@ export class GrowthTrendsController {
     @CurrentUser() user: AuthUser,
     @Query('hours') hours?: string,
     @Query('shedCode') shedCode?: string,
+    @Query('sensorCode') sensorCode?: string,
   ) {
-    return this.trends.environmentSeries(user, { hours, shedCode });
+    return this.trends.environmentSeries(user, { hours, shedCode, sensorCode });
   }
 
   @Get()

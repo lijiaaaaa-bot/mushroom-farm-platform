@@ -14,6 +14,7 @@ import DeviceDetailView from './views/DeviceDetailView.vue';
 import DevicesView from './views/DevicesView.vue';
 import EnvironmentView from './views/EnvironmentView.vue';
 import EnvironmentReadingView from './views/EnvironmentReadingView.vue';
+import ShedEnv24hView from './views/ShedEnv24hView.vue';
 import GrowthCompareView from './views/GrowthCompareView.vue';
 import GrowthTrendsView from './views/GrowthTrendsView.vue';
 import HarvestDetailView from './views/HarvestDetailView.vue';
@@ -64,6 +65,7 @@ const router = createRouter({
         { path: 'recognitions', component: RecognitionsView, meta: { title: '识别记录' } },
         { path: 'environment', component: EnvironmentView, meta: { title: '环境读数' } },
         { path: 'environment/:id', component: EnvironmentReadingView, meta: { title: '环境读数详情' } },
+        { path: 'shed-env-24h', component: ShedEnv24hView, meta: { title: '单棚环境24小时' } },
         { path: 'ingest-observability', component: IngestObservabilityView, meta: { title: '接入观测' } },
         { path: 'diseases', component: DiseasesView, meta: { title: '病害' } },
         { path: 'diseases/:id', component: DiseaseDetailView, meta: { title: '病害详情' } },
