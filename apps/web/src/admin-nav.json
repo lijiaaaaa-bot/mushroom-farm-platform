@@ -12,6 +12,7 @@
   { "to": "/alert-rules", "label": "阈值规则" },
   { "to": "/harvest", "label": "采摘" },
   { "to": "/growth-trends", "label": "生长趋势" },
+  { "to": "/shed-growth-delta", "label": "生长增量" },
   { "to": "/growth-compare", "label": "棚间对比" },
   { "to": "/batches", "label": "出菇批次" },
   { "to": "/reports", "label": "报表" },
