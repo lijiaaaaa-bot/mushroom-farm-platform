@@ -326,11 +326,13 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 侧栏按 `apps/web/src/admin-nav.json` 收菜单。未写 `roles` 的项，四个角色都能看见。`/audit`（审计）只给超管和生产管理员；棚区负责人和查看的侧栏没有这一项，直接打开地址会回到总览。`/users`（用户）只给超管，页面列出用户名、显示名、角色、棚区和启用状态；其他角色的侧栏没有这一项，直接打开也回到总览。`GET /api/v1/audit-logs` 与 `GET /api/v1/login-logs` 仍仅超管与生产管理员，查看得到 403。棚区负责人与查看的 `GET /api/v1/sheds` 只有账号上的棚号。
 
-审计页 `/audit`：上方是登录日志，下方是操作审计。登录日志可按 `username`、`from`、`to` 筛选。审计页登录日志区可填用户名与起止日期，空值不传这些参数。
+审计页 `/audit`：上方是登录日志，下方是操作审计。登录日志按用户名和起止时间查询，请求已有的 `GET /api/v1/login-logs` 参数 `username`、`from`、`to`，每页 100 条。用户名是整名匹配。时间按登录时间比较，含两端，可以只传一端。地址栏同步，空着不传。筛着时写出「用户 …」「时间 … 至 …」和「共 N 条」。没有命中时写「没有符合条件的登录日志。」。没有登录日志、也没在筛时写「暂无登录日志。」。开始晚于结束或时间填不开时写「时间筛选无效」，不请求登录日志，不保留上一张登录表。操作审计仍读 `GET /api/v1/audit-logs`，这一节没有用户名和时间参数。
 
 `make demo-rbac` 用 `admin` / `Admin@123456` 登录，把 `viewer` / `Viewer@123456` 写成查看、棚号 S01，再核对：超管菜单含审计和用户，查看菜单没有这两项；用户、审计、登录日志对查看是 403；查看的棚列表含 S01、不含 S02。不发识别，不发心跳，不改告警。
 
 `make demo-audit-log` 用同一对账号。超管登录的 User-Agent 是 `audit-log-demo/1`，再对不存在的用户 `audit-demo` 做一次失败登录。`/audit` 上方登录日志有 `audit-demo` 失败和 `admin` 成功，User-Agent 都是 `audit-log-demo/1`。下方操作审计有「登录失败」（接口动作 `auth.login_failed`，明细 `audit-demo`）和 `admin` 的「登录成功」（`auth.login`）。`GET /api/v1/login-logs` 与 `GET /api/v1/audit-logs` 对超管是 200，第一页含这些行；查看仍是 403，打开 `/audit` 回到总览。已有 `viewer` 时重设密码，不另建一行。不发识别，不发心跳，不改告警。步骤见 [`DEMO_AUDIT_LOG.md`](DEMO_AUDIT_LOG.md)。
+
+`make demo-audit-login-log` 留下用户 `login-log-fail` 的失败登录（当前时刻前 3 小时）和 `admin` 的成功登录（当前时刻），User-Agent 是 `audit-login-log-demo/1`。同一用户名、结果和 User-Agent 已在时只改时间。宽窗口（前 4 小时至后 1 分钟）两行都在，窄窗口（前 30 分钟）只有成功、没有 `login-log-fail`，窄窗口条数更少。只查 `login-log-fail` 是 1 条失败；再套窄窗口是 0 条，页面写「没有符合条件的登录日志。」。下方操作审计仍有「登录失败」（明细 `login-log-fail`）和 `admin` 的「登录成功」。不发识别，不发心跳，不改告警，不改这两份接口的参数。不改 `make demo-audit-log`。步骤见 [`DEMO_AUDIT_LOGIN_LOG.md`](DEMO_AUDIT_LOGIN_LOG.md)。
 
 `make demo-user-mgmt` 用同一对账号，写入查看账号的方式与 `make demo-rbac` 相同。超管的 `GET /api/v1/users` 至少有 `admin`（角色超管）和 `viewer`（角色查看），列表不含密码。`/users` 的角色列用 `ROLE_LABEL` 写出这两字。查看该接口是 403，侧栏没有「用户」，打开 `/users` 回到总览。页面没有新建或重设密码的表单。不发识别，不发心跳，不改告警。步骤见 [`DEMO_USER_MGMT.md`](DEMO_USER_MGMT.md)。
 
