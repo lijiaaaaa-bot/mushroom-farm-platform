@@ -1390,15 +1390,15 @@ describe('hour buckets and disease peaks', () => {
     configureApp(http);
     await http.init();
     const week = await request(http.getHttpServer())
-      .get(
-        '/api/v1/diseases/trends?days=7&shedCode=S01&cameraCode=CAM-SDT-01',
-      )
+      .get('/api/v1/diseases/trends?days=7&shedCode=S01&cameraCode=CAM-SDT-01')
       .set('x-test-role', 'super_admin');
     expect(week.status).toBe(200);
     expect(week.body.days).toBe(7);
-    expect(week.body.sheds[0].cameras[0].points.map((point) => point.diseaseCount)).toEqual([
-      1, 3, 6, 10,
-    ]);
+    expect(
+      week.body.sheds[0].cameras[0].points.map(
+        (point: { diseaseCount: number }) => point.diseaseCount,
+      ),
+    ).toEqual([1, 3, 6, 10]);
     const denied = await request(http.getHttpServer())
       .get('/api/v1/diseases/trends?days=7&shedCode=S02')
       .set('x-test-role', 'viewer');

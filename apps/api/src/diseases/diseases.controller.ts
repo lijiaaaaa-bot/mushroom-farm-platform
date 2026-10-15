@@ -49,7 +49,7 @@ export class DiseasesController {
   }
 
   @Get('trends')
-  trends(
+  diseaseTrends(
     @CurrentUser() user: AuthUser,
     @Query('days') days?: string,
     @Query('shedCode') shedCode?: string,
