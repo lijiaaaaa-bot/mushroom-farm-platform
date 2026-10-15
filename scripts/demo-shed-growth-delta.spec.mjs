@@ -145,6 +145,6 @@ test('api day buckets must carry the same adjacent deltas', () => {
         },
         samples,
       ),
-    /6 → 8/,
+    /蘑菇数量/,
   );
 });
