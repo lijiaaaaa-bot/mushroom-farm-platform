@@ -12,6 +12,8 @@ interface Point {
   hour?: string;
   mushroomCount: number;
   matureCount?: number;
+  /** 成熟率百分数。蘑菇数为 0 时是 null。缺省时由数量现算。 */
+  maturityRate?: number | null;
   capDiameterMean: number | null;
   sampleCount: number;
 }
@@ -62,9 +64,11 @@ const cameraQuery = computed(() =>
 const data = ref<TrendResponse | null>(null);
 const countEl = ref<HTMLDivElement | null>(null);
 const matureEl = ref<HTMLDivElement | null>(null);
+const rateEl = ref<HTMLDivElement | null>(null);
 const diameterEl = ref<HTMLDivElement | null>(null);
 let countChart: echarts.ECharts | null = null;
 let matureChart: echarts.ECharts | null = null;
+let rateChart: echarts.ECharts | null = null;
 let diameterChart: echarts.ECharts | null = null;
 
 const current = computed(() => {
@@ -112,6 +116,15 @@ const matureLines = computed(() =>
     .filter((line) => line.points.length > 0),
 );
 
+const rateLines = computed(() =>
+  lines.value
+    .map((line) => ({
+      name: line.name,
+      points: line.points.filter((point) => rateOf(point) !== null),
+    }))
+    .filter((line) => line.points.length > 0),
+);
+
 const windowLabel = computed(() => {
   if (grain.value === 'hour') return '24 小时';
   if (grain.value === 'week') return '周';
@@ -139,14 +152,40 @@ function periodText(day: string) {
   return day;
 }
 
-const tableRows = computed(() =>
-  lines.value.flatMap((line) =>
-    line.points.map((point) => ({
-      key: `${line.name}-${point.day}`,
-      name: line.name,
-      ...point,
-    })),
-  ),
+const tableRows = computed(() => {
+  const rows: Array<Point & { key: string; name: string; rateText: string; deltaText: string }> = [];
+  for (const line of lines.value) {
+    let previous: number | null | undefined;
+    for (const point of line.points) {
+      const rate = rateOf(point);
+      rows.push({
+        key: `${line.name}-${point.day}`,
+        name: line.name,
+        ...point,
+        rateText: formatRate(rate),
+        deltaText: formatDelta(rate, previous),
+      });
+      previous = rate;
+    }
+  }
+  return rows;
+});
+
+const rateSummary = computed(() =>
+  lines.value
+    .map((line) => {
+      const rates = line.points
+        .map((point) => rateOf(point))
+        .filter((value): value is number => value !== null);
+      if (rates.length < 2) return '';
+      const first = rates[0];
+      const last = rates[rates.length - 1];
+      const direction = last > first ? '升' : last < first ? '降' : '平';
+      const prefix = lines.value.length > 1 ? `${line.name} ` : '';
+      return `${prefix}成熟率 ${rates.map((rate) => formatRate(rate)).join(' → ')}（${direction}）`;
+    })
+    .filter(Boolean)
+    .join('；'),
 );
 
 const grainSummary = computed(() => {
@@ -158,7 +197,11 @@ const grainSummary = computed(() => {
   return `粒度 ${grainName.value} · ${count}`;
 });
 
-function chartOption(series: Line[], pick: (point: Point) => number | null) {
+function chartOption(
+  series: Line[],
+  pick: (point: Point) => number | null,
+  percent = false,
+) {
   const axisDays = [...new Set(series.flatMap((line) => line.points.map((point) => point.day)))].sort();
   const palette = ['#2F9E44', '#1B7A4E', '#d97706', '#3b82f6', '#c44536'];
   return {
@@ -175,7 +218,10 @@ function chartOption(series: Line[], pick: (point: Point) => number | null) {
     },
     yAxis: {
       type: 'value',
-      axisLabel: { color: '#64748b' },
+      axisLabel: {
+        color: '#64748b',
+        ...(percent ? { formatter: '{value}%' } : {}),
+      },
       splitLine: { lineStyle: { color: '#e2e8f0' } },
     },
     series: series.map((line, index) => ({
@@ -219,6 +265,16 @@ function render() {
     matureChart ??= echarts.init(matureEl.value);
     matureChart.setOption(
       chartOption(matureLines.value, (point) => point.matureCount ?? null),
+      true,
+    );
+  }
+  if (!rateLines.value.length || !rateEl.value) {
+    rateChart?.dispose();
+    rateChart = null;
+  } else {
+    rateChart ??= echarts.init(rateEl.value);
+    rateChart.setOption(
+      chartOption(rateLines.value, (point) => rateOf(point), true),
       true,
     );
   }
@@ -405,6 +461,30 @@ function matureText(value: number | undefined) {
   return typeof value === 'number' ? String(value) : '—';
 }
 
+function rateOf(point: Point): number | null {
+  if (point.maturityRate === null) return null;
+  if (typeof point.maturityRate === 'number') return point.maturityRate;
+  if (!point.mushroomCount || typeof point.matureCount !== 'number') return null;
+  return Math.round((point.matureCount / point.mushroomCount) * 1000) / 10;
+}
+
+function formatPlain(value: number) {
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+function formatRate(value: number | null) {
+  return value === null ? '—' : `${formatPlain(value)}%`;
+}
+
+function formatDelta(current: number | null, previous: number | null | undefined) {
+  if (previous === undefined || previous === null || current === null) return '—';
+  const delta = Math.round((current - previous) * 10) / 10;
+  if (delta > 0) return `升 ${formatPlain(delta)}`;
+  if (delta < 0) return `降 ${formatPlain(Math.abs(delta))}`;
+  return '平';
+}
+
 onMounted(() => {
   void reload();
 });
@@ -416,6 +496,7 @@ watch(mode, () => {
 onBeforeUnmount(() => {
   countChart?.dispose();
   matureChart?.dispose();
+  rateChart?.dispose();
   diameterChart?.dispose();
 });
 </script>
@@ -457,6 +538,9 @@ onBeforeUnmount(() => {
         棚区 {{ shedCode || '—' }} · {{ windowLabel }}
       </p>
       <p v-if="data && hasPoints" data-grain-summary class="text-sm text-ink">{{ grainSummary }}</p>
+      <p v-if="data && hasPoints && rateSummary" data-maturity-summary class="text-sm text-ink">
+        {{ rateSummary }}
+      </p>
       <p v-if="cameraQuery" class="text-sm text-mist">摄像头 {{ cameraQuery }}</p>
       <div class="flex gap-2">
         <button type="button" data-mode="shed" :class="mode === 'shed' ? 'btn-primary' : 'btn-ghost'" @click="mode = 'shed'">
@@ -483,6 +567,11 @@ onBeforeUnmount(() => {
         <p v-else class="text-sm text-mist">有数量日聚合，成熟数量为空，未绘制成熟曲线。</p>
       </section>
       <section class="panel bg-white">
+        <h2 class="mb-2 text-sm text-mist">成熟率</h2>
+        <div v-if="rateLines.length" ref="rateEl" class="h-72 w-full"></div>
+        <p v-else class="text-sm text-mist">蘑菇数量为 0，未计成熟率。</p>
+      </section>
+      <section class="panel bg-white">
         <h2 class="mb-2 text-sm text-mist">菌盖直径均值</h2>
         <div v-if="diameterLines.length" ref="diameterEl" class="h-72 w-full"></div>
         <p v-else class="text-sm text-mist">有数量日聚合，菌盖直径均值为空，未绘制直径曲线。</p>
@@ -495,6 +584,8 @@ onBeforeUnmount(() => {
               <th>对象</th>
               <th>蘑菇数量</th>
               <th>成熟数量</th>
+              <th>成熟率</th>
+              <th>升降</th>
               <th>菌盖直径均值</th>
               <th>样本</th>
             </tr>
@@ -505,6 +596,8 @@ onBeforeUnmount(() => {
               <td class="font-mono">{{ row.name }}</td>
               <td class="font-mono">{{ row.mushroomCount }}</td>
               <td class="font-mono">{{ matureText(row.matureCount) }}</td>
+              <td class="font-mono" data-maturity-rate>{{ row.rateText }}</td>
+              <td class="font-mono" data-maturity-delta>{{ row.deltaText }}</td>
               <td class="font-mono">{{ diameterText(row.capDiameterMean) }}</td>
               <td class="font-mono">{{ row.sampleCount }}</td>
             </tr>

@@ -148,6 +148,124 @@ describe('GrowthTrendsView', () => {
     wrapper.unmount();
   });
 
+  it('shows maturity rate percent and the rise between points', async () => {
+    mockTrends({
+      days: 7,
+      from: '2026-10-09',
+      to: '2026-10-15',
+      sheds: [
+        {
+          shedCode: 'S01',
+          points: [],
+          cameras: [
+            {
+              cameraCode: 'CAM-MR-01',
+              points: [
+                {
+                  day: '2026-10-08',
+                  mushroomCount: 0,
+                  matureCount: 0,
+                  maturityRate: null,
+                  capDiameterMean: null,
+                  sampleCount: 1,
+                },
+                {
+                  day: '2026-10-10',
+                  mushroomCount: 20,
+                  matureCount: 2,
+                  maturityRate: 10,
+                  capDiameterMean: 4,
+                  sampleCount: 1,
+                },
+                {
+                  day: '2026-10-13',
+                  mushroomCount: 20,
+                  matureCount: 6,
+                  maturityRate: 30,
+                  capDiameterMean: 4.2,
+                  sampleCount: 1,
+                },
+                {
+                  day: '2026-10-15',
+                  mushroomCount: 20,
+                  matureCount: 10,
+                  maturityRate: 50,
+                  capDiameterMean: 4.4,
+                  sampleCount: 1,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    const wrapper = await mountView({ shedCode: 'S01', cameraCode: 'CAM-MR-01' });
+    expect(wrapper.get('[data-maturity-summary]').text()).toBe(
+      '成熟率 10% → 30% → 50%（升）',
+    );
+    expect(wrapper.findAll('[data-maturity-rate]').map((cell) => cell.text())).toEqual([
+      '—',
+      '10%',
+      '30%',
+      '50%',
+    ]);
+    expect(wrapper.findAll('[data-maturity-delta]').map((cell) => cell.text())).toEqual([
+      '—',
+      '—',
+      '升 20',
+      '升 20',
+    ]);
+    expect(wrapper.text()).toContain('成熟率');
+    const seriesData = setOption.mock.calls.map(
+      (call) => (call[0] as { series: Array<{ data: Array<number | null> }> }).series[0].data,
+    );
+    expect(seriesData).toContainEqual([10, 30, 50]);
+    const rateOption = setOption.mock.calls
+      .map((call) => call[0] as { yAxis?: { axisLabel?: { formatter?: string } } })
+      .find((option) => option.yAxis?.axisLabel?.formatter === '{value}%');
+    expect(rateOption).toBeTruthy();
+    wrapper.unmount();
+  });
+
+  it('shows a drop when the maturity rate falls', async () => {
+    mockTrends({
+      days: 7,
+      from: '2026-10-09',
+      to: '2026-10-15',
+      sheds: [
+        {
+          shedCode: 'S01',
+          points: [
+            {
+              day: '2026-10-10',
+              mushroomCount: 20,
+              matureCount: 10,
+              maturityRate: 50,
+              capDiameterMean: 4,
+              sampleCount: 1,
+            },
+            {
+              day: '2026-10-15',
+              mushroomCount: 20,
+              matureCount: 2,
+              maturityRate: 10,
+              capDiameterMean: 4,
+              sampleCount: 1,
+            },
+          ],
+          cameras: [],
+        },
+      ],
+    });
+    const wrapper = await mountView();
+    expect(wrapper.get('[data-maturity-summary]').text()).toBe('成熟率 50% → 10%（降）');
+    expect(wrapper.findAll('[data-maturity-delta]').map((cell) => cell.text())).toEqual([
+      '—',
+      '降 40',
+    ]);
+    wrapper.unmount();
+  });
+
   it('shows an empty window without chart points', async () => {
     mockTrends(empty);
     const wrapper = await mountView();

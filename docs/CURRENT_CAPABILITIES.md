@@ -220,11 +220,13 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 ## 生长趋势
 
-页面 `/growth-trends`。日趋势 `GET /api/v1/growth-trends?days=7|30`（只接受 7 或 30），读 `metric_buckets_day`。可选 `grain=day|week|month`，不传是日。周从周一起算，月是 `YYYY-MM`。周和月取该周期最后一天的蘑菇数与成熟数，菌盖直径取这些日均值的平均，样本数是这些天相加。每个点有蘑菇数量、成熟数量、菌盖直径均值和样本数。小时趋势 `GET /api/v1/growth-trends/hours` 读 `metric_buckets_hour`，点上同样有成熟数量。环境曲线 `GET /api/v1/growth-trends/environment` 读环境小时桶。页面有「日」「周」「月」，也有「7 天」「30 天」「24 小时」。有点时写出「棚区 … · 7 天」或「30 天」「24 小时」；周和月写出「棚区 … · 周」或「月」，以及「粒度 周 · 共 N 个点」或「粒度 月 · 共 N 个点」，周期带「（周）」或「（月）」。表头是日期、周、月或小时。棚隔离。
+页面 `/growth-trends`。日趋势 `GET /api/v1/growth-trends?days=7|30`（只接受 7 或 30），读 `metric_buckets_day`。可选 `grain=day|week|month`，不传是日。周从周一起算，月是 `YYYY-MM`。周和月取该周期最后一天的蘑菇数与成熟数，菌盖直径取这些日均值的平均，样本数是这些天相加。每个点有蘑菇数量、成熟数量、成熟率、菌盖直径均值和样本数。成熟率是成熟数 ÷ 蘑菇数，百分数保留一位，字段 `maturityRate`。蘑菇数为 0 时该字段为空，页面写「—」，曲线不计这一点。相邻两点成熟率不同时，表里写「升」或「降」和相差的百分点数。小时趋势 `GET /api/v1/growth-trends/hours` 读 `metric_buckets_hour`，点上同样有成熟数量。环境曲线 `GET /api/v1/growth-trends/environment` 读环境小时桶。页面有「日」「周」「月」，也有「7 天」「30 天」「24 小时」。有点时写出「棚区 … · 7 天」或「30 天」「24 小时」；周和月写出「棚区 … · 周」或「月」，以及「粒度 周 · 共 N 个点」或「粒度 月 · 共 N 个点」，周期带「（周）」或「（月）」。表头是日期、周、月或小时。棚隔离。
 
 `make demo-growth-trend` 读取 `recognition.demo-growth-trend.json`，写入 `CAM-GT-01`（棚区 S01）三天：前 5 日蘑菇 8、成熟 2；前 2 日蘑菇 14、成熟 5；当日蘑菇 21、成熟 8。同一上海日的幂等键已在则不另建一行。病害数量 0，温度 22.5℃，成熟占比低于种子规则「成熟占比一般」的 0.6。7 日和 30 日都能看到这三天，蘑菇数和成熟数后一天更大。`cameraCode=CAM-GT-NONE` 没有点。步骤见 [`DEMO_GROWTH_TREND.md`](DEMO_GROWTH_TREND.md)。
 
 `make demo-growth-grain` 读取同一份 `recognition.demo-growth-trend.json`，样例文件不改。写入 `CAM-GG-01`（棚区 S01）六个上海日：三个已经结束的周，每周周一和周三。周一蘑菇 8、成熟 2；较早两周的周三蘑菇 14、成熟 5；最近一周的周三蘑菇 21、成熟 8。同一上海日的幂等键已在则不另建一行。`days=30` 时日是 6 个点，周是 3 个点，月是 1 或 2 个点，三个点数彼此不同。周的蘑菇数是该周周三，不是周一的 8。步骤见 [`DEMO_GROWTH_GRAIN.md`](DEMO_GROWTH_GRAIN.md)。不改 `make demo-growth-trend`。不改接入观测。
+
+`make demo-maturity-rate` 读取同一份样例，样例文件不改。写入 `CAM-MR-01`（棚区 S01）四个上海日：前 5 日蘑菇 0、成熟 0，成熟率空；前 3 日蘑菇 20、成熟 2，成熟率 10%；前 1 日蘑菇 20、成熟 6，成熟率 30%；当日蘑菇 20、成熟 10，成熟率 50%。页面 `/growth-trends?days=7&shedCode=S01&cameraCode=CAM-MR-01` 旁注写出「成熟率 10% → 30% → 50%（升）」，表里蘑菇为 0 的一行是「—」，10% 到 30%、30% 到 50% 写「升 20」。同一上海日的幂等键已在则不另建一行。步骤见 [`DEMO_MATURITY_RATE.md`](DEMO_MATURITY_RATE.md)。不改 `make demo-growth-trend`、`make demo-growth-grain`。不改接入观测。
 
 页面 `/growth-compare`。侧栏「棚间对比」。仍读 `GET /api/v1/growth-trends?days=7|30`，不传 `shedCode`，一棚一条曲线。当日对照并排写出各棚蘑菇数、成熟数和菌盖直径，表里同一天相邻。至少两个棚有日聚合才画曲线。`make demo-shed-growth-compare` 读取 `recognition.demo-shed-growth-compare.json`，写入 `CAM-SG-S01`（棚区 S01）与 `CAM-SG-S02`（棚区 S02）各三天。当天蘑菇 21 与 8，成熟 8 与 3。同一上海日的幂等键已在则不另建一行。棚汇总是各摄像头当日最新蘑菇数相加；棚里只有这两台时，当天棚汇总就是 21 和 8。步骤见 [`DEMO_SHED_GROWTH_COMPARE.md`](DEMO_SHED_GROWTH_COMPARE.md)。
 

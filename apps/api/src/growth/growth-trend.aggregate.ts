@@ -22,6 +22,16 @@ export interface GrainPoint {
   sampleCount: number;
 }
 
+/** 成熟数 ÷ 蘑菇数，百分数保留一位。蘑菇数为 0 时没有比率。 */
+export function maturityPercent(
+  mushroomCount: number,
+  matureCount: number,
+): number | null {
+  if (!Number.isFinite(mushroomCount) || mushroomCount <= 0) return null;
+  if (!Number.isFinite(matureCount)) return null;
+  return Math.round((matureCount / mushroomCount) * 1000) / 10;
+}
+
 export type TrendGrain = 'day' | 'week' | 'month';
 
 /** 与报表生长粒度同一套周期：周是周一，月是 YYYY-MM。 */
