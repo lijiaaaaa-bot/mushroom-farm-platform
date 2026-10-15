@@ -232,6 +232,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 页面 `/growth-compare`。侧栏「棚间对比」。仍读 `GET /api/v1/growth-trends?days=7|30`，不传 `shedCode`，一棚一条曲线。当日对照并排写出各棚蘑菇数、成熟数和菌盖直径，表里同一天相邻。至少两个棚有日聚合才画曲线。`make demo-shed-growth-compare` 读取 `recognition.demo-shed-growth-compare.json`，写入 `CAM-SG-S01`（棚区 S01）与 `CAM-SG-S02`（棚区 S02）各三天。当天蘑菇 21 与 8，成熟 8 与 3。同一上海日的幂等键已在则不另建一行。棚汇总是各摄像头当日最新蘑菇数相加；棚里只有这两台时，当天棚汇总就是 21 和 8。步骤见 [`DEMO_SHED_GROWTH_COMPARE.md`](DEMO_SHED_GROWTH_COMPARE.md)。
 
+页面 `/shed-growth-delta`。侧栏「生长增量」。仍读 `GET /api/v1/growth-trends?days=7|30&shedCode=&cameraCode=` 的日桶，不新开接口。页面取这一台摄像头的点，相邻日相减，曲线和表写蘑菇增量、成熟增量，不写当日绝对数，也不写成熟率、菌盖。少于两个增量时写「没有相邻日增量，未绘制曲线。」旁注例如「蘑菇增量 6 → 8 → 10（升）」。`make demo-shed-growth-delta` 读取 `recognition.demo-growth-trend.json`，样例文件不改。写入 `CAM-GD-01`（棚区 S01）四个上海日：蘑菇 10、16、24、34，成熟 2、4、7、11。相邻蘑菇增量是 +6、+8、+10，成熟增量是 +2、+3、+4。同一上海日的幂等键已在则不另建一行。`cameraCode=CAM-GD-NONE` 没有点。步骤见 [`DEMO_SHED_GROWTH_DELTA.md`](DEMO_SHED_GROWTH_DELTA.md)。不改 `/growth-trends`、`/growth-compare`、`/shed-env-24h`。不改 `make demo-growth-trend`、`make demo-growth-grain`、`make demo-maturity-rate`、`make demo-shed-growth-compare`。不改接入观测。
+
 写路径：识别入库按 `recognizedAt`（Asia/Shanghai）增量 upsert 小时桶与日桶，同一幂等键不双计。环境入库按 `observedAt` 同样增量写入。`daily_aggregates` 已停写并删除（迁移 `010_drop_daily_aggregates.sql`）。
 
 已知限制：每小时 cron 与采摘修正蘑菇数后，`refreshDay` 会重扫该上海日的识别明细，回写识别指标桶；环境桶留在原行。打开趋势页本身不扫识别明细。
