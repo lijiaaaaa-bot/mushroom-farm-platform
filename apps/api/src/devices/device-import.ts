@@ -8,6 +8,7 @@ export interface RawDeviceRow {
   shedCode: string;
   type: string;
   parentCode: string;
+  note: string;
   invalid: boolean;
 }
 
@@ -28,7 +29,7 @@ export interface DeviceImportFile {
   buffer?: Buffer;
 }
 
-type Field = 'code' | 'shedCode' | 'name' | 'type' | 'parentCode';
+type Field = 'code' | 'shedCode' | 'name' | 'type' | 'parentCode' | 'note';
 
 const HEADER_MAP: Record<string, Field> = {
   code: 'code',
@@ -50,6 +51,8 @@ const HEADER_MAP: Record<string, Field> = {
   parentcode: 'parentCode',
   上级编码: 'parentCode',
   父设备: 'parentCode',
+  note: 'note',
+  备注: 'note',
 };
 
 const JSON_KEYS: Record<Field, string[]> = {
@@ -58,6 +61,7 @@ const JSON_KEYS: Record<Field, string[]> = {
   name: ['name', '名称', '设备名称'],
   type: ['type', '类型', '设备类型'],
   parentCode: ['parentCode', 'parent_code', '上级编码', '父设备'],
+  note: ['note', '备注'],
 };
 
 function normHeader(value: string): string {
@@ -74,6 +78,7 @@ function blankRow(invalid: boolean): RawDeviceRow {
     shedCode: '',
     type: '',
     parentCode: '',
+    note: '',
     invalid,
   };
 }
@@ -150,6 +155,7 @@ function cellsToRow(
     shedCode: at('shedCode'),
     type: at('type'),
     parentCode: at('parentCode'),
+    note: at('note'),
     invalid: false,
   };
 }
@@ -196,6 +202,7 @@ export function normalizeJsonRow(input: unknown): RawDeviceRow {
     shedCode: pick(record, JSON_KEYS.shedCode),
     type: pick(record, JSON_KEYS.type),
     parentCode: pick(record, JSON_KEYS.parentCode),
+    note: pick(record, JSON_KEYS.note),
     invalid: false,
   };
 }

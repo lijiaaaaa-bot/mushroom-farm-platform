@@ -264,7 +264,7 @@ onMounted(load);
     <section class="panel space-y-3">
       <h2 class="text-lg">批量导入</h2>
       <p v-if="canImport" class="text-sm text-mist">
-        表头需包含设备编码、棚编码、名称。未填类型时记为摄像头。已存在的设备编码会跳过，不覆盖原档案。失败行号按数据行计算，不含表头。选择文件时以文件为准。
+        表头需包含设备编码、棚编码、名称。未填类型时记为摄像头。备注可空，最长 500 字，只写在新建的一行上。已存在的设备编码会跳过，不覆盖原档案。失败行号按数据行计算，不含表头。选择文件时以文件为准。
       </p>
       <p v-else class="text-sm text-mist">当前角色不能批量导入设备。</p>
       <form
