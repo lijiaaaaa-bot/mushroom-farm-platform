@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { errorText, http } from '../api';
 
@@ -70,8 +70,10 @@ function resultLabel(result: string): string {
 const route = useRoute();
 const router = useRouter();
 const rows = ref<LogRow[]>([]);
+const auditTotal = ref(0);
 const error = ref('');
 const loading = ref(true);
+const auditTimeInvalid = ref(false);
 const loginRows = ref<LoginRow[]>([]);
 const loginTotal = ref(0);
 const loginError = ref('');
@@ -80,6 +82,12 @@ const timeInvalid = ref(false);
 const usernameDraft = ref('');
 const fromDraft = ref('');
 const toDraft = ref('');
+const auditUsernameDraft = ref('');
+const auditFromDraft = ref('');
+const auditToDraft = ref('');
+
+const LOGIN_KEYS = ['username', 'from', 'to'];
+const AUDIT_KEYS = ['auditUsername', 'auditFrom', 'auditTo'];
 
 function queryValue(key: string) {
   const value = route.query[key];
@@ -119,28 +127,53 @@ const timeState = computed(() => parseTime(queryValue('from'), queryValue('to'))
 const filterActive = computed(
   () => Boolean(usernameFilter.value || timeState.value.from || timeState.value.to) && !timeState.value.invalid,
 );
+const auditUsernameFilter = computed(() => queryValue('auditUsername').trim());
+const auditTimeState = computed(() => parseTime(queryValue('auditFrom'), queryValue('auditTo')));
+const auditFilterActive = computed(
+  () =>
+    Boolean(auditUsernameFilter.value || auditTimeState.value.from || auditTimeState.value.to) &&
+    !auditTimeState.value.invalid,
+);
 
 function boundLabel(value: string) {
   return new Date(value).toLocaleString('zh-CN');
 }
 
-const timeScopeLabel = computed(() => {
+function scopeLabel(from: string, to: string) {
   const parts: string[] = [];
-  if (timeState.value.from) parts.push(boundLabel(timeState.value.from));
-  if (timeState.value.to) parts.push(boundLabel(timeState.value.to));
+  if (from) parts.push(boundLabel(from));
+  if (to) parts.push(boundLabel(to));
   return parts.join(' 至 ');
-});
+}
 
-function syncDrafts() {
-  usernameDraft.value = queryValue('username').trim();
-  const time = parseTime(queryValue('from'), queryValue('to'));
+const timeScopeLabel = computed(() => scopeLabel(timeState.value.from, timeState.value.to));
+const auditTimeScopeLabel = computed(() => scopeLabel(auditTimeState.value.from, auditTimeState.value.to));
+
+function syncBoundDrafts(
+  usernameKey: string,
+  fromKey: string,
+  toKey: string,
+  username: { value: string },
+  from: { value: string },
+  to: { value: string },
+) {
+  username.value = queryValue(usernameKey).trim();
+  const time = parseTime(queryValue(fromKey), queryValue(toKey));
   if (time.invalid) {
-    fromDraft.value = queryValue('from');
-    toDraft.value = queryValue('to');
+    from.value = queryValue(fromKey);
+    to.value = queryValue(toKey);
     return;
   }
-  fromDraft.value = toLocalInput(queryValue('from'));
-  toDraft.value = toLocalInput(queryValue('to'));
+  from.value = toLocalInput(queryValue(fromKey));
+  to.value = toLocalInput(queryValue(toKey));
+}
+
+function syncDrafts() {
+  syncBoundDrafts('username', 'from', 'to', usernameDraft, fromDraft, toDraft);
+}
+
+function syncAuditDrafts() {
+  syncBoundDrafts('auditUsername', 'auditFrom', 'auditTo', auditUsernameDraft, auditFromDraft, auditToDraft);
 }
 
 function loginParams() {
@@ -180,27 +213,77 @@ async function loadLoginLogs() {
   }
 }
 
+function auditParams() {
+  const params: Record<string, string> = { pageSize: PAGE_SIZE };
+  if (auditUsernameFilter.value) params.username = auditUsernameFilter.value;
+  if (auditTimeState.value.from) params.from = auditTimeState.value.from;
+  if (auditTimeState.value.to) params.to = auditTimeState.value.to;
+  return params;
+}
+
 async function loadAudit() {
+  error.value = '';
+  const time = parseTime(queryValue('auditFrom'), queryValue('auditTo'));
+  if (time.invalid) {
+    rows.value = [];
+    auditTotal.value = 0;
+    auditTimeInvalid.value = true;
+    loading.value = false;
+    return;
+  }
+  auditTimeInvalid.value = false;
+  loading.value = true;
   try {
-    const response = await http.get<{ items: LogRow[] }>('/audit-logs', {
-      params: { pageSize: PAGE_SIZE },
+    const response = await http.get<{ items: LogRow[]; total?: number }>('/audit-logs', {
+      params: auditParams(),
     });
     rows.value = Array.isArray(response.data.items) ? response.data.items : [];
+    auditTotal.value = Number.isFinite(Number(response.data.total))
+      ? Number(response.data.total)
+      : rows.value.length;
   } catch (cause) {
     error.value = errorText(cause);
+    rows.value = [];
+    auditTotal.value = 0;
   } finally {
     loading.value = false;
   }
 }
 
-async function applyFilters() {
-  const username = usernameDraft.value.trim();
-  const fromRaw = fromDraft.value.trim();
-  const toRaw = toDraft.value.trim();
+function queryWithout(keys: string[]) {
   const query: Record<string, string> = {};
-  if (username) query.username = username;
-  if (fromRaw) query.from = invalidBound(fromRaw) ? fromRaw : new Date(fromRaw).toISOString();
-  if (toRaw) query.to = invalidBound(toRaw) ? toRaw : new Date(toRaw).toISOString();
+  for (const [key, value] of Object.entries(route.query)) {
+    if (keys.includes(key) || typeof value !== 'string' || value === '') continue;
+    query[key] = value;
+  }
+  return query;
+}
+
+function withBounds(
+  query: Record<string, string>,
+  usernameKey: string,
+  fromKey: string,
+  toKey: string,
+  username: string,
+  fromRaw: string,
+  toRaw: string,
+) {
+  if (username) query[usernameKey] = username;
+  if (fromRaw) query[fromKey] = invalidBound(fromRaw) ? fromRaw : new Date(fromRaw).toISOString();
+  if (toRaw) query[toKey] = invalidBound(toRaw) ? toRaw : new Date(toRaw).toISOString();
+  return query;
+}
+
+async function applyFilters() {
+  const query = withBounds(
+    queryWithout(LOGIN_KEYS),
+    'username',
+    'from',
+    'to',
+    usernameDraft.value.trim(),
+    fromDraft.value.trim(),
+    toDraft.value.trim(),
+  );
   await router.replace({ path: route.path, query });
 }
 
@@ -208,7 +291,27 @@ async function clearFilters() {
   usernameDraft.value = '';
   fromDraft.value = '';
   toDraft.value = '';
-  await router.replace({ path: route.path, query: {} });
+  await router.replace({ path: route.path, query: queryWithout(LOGIN_KEYS) });
+}
+
+async function applyAuditFilters() {
+  const query = withBounds(
+    queryWithout(AUDIT_KEYS),
+    'auditUsername',
+    'auditFrom',
+    'auditTo',
+    auditUsernameDraft.value.trim(),
+    auditFromDraft.value.trim(),
+    auditToDraft.value.trim(),
+  );
+  await router.replace({ path: route.path, query });
+}
+
+async function clearAuditFilters() {
+  auditUsernameDraft.value = '';
+  auditFromDraft.value = '';
+  auditToDraft.value = '';
+  await router.replace({ path: route.path, query: queryWithout(AUDIT_KEYS) });
 }
 
 watch(
@@ -220,9 +323,14 @@ watch(
   { immediate: true },
 );
 
-onMounted(() => {
-  void loadAudit();
-});
+watch(
+  () => [route.query.auditUsername, route.query.auditFrom, route.query.auditTo],
+  () => {
+    syncAuditDrafts();
+    void loadAudit();
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
@@ -279,13 +387,46 @@ onMounted(() => {
   </section>
   <section class="panel overflow-x-auto">
     <h2 class="mb-3 text-lg">操作审计</h2>
-    <p class="mb-3 text-sm text-mist">仅超管与生产管理员可查看。</p>
+    <p class="mb-3 text-sm text-mist">按用户名和起止时间查询。仅超管与生产管理员可查看。</p>
+    <form class="mb-3 grid gap-3 sm:grid-cols-4" data-testid="audit-log-filters" @submit.prevent="applyAuditFilters">
+      <label class="text-sm">用户
+        <input v-model="auditUsernameDraft" class="field mt-1" data-testid="audit-log-username" />
+      </label>
+      <label class="text-sm">开始时间
+        <input v-model="auditFromDraft" class="field mt-1" type="datetime-local" data-testid="audit-log-from" />
+      </label>
+      <label class="text-sm">结束时间
+        <input v-model="auditToDraft" class="field mt-1" type="datetime-local" data-testid="audit-log-to" />
+      </label>
+      <div class="flex items-end gap-2">
+        <button class="btn-primary" type="submit" data-testid="audit-log-apply">查询</button>
+        <button class="btn-ghost" type="button" data-testid="audit-log-clear" @click="clearAuditFilters">清除</button>
+      </div>
+    </form>
+    <p
+      v-if="auditFilterActive && !error && !auditTimeInvalid"
+      class="mb-3 text-sm text-mist"
+      data-testid="audit-log-scope"
+    >
+      <template v-if="auditUsernameFilter">用户 {{ auditUsernameFilter }}</template>
+      <template v-if="auditTimeScopeLabel">{{ auditUsernameFilter ? ' · ' : '' }}时间 {{ auditTimeScopeLabel }}</template>
+      · 共 <span data-testid="audit-log-count">{{ auditTotal }}</span> 条
+    </p>
     <p v-if="loading" class="text-mist">加载中…</p>
     <p v-else-if="error" class="text-danger">{{ error }}</p>
+    <p v-else-if="auditTimeInvalid" class="text-sm text-danger" data-testid="audit-log-time-error">时间筛选无效</p>
+    <p v-else-if="!rows.length" class="text-mist" data-testid="audit-log-empty">
+      {{ auditFilterActive ? '没有符合条件的操作审计。' : '暂无操作审计。' }}
+    </p>
     <table v-else class="data-table" data-testid="audit-log-table">
       <thead><tr><th>时间</th><th>用户</th><th>动作</th><th>资源</th><th>明细</th></tr></thead>
       <tbody>
-        <tr v-for="row in rows" :key="row.id">
+        <tr
+          v-for="row in rows"
+          :key="row.id"
+          :data-audit-username="row.username || ''"
+          :data-audit-action="row.action"
+        >
           <td class="font-mono text-xs">{{ new Date(row.createdAt).toLocaleString('zh-CN') }}</td>
           <td>{{ row.username || '—' }}</td>
           <td>{{ actionLabel(row.action) }}</td>

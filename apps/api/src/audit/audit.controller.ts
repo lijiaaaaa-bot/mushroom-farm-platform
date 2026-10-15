@@ -14,7 +14,16 @@ export class AuditController {
     @CurrentUser() user: AuthUser,
     @Query('page') page?: string,
     @Query('pageSize') pageSize?: string,
+    @Query('username') username?: string,
+    @Query('from') from?: string,
+    @Query('to') to?: string,
   ) {
-    return this.audit.list(ShedScope.fromUser(user), { page, pageSize });
+    return this.audit.list(ShedScope.fromUser(user), {
+      page,
+      pageSize,
+      username,
+      from,
+      to,
+    });
   }
 }

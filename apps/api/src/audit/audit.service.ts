@@ -1,6 +1,12 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import {
+  Between,
+  FindOptionsWhere,
+  LessThanOrEqual,
+  MoreThanOrEqual,
+  Repository,
+} from 'typeorm';
 import { AuthUser } from '../common/auth-user';
 import { parsePage } from '../common/pagination';
 import { ShedScope } from '../common/shed-scope';
@@ -31,14 +37,47 @@ export class AuditService {
     );
   }
 
-  async list(scope: ShedScope, query: { page?: string; pageSize?: string }) {
+  async list(
+    scope: ShedScope,
+    query: {
+      page?: string;
+      pageSize?: string;
+      username?: string;
+      from?: string;
+      to?: string;
+    },
+  ) {
     void scope;
     const page = parsePage(query);
+    const where: FindOptionsWhere<AuditLog> = {};
+    const username = query.username?.trim();
+    if (username) where.username = username;
+    const from = parseBound(query.from, '开始时间');
+    const to = parseBound(query.to, '结束时间');
+    if (from && to && from.getTime() > to.getTime()) {
+      throw new BadRequestException('时间筛选无效');
+    }
+    if (from && to) where.createdAt = Between(from, to);
+    else if (from) where.createdAt = MoreThanOrEqual(from);
+    else if (to) where.createdAt = LessThanOrEqual(to);
     const [items, total] = await this.logs.findAndCount({
+      where,
       order: { createdAt: 'DESC' },
       skip: page.skip,
       take: page.pageSize,
     });
     return { items, total, page: page.page, pageSize: page.pageSize };
   }
+}
+
+function parseBound(
+  value: string | undefined,
+  label: string,
+): Date | undefined {
+  if (!value?.trim()) return undefined;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    throw new BadRequestException(`${label}无效`);
+  }
+  return date;
 }

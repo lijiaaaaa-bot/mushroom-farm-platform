@@ -17,6 +17,7 @@ make web      # http://127.0.0.1:43123
 两个角色登录后菜单不同：[`docs/DEMO_RBAC.md`](docs/DEMO_RBAC.md)（`make demo-rbac`）。  
 审计页 `/audit` 能看到登录失败 `audit-demo` 和超管登录成功：[`docs/DEMO_AUDIT_LOG.md`](docs/DEMO_AUDIT_LOG.md)（`make demo-audit-log`）。  
 审计页 `/audit` 可按用户名和起止时间查询登录日志：失败用户 `login-log-fail` 在宽窗口，窄窗口只留超管成功：[`docs/DEMO_AUDIT_LOGIN_LOG.md`](docs/DEMO_AUDIT_LOGIN_LOG.md)（`make demo-audit-login-log`）。  
+审计页 `/audit` 下方操作审计可按用户名和起止时间查询：用户 `audit-action-old` 在宽窗口，窄窗口只留 `audit-action-new`：[`docs/DEMO_AUDIT_ACTION_FILTER.md`](docs/DEMO_AUDIT_ACTION_FILTER.md)（`make demo-audit-action-filter`）。  
 用户页 `/users`：超管能看到至少两条账号及角色（超管、查看），查看进不去：[`docs/DEMO_USER_MGMT.md`](docs/DEMO_USER_MGMT.md)（`make demo-user-mgmt`）。  
 用户页 `/users`：超管可新建 `user-create-demo`，并把 `user-reset-demo` 重设成新密码后登录：[`docs/DEMO_USER_CREATE_RESET.md`](docs/DEMO_USER_CREATE_RESET.md)（`make demo-user-create-reset`）。  
 接入令牌请求头：`X-Ingest-Token: dev-ingest-token`
