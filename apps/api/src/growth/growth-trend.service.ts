@@ -16,7 +16,11 @@ import {
   MetricBucketHour,
 } from '../entities/metric-bucket.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
-import { shiftShanghaiDay } from './growth-trend.aggregate';
+import {
+  rollupGrowthPoints,
+  shiftShanghaiDay,
+  TrendGrain,
+} from './growth-trend.aggregate';
 import {
   BucketView,
   EnvironmentDelta,
@@ -84,6 +88,7 @@ export interface EnvironmentMeans {
 
 export interface GrowthTrendSeries {
   days: 7 | 30;
+  grain: TrendGrain;
   from: string;
   to: string;
   mushroomCount: 'latest_per_camera';
@@ -170,9 +175,15 @@ export class GrowthTrendService {
 
   async series(
     user: AuthUser,
-    query: { days?: string; shedCode?: string; cameraCode?: string },
+    query: {
+      days?: string;
+      grain?: string;
+      shedCode?: string;
+      cameraCode?: string;
+    },
   ): Promise<GrowthTrendSeries> {
     const days = parseWindow(query.days);
+    const grain = parseTrendGrain(query.grain);
     const scope = ShedScope.fromUser(user);
     const shedCode = blank(query.shedCode);
     const cameraCode = blank(query.cameraCode);
@@ -181,6 +192,7 @@ export class GrowthTrendService {
     const from = shiftShanghaiDay(to, -(days - 1));
     const empty: GrowthTrendSeries = {
       days,
+      grain,
       from,
       to,
       mushroomCount: 'latest_per_camera',
@@ -204,8 +216,11 @@ export class GrowthTrendService {
     );
     return {
       ...empty,
-      sheds: groupGrowth(filterCamera(rows, cameraCode), (start) =>
-        shanghaiDate(start),
+      sheds: withGrain(
+        groupGrowth(filterCamera(rows, cameraCode), (start) =>
+          shanghaiDate(start),
+        ),
+        grain,
       ),
     };
   }
@@ -795,6 +810,27 @@ function meanEnvironmentHours(
       co2: mean(points.map((point) => point.co2)),
       substrateMoisture: mean(points.map((point) => point.substrateMoisture)),
     }));
+}
+
+function withGrain(
+  sheds: GrowthTrendSeries['sheds'],
+  grain: TrendGrain,
+): GrowthTrendSeries['sheds'] {
+  if (grain === 'day') return sheds;
+  return sheds.map((shed) => ({
+    shedCode: shed.shedCode,
+    points: rollupGrowthPoints(shed.points, grain),
+    cameras: shed.cameras.map((camera) => ({
+      cameraCode: camera.cameraCode,
+      points: rollupGrowthPoints(camera.points, grain),
+    })),
+  }));
+}
+
+function parseTrendGrain(grain?: string): TrendGrain {
+  if (grain === undefined || grain === '' || grain === 'day') return 'day';
+  if (grain === 'week' || grain === 'month') return grain;
+  throw new BadRequestException('粒度只支持 day、week 或 month');
 }
 
 function parseWindow(days?: string): 7 | 30 {

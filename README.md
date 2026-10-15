@@ -66,6 +66,7 @@ make web      # http://127.0.0.1:43123
 出菇批次可查可见：[`docs/DEMO_FRUITING_BATCH.md`](docs/DEMO_FRUITING_BATCH.md)（`make demo-fruiting-batch`）。  
 产量预估可查可见，未来 2–3 日成熟数：[`docs/DEMO_YIELD_FORECAST.md`](docs/DEMO_YIELD_FORECAST.md)（`make demo-yield-forecast`）。  
 生长趋势页能看到 `CAM-GT-01` 的 7 日蘑菇数和成熟数：[`docs/DEMO_GROWTH_TREND.md`](docs/DEMO_GROWTH_TREND.md)（`make demo-growth-trend`）。  
+生长趋势页可按日、周、月看 `CAM-GG-01`：周的点数少于日，月的点数少于周：[`docs/DEMO_GROWTH_GRAIN.md`](docs/DEMO_GROWTH_GRAIN.md)（`make demo-growth-grain`）。  
 棚间对比页同屏看到 S01 与 S02 的蘑菇数：[`docs/DEMO_SHED_GROWTH_COMPARE.md`](docs/DEMO_SHED_GROWTH_COMPARE.md)（`make demo-shed-growth-compare`）。  
 阈值规则列表可打开一条规则的详情：[`docs/DEMO_ALERT_RULES.md`](docs/DEMO_ALERT_RULES.md)（`make demo-alert-rules`）。  
 发一条超阈值环境遥测，告警列表和详情出现这条告警：[`docs/DEMO_TELEMETRY_THRESHOLD_ALERT.md`](docs/DEMO_TELEMETRY_THRESHOLD_ALERT.md)（`make demo-telemetry-threshold-alert`）。  
