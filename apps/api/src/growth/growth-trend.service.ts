@@ -17,6 +17,7 @@ import {
 } from '../entities/metric-bucket.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import {
+  maturityPercent,
   rollupGrowthPoints,
   shiftShanghaiDay,
   TrendGrain,
@@ -46,6 +47,8 @@ export interface GrowthPoint {
   day: string;
   mushroomCount: number;
   matureCount: number;
+  /** 成熟率百分数，保留一位。蘑菇数为 0 时是 null。 */
+  maturityRate: number | null;
   capDiameterMean: number | null;
   sampleCount: number;
 }
@@ -54,6 +57,7 @@ export interface HourPoint {
   hour: string;
   mushroomCount: number;
   matureCount: number;
+  maturityRate: number | null;
   capDiameterMean: number | null;
   sampleCount: number;
 }
@@ -272,6 +276,7 @@ export class GrowthTrendService {
         hour: point.day,
         mushroomCount: point.mushroomCount,
         matureCount: point.matureCount,
+        maturityRate: point.maturityRate,
         capDiameterMean: point.capDiameterMean,
         sampleCount: point.sampleCount,
       })),
@@ -281,6 +286,7 @@ export class GrowthTrendService {
           hour: point.day,
           mushroomCount: point.mushroomCount,
           matureCount: point.matureCount,
+          maturityRate: point.maturityRate,
           capDiameterMean: point.capDiameterMean,
           sampleCount: point.sampleCount,
         })),
@@ -715,6 +721,7 @@ function groupGrowth(
       day: label,
       mushroomCount: 0,
       matureCount: 0,
+      maturityRate: null,
       capDiameterMean: null,
       sampleCount: 0,
     };
@@ -744,12 +751,16 @@ function groupGrowth(
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([shedCode, bucket]) => ({
       shedCode,
-      points: bucket.points.sort((a, b) => a.day.localeCompare(b.day)),
+      points: bucket.points
+        .sort((a, b) => a.day.localeCompare(b.day))
+        .map(withMaturityRate),
       cameras: [...bucket.cameras.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
         .map(([cameraCode, points]) => ({
           cameraCode,
-          points: points.sort((a, b) => a.day.localeCompare(b.day)),
+          points: points
+            .sort((a, b) => a.day.localeCompare(b.day))
+            .map(withMaturityRate),
         })),
     }));
 }
@@ -819,12 +830,19 @@ function withGrain(
   if (grain === 'day') return sheds;
   return sheds.map((shed) => ({
     shedCode: shed.shedCode,
-    points: rollupGrowthPoints(shed.points, grain),
+    points: rollupGrowthPoints(shed.points, grain).map(withMaturityRate),
     cameras: shed.cameras.map((camera) => ({
       cameraCode: camera.cameraCode,
-      points: rollupGrowthPoints(camera.points, grain),
+      points: rollupGrowthPoints(camera.points, grain).map(withMaturityRate),
     })),
   }));
+}
+
+function withMaturityRate(point: GrowthPoint): GrowthPoint {
+  return {
+    ...point,
+    maturityRate: maturityPercent(point.mushroomCount, point.matureCount),
+  };
 }
 
 function parseTrendGrain(grain?: string): TrendGrain {

@@ -21,6 +21,7 @@ import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { HarvestService } from '../harvest';
 import {
   AggregateSource,
+  maturityPercent,
   rollupGrowthPoints,
   shiftShanghaiDay,
   trendPeriodKey,
@@ -503,15 +504,33 @@ describe('growth trend API', () => {
     ).toEqual(['CAM-1', 'CAM-2']);
     expect(
       s01.points.find((row: { day: string }) => row.day === today),
-    ).toEqual(expect.objectContaining({ mushroomCount: 20, matureCount: 7 }));
+    ).toEqual(
+      expect.objectContaining({
+        mushroomCount: 20,
+        matureCount: 7,
+        maturityRate: 35,
+      }),
+    );
     expect(
       s01.points.find((row: { day: string }) => row.day === recent),
-    ).toEqual(expect.objectContaining({ mushroomCount: 9, matureCount: 0 }));
+    ).toEqual(
+      expect.objectContaining({
+        mushroomCount: 9,
+        matureCount: 0,
+        maturityRate: 0,
+      }),
+    );
     expect(
       s01.cameras.find(
         (row: { cameraCode: string }) => row.cameraCode === 'CAM-1',
       ).points[0],
-    ).toEqual(expect.objectContaining({ mushroomCount: 12, matureCount: 5 }));
+    ).toEqual(
+      expect.objectContaining({
+        mushroomCount: 12,
+        matureCount: 5,
+        maturityRate: 41.7,
+      }),
+    );
   });
 
   it('returns two sheds with different mushroom counts when shedCode is omitted', async () => {
@@ -610,6 +629,17 @@ describe('growth trend API', () => {
 });
 
 describe('week and month grain', () => {
+  it('turns mature and mushroom counts into a percent, or nothing when mushrooms are zero', () => {
+    expect(maturityPercent(20, 2)).toBe(10);
+    expect(maturityPercent(20, 6)).toBe(30);
+    expect(maturityPercent(20, 10)).toBe(50);
+    expect(maturityPercent(14, 5)).toBe(35.7);
+    expect(maturityPercent(21, 8)).toBe(38.1);
+    expect(maturityPercent(9, 0)).toBe(0);
+    expect(maturityPercent(0, 0)).toBeNull();
+    expect(maturityPercent(0, 4)).toBeNull();
+  });
+
   it('keeps the last day in a period and sums samples', () => {
     const points = [
       {
@@ -785,6 +815,11 @@ describe('week and month grain', () => {
       expect(weekPoints.map((point) => point.mushroomCount)).toEqual([
         14, 14, 21,
       ]);
+      expect(
+        weekPoints.map(
+          (point) => (point as { maturityRate?: number }).maturityRate,
+        ),
+      ).toEqual([35.7, 35.7, 38.1]);
       expect(weekPoints.every((point) => point.sampleCount === 2)).toBe(true);
       expect(dayPoints.some((point) => point.mushroomCount === 8)).toBe(true);
       expect(weekPoints.some((point) => point.mushroomCount === 8)).toBe(false);
