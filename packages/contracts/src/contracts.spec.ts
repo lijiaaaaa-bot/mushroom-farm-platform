@@ -9,6 +9,7 @@ import {
   parseAlertFalsePositive,
   parseAlertNote,
   parseCreateAlert,
+  parseBackupStatus,
   parseSetUserEnabled,
   parseUserListItem,
   LIMITS,
@@ -258,6 +259,53 @@ describe('golden fixtures', () => {
     });
     assert.equal(secret.ok, false);
     if (!secret.ok) assert.equal(secret.code, 'UNKNOWN_FIELD');
+  });
+
+  it('accepts a backup status and rejects a secret field', () => {
+    const empty = parseBackupStatus({
+      lastSuccessAt: null,
+      lastRunAt: null,
+      lastStatus: 'never',
+      lastFileName: null,
+      lastBytes: null,
+      lastError: null,
+      triggeredBy: null,
+    });
+    assert.equal(empty.ok, true);
+    if (empty.ok) assert.equal(empty.value.lastStatus, 'never');
+    const done = parseBackupStatus({
+      lastSuccessAt: '2026-10-15T03:00:00.000Z',
+      lastRunAt: '2026-10-15T03:00:00.000Z',
+      lastStatus: 'success',
+      lastFileName: 'mushroom-20261015T030000Z.sql',
+      lastBytes: 128,
+      lastError: null,
+      triggeredBy: 'admin',
+    });
+    assert.equal(done.ok, true);
+    if (done.ok) assert.equal(done.value.lastBytes, 128);
+    const extra = parseBackupStatus({
+      lastSuccessAt: null,
+      lastRunAt: null,
+      lastStatus: 'never',
+      lastFileName: null,
+      lastBytes: null,
+      lastError: null,
+      triggeredBy: null,
+      password: 'secret',
+    });
+    assert.equal(extra.ok, false);
+    if (!extra.ok) assert.equal(extra.code, 'UNKNOWN_FIELD');
+    const badState = parseBackupStatus({
+      lastSuccessAt: null,
+      lastRunAt: null,
+      lastStatus: 'ok',
+      lastFileName: null,
+      lastBytes: null,
+      lastError: null,
+      triggeredBy: null,
+    });
+    assert.equal(badState.ok, false);
   });
 
   it('loads the snapshot key fixture', () => {

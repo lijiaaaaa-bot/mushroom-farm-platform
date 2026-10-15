@@ -21,6 +21,7 @@ make web      # http://127.0.0.1:43123
 用户页 `/users`：超管能看到至少两条账号及角色（超管、查看），查看进不去：[`docs/DEMO_USER_MGMT.md`](docs/DEMO_USER_MGMT.md)（`make demo-user-mgmt`）。  
 用户页 `/users`：超管可新建 `user-create-demo`，并把 `user-reset-demo` 重设成新密码后登录：[`docs/DEMO_USER_CREATE_RESET.md`](docs/DEMO_USER_CREATE_RESET.md)（`make demo-user-create-reset`）。  
 用户页 `/users`：超管可停用 `user-enable-demo`，启用列从启用变为停用，该账号登录变为 401：[`docs/DEMO_USER_ENABLE_DISABLE.md`](docs/DEMO_USER_ENABLE_DISABLE.md)（`make demo-user-enable-disable`）。  
+数据备份页 `/backup`：超管看到最近一次 Postgres 备份成功时间；跑之前是空或更早，跑之后是新时间：[`docs/DEMO_BACKUP_RUN.md`](docs/DEMO_BACKUP_RUN.md)（`make demo-backup-run`）。  
 接入令牌请求头：`X-Ingest-Token: dev-ingest-token`
 
 联调可用 `make smoke` 或 `scripts/edge-simulator.mjs` 发送样例报文。  
