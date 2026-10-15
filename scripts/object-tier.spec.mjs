@@ -66,8 +66,11 @@ test('object tier stays a plan unless apply is requested', () => {
   const result = spawnTier();
   assert.equal(result.status, 0);
   assert.match(result.stdout, /未执行/);
+  assert.match(result.stdout, /热端对象键: 未列出/);
+  assert.match(result.stdout, /冷端对象键: 未列出/);
   assert.doesNotMatch(result.stdout, /已执行/);
   assert.doesNotMatch(result.stdout, /已下发/);
+  assert.doesNotMatch(result.stdout, /热端（前）: /);
 });
 
 test('apply without a cold endpoint exits non-zero and does not claim a move', () => {
@@ -107,8 +110,14 @@ test('apply copies aged snapshots and deletes the hot object only after read-bac
   assert.equal(hot.store.has('snapshots/edge.jpg'), true);
   assert.equal(hot.store.has('other/old.jpg'), true);
   assert.equal(sameBytes(cold.store.get('snapshots/old.jpg').bytes, Buffer.from('jpeg-old')), true);
-  assert.match(logs.join('\n'), /已执行/);
-  assert.doesNotMatch(logs.join('\n'), /已下发/);
+  const text = logs.join('\n');
+  assert.match(text, /已执行/);
+  assert.match(text, /热端（前）: snapshots\/old\.jpg/);
+  assert.match(text, /冷端（后）: snapshots\/old\.jpg/);
+  assert.match(text, /热端（后）: 无 snapshots\/old\.jpg/);
+  assert.doesNotMatch(text, /热端（前）: snapshots\/new\.jpg/);
+  assert.doesNotMatch(text, /已下发/);
+  assert.deepEqual(result.movedKeys, ['snapshots/old.jpg']);
 });
 
 test('apply keeps the hot object when cold read-back does not match', async () => {
@@ -118,18 +127,22 @@ test('apply keeps the hot object when cold read-back does not match', async () =
   const cold = memorySide([]);
   cold.client.getObject = async () => Buffer.from('different');
   const errors = [];
+  const logs = [];
   const result = await runObjectTier({
     env: applyEnv,
     now,
-    log: () => undefined,
+    log: (line) => logs.push(line),
     error: (line) => errors.push(line),
     clientFactory: async (side) => (side === 'hot' ? hot.client : cold.client),
   });
   assert.equal(result.exitCode, 1);
   assert.equal(result.applied, false);
   assert.equal(result.moved, 0);
+  assert.deepEqual(result.movedKeys, []);
   assert.equal(hot.store.has('snapshots/old.jpg'), true);
   assert.match(errors.join('\n'), /读回与热端不一致/);
+  assert.match(logs.join('\n'), /热端（前）: snapshots\/old\.jpg/);
+  assert.doesNotMatch(logs.join('\n'), /热端（后）: 无/);
 });
 
 test('apply to an unreachable cold endpoint fails closed', async () => {
