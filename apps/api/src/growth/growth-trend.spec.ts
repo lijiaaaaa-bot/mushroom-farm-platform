@@ -30,6 +30,7 @@ import {
   foldBuckets,
   METRIC_CAP_DIAMETER_MEAN,
   METRIC_DISEASE_COUNT,
+  METRIC_ENV_HUMIDITY,
   METRIC_ENV_TEMPERATURE,
   METRIC_MATURE_COUNT,
   METRIC_MUSHROOM_COUNT,
@@ -1160,6 +1161,93 @@ describe('hour buckets and disease peaks', () => {
       .set('x-test-role', 'viewer');
     expect(denied.status).toBe(403);
     await http.close();
+  });
+
+  it('reads one sensor hour series and leaves shed means on the unfiltered path', async () => {
+    const now = new Date('2026-10-15T02:30:00.000Z');
+    const current = shanghaiHourStart(now);
+    const earlier = new Date(current.getTime() - 18 * 3_600_000);
+    const hours = memoryMetricBuckets();
+    const days = memoryMetricBuckets();
+    seedMetric(hours, earlier, 'S01', '', METRIC_ENV_TEMPERATURE, 15);
+    seedMetric(hours, current, 'S01', '', METRIC_ENV_TEMPERATURE, 30);
+    seedMetric(
+      hours,
+      earlier,
+      'S01',
+      'SENSOR-ENV24-01',
+      METRIC_ENV_TEMPERATURE,
+      22,
+    );
+    seedMetric(
+      hours,
+      earlier,
+      'S01',
+      'SENSOR-ENV24-01',
+      METRIC_ENV_HUMIDITY,
+      78,
+    );
+    seedMetric(
+      hours,
+      current,
+      'S01',
+      'SENSOR-ENV24-01',
+      METRIC_ENV_TEMPERATURE,
+      26,
+    );
+    seedMetric(
+      hours,
+      current,
+      'S01',
+      'SENSOR-ENV24-01',
+      METRIC_ENV_HUMIDITY,
+      92,
+    );
+    seedMetric(
+      hours,
+      current,
+      'S01',
+      'SENSOR-OTHER',
+      METRIC_ENV_TEMPERATURE,
+      40,
+    );
+    const service = new GrowthTrendService(
+      memoryRecords([]) as never,
+      hours as never,
+      days as never,
+    );
+    const mixed = await service.environmentSeries(
+      admin,
+      { shedCode: 'S01' },
+      now,
+    );
+    expect(mixed.sensorCode).toBeNull();
+    expect(mixed.points.map((point) => point.temperature)).toEqual([15, 30]);
+    const series = await service.environmentSeries(
+      admin,
+      { hours: '24', shedCode: 'S01', sensorCode: 'SENSOR-ENV24-01' },
+      now,
+    );
+    expect(series.hours).toBe(24);
+    expect(series.sensorCode).toBe('SENSOR-ENV24-01');
+    expect(series.points.map((point) => point.temperature)).toEqual([22, 26]);
+    expect(series.points.map((point) => point.humidity)).toEqual([78, 92]);
+    expect(series.sheds).toEqual([
+      expect.objectContaining({ shedCode: 'S01' }),
+    ]);
+  });
+
+  it('forwards sensorCode on the environment route', async () => {
+    const trends = {
+      environmentSeries: jest.fn().mockResolvedValue({ points: [] }),
+    };
+    const controller = new GrowthTrendsController(trends as never);
+    await controller.environment(admin, '24', 'S01', 'SENSOR-ENV24-01');
+    expect(trends.environmentSeries).toHaveBeenCalledWith(admin, {
+      hours: '24',
+      shedCode: 'S01',
+      sensorCode: 'SENSOR-ENV24-01',
+    });
   });
 });
 
