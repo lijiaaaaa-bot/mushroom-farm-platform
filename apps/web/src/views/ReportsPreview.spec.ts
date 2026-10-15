@@ -47,7 +47,7 @@ describe('ReportsView preview', () => {
     expect(wrapper.get('[data-testid="report-summary"]').text()).toBe('棚区 全部 · 共 1 条');
 
     const printButton = wrapper.get('[data-testid="report-print"]');
-    expect(printButton.element.disabled).toBe(false);
+    expect((printButton.element as HTMLButtonElement).disabled).toBe(false);
     await printButton.trigger('click');
     expect(print).toHaveBeenCalled();
     print.mockRestore();
@@ -218,7 +218,7 @@ describe('ReportsView preview', () => {
     expect(wrapper.get('[data-testid="report-preview"]').text()).toContain('S02');
     expect(wrapper.get('[data-testid="report-preview"]').text()).toContain('17');
     expect(wrapper.get('[data-testid="report-summary"]').text()).toBe('棚区 S02 · 共 1 条');
-    expect(wrapper.get('[data-testid="report-print"]').element.disabled).toBe(false);
+    expect((wrapper.get('[data-testid="report-print"]').element as HTMLButtonElement).disabled).toBe(false);
     expect(window.location.pathname).toBe('/reports');
     expect(window.location.search).toContain('shedCode=S02');
     wrapper.unmount();
@@ -227,7 +227,7 @@ describe('ReportsView preview', () => {
   it('keeps print disabled until the preview has rows', async () => {
     const print = vi.spyOn(window, 'print').mockImplementation(() => undefined);
     const wrapper = mount(ReportsView);
-    expect(wrapper.get('[data-testid="report-print"]').element.disabled).toBe(true);
+    expect((wrapper.get('[data-testid="report-print"]').element as HTMLButtonElement).disabled).toBe(true);
     await wrapper.get('[data-testid="report-print"]').trigger('click');
     expect(print).not.toHaveBeenCalled();
 
@@ -238,7 +238,7 @@ describe('ReportsView preview', () => {
     await flushPromises();
     expect(wrapper.get('[data-testid="report-summary"]').text()).toBe('棚区 全部 · 共 0 条');
     expect(wrapper.text()).toContain('该筛选下没有数据。');
-    expect(wrapper.get('[data-testid="report-print"]').element.disabled).toBe(true);
+    expect((wrapper.get('[data-testid="report-print"]').element as HTMLButtonElement).disabled).toBe(true);
     await wrapper.get('[data-testid="report-print"]').trigger('click');
     expect(print).not.toHaveBeenCalled();
     print.mockRestore();
