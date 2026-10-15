@@ -1,12 +1,14 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { currentUser } from '../auth';
 import UsersView from './UsersView.vue';
 
 const httpGet = vi.hoisted(() => vi.fn());
 const httpPost = vi.hoisted(() => vi.fn());
+const httpPatch = vi.hoisted(() => vi.fn());
 
 vi.mock('../api', () => ({
-  http: { get: httpGet, post: httpPost },
+  http: { get: httpGet, post: httpPost, patch: httpPatch },
   errorText: (cause: unknown) =>
     cause instanceof Error && cause.message !== '403' ? cause.message : '请求失败',
 }));
@@ -33,6 +35,8 @@ describe('UsersView', () => {
   beforeEach(() => {
     httpGet.mockReset();
     httpPost.mockReset();
+    httpPatch.mockReset();
+    currentUser.value = null;
   });
 
   it('lists accounts from GET /users without a password column', async () => {
@@ -181,6 +185,56 @@ describe('UsersView', () => {
     expect(wrapper.get('[data-testid="user-notice"]').text()).toContain('仍有这一行');
     expect(wrapper.get('tr[data-user-id="user-viewer"]').attributes('data-highlight')).toBe('true');
     expect(wrapper.find('[data-testid="user-reset-form"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('toggles enable on another user and shows 启用 then 停用', async () => {
+    currentUser.value = {
+      id: admin.id,
+      username: admin.username,
+      displayName: admin.displayName,
+      role: admin.role,
+      shedCodes: admin.shedCodes,
+    };
+    const disabled = { ...viewer, enabled: false };
+    httpGet
+      .mockResolvedValueOnce({ data: [admin, viewer] })
+      .mockResolvedValueOnce({ data: [admin, disabled] })
+      .mockResolvedValue({ data: [admin, viewer] });
+    httpPatch.mockResolvedValue({ data: { ...disabled } });
+
+    const wrapper = mount(UsersView);
+    await flushPromises();
+
+    const before = wrapper.findAll('[data-field="enabled"]');
+    expect(wrapper.text()).toContain('启用');
+    expect(before).toHaveLength(2);
+    expect(before[1].attributes('data-enabled')).toBe('true');
+    expect(before[1].text()).toBe('启用');
+    expect(before[1].get('span').classes()).toContain('text-accent');
+    expect(wrapper.find('[data-testid="user-enabled-admin"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="user-enabled-viewer"]').text()).toBe('停用');
+
+    await wrapper.get('[data-testid="user-enabled-viewer"]').trigger('click');
+    await flushPromises();
+
+    expect(httpPatch).toHaveBeenCalledWith('/users/user-viewer', { enabled: false });
+    const after = wrapper.findAll('[data-field="enabled"]');
+    expect(after[1].attributes('data-enabled')).toBe('false');
+    expect(after[1].text()).toBe('停用');
+    expect(after[1].get('span').classes()).toContain('text-danger');
+    expect(wrapper.get('[data-testid="user-enabled-viewer"]').text()).toBe('启用');
+    expect(wrapper.get('[data-testid="user-notice"]').text()).toContain('已停用 viewer');
+    expect(wrapper.get('[data-testid="user-notice"]').text()).toContain('启用列是停用');
+    expect(wrapper.get('tr[data-user-id="user-viewer"]').attributes('data-highlight')).toBe('true');
+
+    await wrapper.get('[data-testid="user-enabled-viewer"]').trigger('click');
+    await flushPromises();
+
+    expect(httpPatch).toHaveBeenLastCalledWith('/users/user-viewer', { enabled: true });
+    expect(wrapper.findAll('[data-field="enabled"]')[1].attributes('data-enabled')).toBe('true');
+    expect(wrapper.findAll('[data-field="enabled"]')[1].text()).toBe('启用');
+    expect(wrapper.get('[data-testid="user-notice"]').text()).toContain('启用列是启用');
     wrapper.unmount();
   });
 });

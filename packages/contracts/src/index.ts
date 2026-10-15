@@ -307,6 +307,28 @@ export const alertFalsePositiveSchema = z
   .strict();
 export type AlertFalsePositiveInput = z.infer<typeof alertFalsePositiveSchema>;
 
+/** 用户列表行。不含密码。`enabled` 是账号是否启用。 */
+export const userListItemSchema = z
+  .object({
+    id: z.string().min(1),
+    username: z.string().min(1),
+    displayName: z.string(),
+    role: roleSchema,
+    shedCodes: z.array(z.string()),
+    enabled: z.boolean(),
+    createdAt: z.string().min(1).optional(),
+  })
+  .strict();
+export type UserListItem = z.infer<typeof userListItemSchema>;
+
+/** 超管启停已有用户。只接受布尔 `enabled`。 */
+export const setUserEnabledSchema = z
+  .object({
+    enabled: z.boolean(),
+  })
+  .strict();
+export type SetUserEnabledInput = z.infer<typeof setUserEnabledSchema>;
+
 export type ParseResult<T> =
   | { ok: true; value: T }
   | { ok: false; code: ErrorCode; errors: string[] };
@@ -721,6 +743,26 @@ export function parseAlertFalsePositive(
   raw: unknown,
 ): ParseResult<AlertFalsePositiveInput> {
   const parsed = alertFalsePositiveSchema.safeParse(raw ?? {});
+  if (!parsed.success) {
+    const issue = zodErrors(parsed.error);
+    return fail(issue.code, issue.errors);
+  }
+  return { ok: true, value: parsed.data };
+}
+
+export function parseUserListItem(raw: unknown): ParseResult<UserListItem> {
+  const parsed = userListItemSchema.safeParse(raw);
+  if (!parsed.success) {
+    const issue = zodErrors(parsed.error);
+    return fail(issue.code, issue.errors);
+  }
+  return { ok: true, value: parsed.data };
+}
+
+export function parseSetUserEnabled(
+  raw: unknown,
+): ParseResult<SetUserEnabledInput> {
+  const parsed = setUserEnabledSchema.safeParse(raw);
   if (!parsed.success) {
     const issue = zodErrors(parsed.error);
     return fail(issue.code, issue.errors);

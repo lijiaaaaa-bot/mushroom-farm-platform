@@ -20,6 +20,7 @@ make web      # http://127.0.0.1:43123
 审计页 `/audit` 下方操作审计可按用户名和起止时间查询：用户 `audit-action-old` 在宽窗口，窄窗口只留 `audit-action-new`：[`docs/DEMO_AUDIT_ACTION_FILTER.md`](docs/DEMO_AUDIT_ACTION_FILTER.md)（`make demo-audit-action-filter`）。  
 用户页 `/users`：超管能看到至少两条账号及角色（超管、查看），查看进不去：[`docs/DEMO_USER_MGMT.md`](docs/DEMO_USER_MGMT.md)（`make demo-user-mgmt`）。  
 用户页 `/users`：超管可新建 `user-create-demo`，并把 `user-reset-demo` 重设成新密码后登录：[`docs/DEMO_USER_CREATE_RESET.md`](docs/DEMO_USER_CREATE_RESET.md)（`make demo-user-create-reset`）。  
+用户页 `/users`：超管可停用 `user-enable-demo`，启用列从启用变为停用，该账号登录变为 401：[`docs/DEMO_USER_ENABLE_DISABLE.md`](docs/DEMO_USER_ENABLE_DISABLE.md)（`make demo-user-enable-disable`）。  
 接入令牌请求头：`X-Ingest-Token: dev-ingest-token`
 
 联调可用 `make smoke` 或 `scripts/edge-simulator.mjs` 发送样例报文。  

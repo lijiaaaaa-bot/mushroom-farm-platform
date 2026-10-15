@@ -2,7 +2,7 @@ import { INestApplication } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Role } from '@mushroom/contracts';
+import { Role, parseUserListItem } from '@mushroom/contracts';
 import bcrypt from 'bcryptjs';
 import { NextFunction, Request, Response } from 'express';
 import request from 'supertest';
@@ -34,8 +34,14 @@ function memoryAudit() {
 function memoryUsers(rows: User[]) {
   return {
     rows,
-    findOne: async ({ where }: { where: { username?: string } }) =>
-      rows.find((row) => row.username === where.username) ?? null,
+    findOne: async ({ where }: { where: { username?: string; id?: string } }) =>
+      rows.find((row) => {
+        if (where.id !== undefined && row.id !== where.id) return false;
+        if (where.username !== undefined && row.username !== where.username) {
+          return false;
+        }
+        return where.id !== undefined || where.username !== undefined;
+      }) ?? null,
     find: async () =>
       rows
         .slice()
@@ -140,6 +146,15 @@ describe('users rbac', () => {
     expect(JSON.stringify(response.body)).not.toContain(
       users.rows[0].passwordHash,
     );
+    for (const row of response.body) {
+      const parsed = parseUserListItem(row);
+      expect(parsed.ok).toBe(true);
+    }
+    expect(
+      response.body.find(
+        (row: { username: string }) => row.username === 'viewer',
+      ).enabled,
+    ).toBe(false);
   });
 
   it.each(['production_admin', 'shed_manager', 'viewer'] as const)(
@@ -244,4 +259,109 @@ describe('users rbac', () => {
     expect(JSON.stringify(listed.body)).not.toContain('Viewer@123456');
     expect(JSON.stringify(listed.body)).not.toContain('password');
   });
+
+  it('lets super_admin disable and enable another user', async () => {
+    const hash = users.rows.find(
+      (row) => row.username === 'viewer',
+    )!.passwordHash;
+    const enabled = await request(app.getHttpServer())
+      .patch('/api/v1/users/user-viewer')
+      .set('x-test-role', 'super_admin')
+      .send({ enabled: true });
+    expect(enabled.status).toBe(200);
+    expect(enabled.body).toMatchObject({
+      id: 'user-viewer',
+      username: 'viewer',
+      enabled: true,
+    });
+    expect(parseUserListItem(enabled.body).ok).toBe(true);
+    expect(JSON.stringify(enabled.body)).not.toContain('password');
+
+    const disabled = await request(app.getHttpServer())
+      .patch('/api/v1/users/user-viewer')
+      .set('x-test-role', 'super_admin')
+      .send({ enabled: false });
+    expect(disabled.status).toBe(200);
+    expect(disabled.body.enabled).toBe(false);
+    expect(parseUserListItem(disabled.body).ok).toBe(true);
+    expect(
+      users.rows.find((row) => row.id === 'user-viewer')?.passwordHash,
+    ).toBe(hash);
+    expect(audit.rows.map((row) => row.action)).toEqual([
+      'user.enable',
+      'user.disable',
+    ]);
+
+    const listed = await request(app.getHttpServer())
+      .get('/api/v1/users')
+      .set('x-test-role', 'super_admin');
+    expect(
+      listed.body.find((row: { username: string }) => row.username === 'viewer')
+        .enabled,
+    ).toBe(false);
+    expect(
+      users.rows.find((row) => row.id === 'user-viewer')?.passwordHash,
+    ).toBe(hash);
+  });
+
+  it('rejects disabling the signed-in account and a bad enabled flag', async () => {
+    users.rows.push({
+      id: 'id-super_admin',
+      username: 'super_admin',
+      passwordHash: users.rows[0].passwordHash,
+      displayName: '当前超管',
+      role: 'super_admin',
+      shedCodes: [],
+      enabled: true,
+      createdAt: new Date('2026-09-03T00:00:00.000Z'),
+    });
+    const self = await request(app.getHttpServer())
+      .patch('/api/v1/users/id-super_admin')
+      .set('x-test-role', 'super_admin')
+      .send({ enabled: false });
+    expect(self.status).toBe(400);
+    expect(self.body.message).toBe('不能停用当前登录账号');
+    expect(users.rows.find((row) => row.id === 'id-super_admin')?.enabled).toBe(
+      true,
+    );
+
+    const missing = await request(app.getHttpServer())
+      .patch('/api/v1/users/missing')
+      .set('x-test-role', 'super_admin')
+      .send({ enabled: false });
+    expect(missing.status).toBe(404);
+    expect(missing.body.message).toBe('用户不存在');
+
+    const textFlag = await request(app.getHttpServer())
+      .patch('/api/v1/users/user-viewer')
+      .set('x-test-role', 'super_admin')
+      .send({ enabled: 'false' });
+    expect(textFlag.status).toBe(400);
+    expect(textFlag.body.code).toBe('VALIDATION_FAILED');
+
+    const extra = await request(app.getHttpServer())
+      .patch('/api/v1/users/user-viewer')
+      .set('x-test-role', 'super_admin')
+      .send({ enabled: false, password: 'Other@123456' });
+    expect(extra.status).toBe(400);
+    expect(extra.body.code).toBe('UNKNOWN_FIELD');
+    expect(users.rows.find((row) => row.id === 'user-viewer')?.enabled).toBe(
+      false,
+    );
+    expect(audit.rows).toHaveLength(0);
+  });
+
+  it.each(['production_admin', 'shed_manager', 'viewer'] as const)(
+    'rejects %s on PATCH /users/:id',
+    async (role) => {
+      const response = await request(app.getHttpServer())
+        .patch('/api/v1/users/user-viewer')
+        .set('x-test-role', role)
+        .send({ enabled: true });
+      expect(response.status).toBe(403);
+      expect(users.rows.find((row) => row.username === 'viewer')?.enabled).toBe(
+        false,
+      );
+    },
+  );
 });

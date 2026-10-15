@@ -1,8 +1,12 @@
 import {
+  BadRequestException,
   Body,
   ConflictException,
   Controller,
   Get,
+  NotFoundException,
+  Param,
+  Patch,
   Post,
   Req,
 } from '@nestjs/common';
@@ -21,7 +25,7 @@ import { Repository } from 'typeorm';
 import { AuditService } from '../audit';
 import { AuthUser } from '../common/auth-user';
 import { CurrentUser, Roles } from '../common/decorators';
-import { ROLES, Role, isRole } from '@mushroom/contracts';
+import { ROLES, Role, isRole, parseSetUserEnabled } from '@mushroom/contracts';
 import { User } from '../entities/user.entity';
 
 class CreateUserDto {
@@ -60,15 +64,57 @@ export class UsersController {
   @Roles('super_admin')
   async list() {
     const rows = await this.users.find({ order: { createdAt: 'ASC' } });
-    return rows.map((user) => ({
+    return rows.map((user) => this.toPublic(user));
+  }
+
+  @Patch(':id')
+  @Roles('super_admin')
+  async setEnabled(
+    @Param('id') id: string,
+    @Body() body: unknown,
+    @CurrentUser() actor: AuthUser,
+    @Req() request: Request,
+  ) {
+    const parsed = parseSetUserEnabled(body);
+    if (!parsed.ok) {
+      throw new BadRequestException({
+        code: parsed.code,
+        message: '启用状态无效',
+        errors: parsed.errors,
+      });
+    }
+    const user = await this.users.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('用户不存在');
+    if (
+      !parsed.value.enabled &&
+      (user.id === actor.id || user.username === actor.username)
+    ) {
+      throw new BadRequestException('不能停用当前登录账号');
+    }
+    if (user.enabled !== parsed.value.enabled) {
+      user.enabled = parsed.value.enabled;
+      await this.users.save(user);
+      await this.audit.write({
+        user: actor,
+        action: parsed.value.enabled ? 'user.enable' : 'user.disable',
+        resource: `user:${user.id}`,
+        detail: { username: user.username, enabled: user.enabled },
+        ip: request.ip,
+      });
+    }
+    return this.toPublic(user);
+  }
+
+  private toPublic(user: User) {
+    return {
       id: user.id,
       username: user.username,
       displayName: user.displayName,
       role: user.role,
-      shedCodes: user.shedCodes,
+      shedCodes: user.shedCodes ?? [],
       enabled: user.enabled,
       createdAt: user.createdAt,
-    }));
+    };
   }
 
   @Post()

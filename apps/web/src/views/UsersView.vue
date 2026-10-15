@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { ROLE_LABEL, ROLES, type Role } from '@mushroom/contracts';
 import { errorText, http } from '../api';
+import { currentUser } from '../auth';
 
 interface UserRow {
   id: string;
@@ -29,6 +30,7 @@ const notice = ref('');
 const loading = ref(true);
 const highlightUsername = ref('');
 const resetUsername = ref('');
+const togglingId = ref('');
 const form = ref({
   username: '',
   password: '',
@@ -45,6 +47,12 @@ const resetForm = ref({
 
 function roleText(role: Role) {
   return ROLE_LABEL[role] ?? role;
+}
+
+function isSelf(row: UserRow) {
+  const me = currentUser.value;
+  if (!me) return false;
+  return me.id === row.id || me.username === row.username;
 }
 
 function shedText(codes: string[]) {
@@ -125,6 +133,35 @@ function openReset(row: UserRow) {
   };
 }
 
+async function setEnabled(row: UserRow, enabled: boolean) {
+  if (isSelf(row) && !enabled) {
+    actionError.value = '不能停用当前登录账号';
+    return;
+  }
+  actionError.value = '';
+  notice.value = '';
+  highlightUsername.value = '';
+  togglingId.value = row.id;
+  try {
+    await http.patch(`/users/${row.id}`, { enabled });
+    const ok = await load();
+    if (!ok) return;
+    const saved = rows.value.find((item) => item.id === row.id);
+    if (!saved) {
+      actionError.value = '启停后列表里没有这个账号。';
+      return;
+    }
+    highlightUsername.value = saved.username;
+    notice.value = enabled
+      ? `已启用 ${saved.username}。启用列是启用。`
+      : `已停用 ${saved.username}。启用列是停用。`;
+  } catch (cause) {
+    actionError.value = errorText(cause);
+  } finally {
+    togglingId.value = '';
+  }
+}
+
 async function submitReset(row: UserRow) {
   actionError.value = '';
   notice.value = '';
@@ -186,7 +223,7 @@ onMounted(load);
             <th>显示名</th>
             <th>角色</th>
             <th>棚区</th>
-            <th>状态</th>
+            <th>启用</th>
             <th></th>
           </tr>
         </thead>
@@ -200,14 +237,25 @@ onMounted(load);
               <td>{{ row.displayName }}</td>
               <td>{{ roleText(row.role) }}</td>
               <td class="font-mono">{{ shedText(row.shedCodes) }}</td>
-              <td>{{ row.enabled ? '启用' : '停用' }}</td>
-              <td>
+              <td data-field="enabled" :data-enabled="row.enabled ? 'true' : 'false'">
+                <span :class="row.enabled ? 'font-medium text-accent' : 'font-medium text-danger'">{{ row.enabled ? '启用' : '停用' }}</span>
+              </td>
+              <td class="space-x-2 whitespace-nowrap">
                 <button
                   class="btn-primary"
                   type="button"
                   :aria-label="`${row.username} 重设密码`"
                   @click="openReset(row)"
                 >重设密码</button>
+                <button
+                  v-if="!isSelf(row)"
+                  class="btn-ghost"
+                  type="button"
+                  :data-testid="`user-enabled-${row.username}`"
+                  :aria-label="`${row.username} ${row.enabled ? '停用' : '启用'}`"
+                  :disabled="togglingId === row.id"
+                  @click="setEnabled(row, !row.enabled)"
+                >{{ row.enabled ? '停用' : '启用' }}</button>
               </td>
             </tr>
             <tr v-if="resetUsername === row.username">
@@ -229,3 +277,11 @@ onMounted(load);
     </section>
   </div>
 </template>
+
+<style scoped>
+tr[data-highlight='true'] {
+  background: #fff7e6;
+  outline: 2px solid #f59e0b;
+  outline-offset: -2px;
+}
+</style>
