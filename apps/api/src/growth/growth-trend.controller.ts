@@ -17,6 +17,15 @@ export class GrowthTrendsController {
     return this.trends.hourlySeries(user, { hours, shedCode, cameraCode });
   }
 
+  @Get('live')
+  live(
+    @CurrentUser() user: AuthUser,
+    @Query('shedCode') shedCode?: string,
+    @Query('cameraCode') cameraCode?: string,
+  ) {
+    return this.trends.liveStats(user, { shedCode, cameraCode });
+  }
+
   @Get('environment')
   environment(
     @CurrentUser() user: AuthUser,

@@ -1413,6 +1413,169 @@ describe('hour buckets and disease peaks', () => {
   });
 });
 
+describe('shed live stats', () => {
+  const admin: AuthUser = {
+    id: 'admin',
+    username: 'admin',
+    displayName: 'admin',
+    role: 'super_admin',
+    shedCodes: [],
+  };
+
+  it('sums each camera latest for today and computes pending after the sum', async () => {
+    const now = new Date('2026-10-15T02:00:00.000Z');
+    const hours = memoryMetricBuckets();
+    const daysRepo = memoryMetricBuckets();
+    const records = memoryRecords([]);
+    const scan = jest.spyOn(records, 'createQueryBuilder');
+    const service = new GrowthTrendService(
+      records as never,
+      hours as never,
+      daysRepo as never,
+    );
+    await service.applyRecognition({
+      shedCode: 'S01',
+      cameraCode: 'CAM-SLS-01',
+      recognizedAt: now,
+      mushroomCount: 20,
+      avgCapDiameter: 4.2,
+      matureCount: 8,
+      diseaseCount: 2,
+    });
+    await service.applyRecognition({
+      shedCode: 'S01',
+      cameraCode: 'CAM-SLS-02',
+      recognizedAt: now,
+      mushroomCount: 5,
+      avgCapDiameter: 4.2,
+      matureCount: 6,
+      diseaseCount: 1,
+    });
+    await service.applyRecognition({
+      shedCode: 'S01',
+      cameraCode: 'CAM-YDAY',
+      recognizedAt: new Date(now.getTime() - 86_400_000),
+      mushroomCount: 99,
+      avgCapDiameter: 4.2,
+      matureCount: 99,
+      diseaseCount: 99,
+    });
+    await service.applyRecognition({
+      shedCode: 'S01',
+      cameraCode: 'CAM-ZERO',
+      recognizedAt: now,
+      mushroomCount: 0,
+      avgCapDiameter: 4.2,
+      matureCount: 3,
+      diseaseCount: 0,
+    });
+    const camera = await service.liveStats(
+      admin,
+      { shedCode: 'S01', cameraCode: 'CAM-SLS-01' },
+      now,
+    );
+    expect(scan).not.toHaveBeenCalled();
+    expect(camera).toMatchObject({
+      shedCode: 'S01',
+      cameraCode: 'CAM-SLS-01',
+      available: true,
+      mushroomCount: 20,
+      matureCount: 8,
+      pendingMatureCount: 12,
+      diseaseCount: 2,
+      basis: 'latest_per_camera',
+    });
+    const shed = await service.liveStats(admin, { shedCode: 'S01' }, now);
+    expect(shed.cameraCode).toBeNull();
+    expect(shed.mushroomCount).toBe(25);
+    expect(shed.matureCount).toBe(17);
+    expect(shed.diseaseCount).toBe(3);
+    expect(shed.pendingMatureCount).toBe(8);
+    const zero = await service.liveStats(
+      admin,
+      { shedCode: 'S01', cameraCode: 'CAM-ZERO' },
+      now,
+    );
+    expect(zero.mushroomCount).toBe(0);
+    expect(zero.pendingMatureCount).toBe(0);
+    const none = await service.liveStats(
+      admin,
+      { shedCode: 'S01', cameraCode: 'CAM-SLS-NONE' },
+      now,
+    );
+    expect(none.available).toBe(false);
+    expect(none.mushroomCount).toBeNull();
+    expect(none.pendingMatureCount).toBeNull();
+    const emptyShed = await service.liveStats(admin, { shedCode: 'S09' }, now);
+    expect(emptyShed.available).toBe(false);
+    const viewer: AuthUser = {
+      id: 'viewer',
+      username: 'viewer',
+      displayName: 'viewer',
+      role: 'viewer',
+      shedCodes: ['S01'],
+    };
+    await expect(
+      service.liveStats(viewer, { shedCode: 'S02' }, now),
+    ).rejects.toThrow('无权访问该棚区');
+    await expect(service.liveStats(admin, {}, now)).rejects.toThrow(
+      '请选择棚区',
+    );
+  });
+
+  it('serves live stats over HTTP without scanning recognition rows', async () => {
+    const today = todayShanghai();
+    const dayStart = shanghaiDayRange(today).start;
+    const hours = memoryMetricBuckets();
+    const days = memoryMetricBuckets();
+    const metrics = [
+      [METRIC_MUSHROOM_COUNT, 20],
+      [METRIC_MATURE_COUNT, 8],
+      [METRIC_DISEASE_COUNT, 2],
+    ] as const;
+    for (const [metric, value] of metrics) {
+      seedMetric(days, dayStart, 'S01', 'CAM-SLS-01', metric, value);
+      seedMetric(days, dayStart, 'S01', '', metric, value);
+    }
+    const records = memoryRecords([]);
+    const scan = jest.spyOn(records, 'createQueryBuilder');
+    const moduleRef = await Test.createTestingModule({
+      controllers: [GrowthTrendsController],
+      providers: [
+        GrowthTrendService,
+        { provide: getRepositoryToken(RecognitionRecord), useValue: records },
+        { provide: getRepositoryToken(MetricBucketHour), useValue: hours },
+        { provide: getRepositoryToken(MetricBucketDay), useValue: days },
+      ],
+    }).compile();
+    const http = moduleRef.createNestApplication();
+    http.use(assignUser);
+    configureApp(http);
+    await http.init();
+    const live = await request(http.getHttpServer())
+      .get('/api/v1/growth-trends/live?shedCode=S01&cameraCode=CAM-SLS-01')
+      .set('x-test-role', 'super_admin');
+    expect(live.status).toBe(200);
+    expect(live.body).toMatchObject({
+      available: true,
+      mushroomCount: 20,
+      matureCount: 8,
+      pendingMatureCount: 12,
+      diseaseCount: 2,
+    });
+    const denied = await request(http.getHttpServer())
+      .get('/api/v1/growth-trends/live?shedCode=S02')
+      .set('x-test-role', 'viewer');
+    expect(denied.status).toBe(403);
+    const missing = await request(http.getHttpServer())
+      .get('/api/v1/growth-trends/live')
+      .set('x-test-role', 'super_admin');
+    expect(missing.status).toBe(400);
+    expect(scan).not.toHaveBeenCalled();
+    await http.close();
+  });
+});
+
 describe('growth trend write path', () => {
   it('refreshes after a mushroom correction and skips a mature-only correction', async () => {
     const refreshDay = jest.fn().mockResolvedValue([]);
