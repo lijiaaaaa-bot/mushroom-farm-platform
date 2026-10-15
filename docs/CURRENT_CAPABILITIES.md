@@ -324,7 +324,7 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 用户接口 `GET/POST /api/v1/users` 仅超管。`POST` 在用户名已存在且未带 `resetPassword: true` 时返回 409「用户名已存在」。带上该字段时超管重设密码、显示名、角色和棚号，并重新启用，不另建一行。响应和列表都不含密码。
 
-侧栏按 `apps/web/src/admin-nav.json` 收菜单。未写 `roles` 的项，四个角色都能看见。`/audit`（审计）只给超管和生产管理员；棚区负责人和查看的侧栏没有这一项，直接打开地址会回到总览。`/users`（用户）只给超管，页面列出用户名、显示名、角色、棚区和启用状态；其他角色的侧栏没有这一项，直接打开也回到总览。`GET /api/v1/audit-logs` 与 `GET /api/v1/login-logs` 仍仅超管与生产管理员，查看得到 403。棚区负责人与查看的 `GET /api/v1/sheds` 只有账号上的棚号。
+侧栏按 `apps/web/src/admin-nav.json` 收菜单。未写 `roles` 的项，四个角色都能看见。`/audit`（审计）只给超管和生产管理员；棚区负责人和查看的侧栏没有这一项，直接打开地址会回到总览。`/users`（用户）只给超管。页面列出用户名、显示名、角色、棚区和启用状态，上方可新建（用户名、密码、显示名、角色、棚号），已有行可「重设密码」。新建不带 `resetPassword`；重设带 `resetPassword: true`。新建或重设后列表重新读取，不显示密码。其他角色的侧栏没有这一项，直接打开也回到总览。`GET /api/v1/audit-logs` 与 `GET /api/v1/login-logs` 仍仅超管与生产管理员，查看得到 403。棚区负责人与查看的 `GET /api/v1/sheds` 只有账号上的棚号。
 
 审计页 `/audit`：上方是登录日志，下方是操作审计。登录日志按用户名和起止时间查询，请求已有的 `GET /api/v1/login-logs` 参数 `username`、`from`、`to`，每页 100 条。用户名是整名匹配。时间按登录时间比较，含两端，可以只传一端。地址栏同步，空着不传。筛着时写出「用户 …」「时间 … 至 …」和「共 N 条」。没有命中时写「没有符合条件的登录日志。」。没有登录日志、也没在筛时写「暂无登录日志。」。开始晚于结束或时间填不开时写「时间筛选无效」，不请求登录日志，不保留上一张登录表。操作审计仍读 `GET /api/v1/audit-logs`，这一节没有用户名和时间参数。
 
@@ -334,7 +334,9 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 `make demo-audit-login-log` 留下用户 `login-log-fail` 的失败登录（当前时刻前 3 小时）和 `admin` 的成功登录（当前时刻），User-Agent 是 `audit-login-log-demo/1`。同一用户名、结果和 User-Agent 已在时只改时间。宽窗口（前 4 小时至后 1 分钟）两行都在，窄窗口（前 30 分钟）只有成功、没有 `login-log-fail`，窄窗口条数更少。只查 `login-log-fail` 是 1 条失败；再套窄窗口是 0 条，页面写「没有符合条件的登录日志。」。下方操作审计仍有「登录失败」（明细 `login-log-fail`）和 `admin` 的「登录成功」。不发识别，不发心跳，不改告警，不改这两份接口的参数。不改 `make demo-audit-log`。步骤见 [`DEMO_AUDIT_LOGIN_LOG.md`](DEMO_AUDIT_LOGIN_LOG.md)。
 
-`make demo-user-mgmt` 用同一对账号，写入查看账号的方式与 `make demo-rbac` 相同。超管的 `GET /api/v1/users` 至少有 `admin`（角色超管）和 `viewer`（角色查看），列表不含密码。`/users` 的角色列用 `ROLE_LABEL` 写出这两字。查看该接口是 403，侧栏没有「用户」，打开 `/users` 回到总览。页面没有新建或重设密码的表单。不发识别，不发心跳，不改告警。步骤见 [`DEMO_USER_MGMT.md`](DEMO_USER_MGMT.md)。
+`make demo-user-mgmt` 用同一对账号，写入查看账号的方式与 `make demo-rbac` 相同。超管的 `GET /api/v1/users` 至少有 `admin`（角色超管）和 `viewer`（角色查看），列表不含密码。`/users` 的角色列用 `ROLE_LABEL` 写出这两字。查看该接口是 403，侧栏没有「用户」，打开 `/users` 回到总览。本命令只核对列表。不发识别，不发心跳，不改告警。步骤见 [`DEMO_USER_MGMT.md`](DEMO_USER_MGMT.md)。
+
+`make demo-user-create-reset` 用 `admin` / `Admin@123456` 登录，新建 `user-create-demo` / `Create@123456`（显示名「新建演示」，角色查看，棚号 S01）。用户名已存在则不改这一行。`GET /api/v1/users` 含这一行，没有密码。再对 `user-reset-demo` 带 `resetPassword: true`，密码从 `ResetOld@123456` 写成 `ResetNew@123456`（显示名「重设演示」，棚号 S02）。重设后同一行仍在。新密码能登录，旧密码是 401。不改 `viewer` 的密码。不发识别，不发心跳，不改告警。步骤见 [`DEMO_USER_CREATE_RESET.md`](DEMO_USER_CREATE_RESET.md)。
 
 ## 存储
 
@@ -389,7 +391,7 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 | 两套估计的空窗 | 不满 30 个上海自然日时，线性估计不给未来数字。日桶不足两天时，增速估计不给未来数字 |
 | 产量单位 | 两套估计和采摘清单上的数字是成熟个数，不是公斤 |
 | 快捷环境表 | `env.xlsx` 取识别记录上的环境字段。环境监控预览才读环境日桶 |
-| 用户页 | 侧栏只给超管，页面只列出账号。新建和重设密码走 `POST /api/v1/users`，页面上没有表单 |
+| 非超管建用户 | `/users` 的新建和重设只给超管。生产管理员、棚区负责人、查看调用 `POST /api/v1/users` 是 403 |
 | 批次阶段 | 人工记录。自动切阶段没有业主确认的条件，不实现 |
 
 ## 证据指针

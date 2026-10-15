@@ -2,7 +2,8 @@
 /**
  * 超管打开 /users 至少看到两条账号，角色列可读（超管、查看）。
  * 查看打开 /users 进不去：侧栏没有「用户」，接口 403，路由回到总览。
- * 查看账号的写入沿用 demo-rbac 的 ensureViewer。不发识别，不发心跳，不改告警，不加表单。
+ * 查看账号的写入沿用 demo-rbac 的 ensureViewer。不发识别，不发心跳，不改告警。
+ * 本命令只核对列表，不提交新建或重设。
  */
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -66,8 +67,11 @@ export function assertUsersPageListsRoles(source) {
   if (!text.includes('<th>角色</th>') || !text.includes('ROLE_LABEL')) {
     throw new Error('用户页应有角色列，并用 ROLE_LABEL 写出超管、查看。');
   }
-  if (/<form\b|type=["']password["']|新建用户|重置密码/.test(text)) {
-    throw new Error('用户页只列出账号，不应出现新建或重设密码表单。');
+  if (!text.includes('data-testid="user-create-form"') || !text.includes('新建用户')) {
+    throw new Error('用户页应有新建用户表单。');
+  }
+  if (!text.includes('重设密码') || !text.includes('resetPassword: true')) {
+    throw new Error('用户页应有重设密码入口。');
   }
 }
 
@@ -189,7 +193,7 @@ function usage() {
 用种子超管登录，把查看账号写成 ${VIEWER_USERNAME} / ${VIEWER_PASSWORD}（与 make demo-rbac 同一写入）。
 再核对用户列表至少有 ${ADMIN_USERNAME}（${ADMIN_ROLE_LABEL}）和 ${VIEWER_USERNAME}（${VIEWER_ROLE_LABEL}）。
 查看读用户列表是 403，侧栏没有「用户」，打开 /users 回到总览。
-不发识别，不发心跳，不改告警，页面不加表单。
+不发识别，不发心跳，不改告警。本命令不提交新建或重设。
 步骤见 docs/DEMO_USER_MGMT.md。`;
 }
 
