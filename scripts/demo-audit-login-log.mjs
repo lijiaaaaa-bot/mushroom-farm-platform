@@ -195,7 +195,7 @@ function isSuccessAudit(row) {
 async function placeLoginTime(useDb, { id, createdAt, username, result, userAgent }) {
   try {
     await useDb(async (db) => {
-      const updated = await db.query('UPDATE login_logs SET created_at = $1 WHERE id = $2', [
+      const updated = await db.query('UPDATE login_logs SET created_at = $1 WHERE id = $2::uuid', [
         createdAt.toISOString(),
         id,
       ]);
@@ -203,7 +203,7 @@ async function placeLoginTime(useDb, { id, createdAt, username, result, userAgen
         throw new Error(`没有改到登录日志 ${id}`);
       }
       await db.query(
-        'DELETE FROM login_logs WHERE username = $1 AND user_agent = $2 AND result = $3 AND id <> $4',
+        'DELETE FROM login_logs WHERE username = $1 AND user_agent = $2 AND result = $3 AND id <> $4::uuid',
         [username, userAgent, result, id],
       );
     });
