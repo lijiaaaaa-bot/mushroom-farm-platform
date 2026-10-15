@@ -269,7 +269,7 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 ## 报表
 
-页面 `/reports`。登录后可用，按棚隔离。没有登录后的浏览器端到端测试；页面行为由 vitest 覆盖。
+页面 `/reports`。登录后可用，按棚隔离。地址带 `kind` 时自己出预览，并写出「棚区 … · 共 N 条」。有行时「打印」可点；没有行时按钮不可点。组件测试覆盖筛选、预览、导出文案和打印。登录后的宽窄对照见 [`DEMO_REPORT_BROWSE.md`](DEMO_REPORT_BROWSE.md)。仓库里没有无头浏览器自动完成登录并点选的测试。
 
 预览与按筛选导出读日桶（生长、产量、病害、环境）或当前设备/告警表。接口：
 
@@ -293,9 +293,11 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 `make demo-report-xlsx` 读取 `recognition.demo-one.json`，把本次请求改成棚区 `S02`、摄像头 `CAM-RPT-01`、蘑菇数量 17、成熟数量 9，只 POST 一次识别。样例文件里的 `CAM-DEMO-01` 不改。然后核对上海当天的园区生长预览：`shedCode=S02` 时至少一行且没有其他棚，蘑菇数量至少 17，成熟数量至少 9；不带棚区时行数不少于这一份。`GET /api/v1/reports/export.xlsx` 用同一组 S02 参数返回 xlsx，工作表是「园区生长」，里面有 S02。登录后打开终端打印的 `/reports?kind=growth&...&shedCode=S02`。不确认、不关闭告警。步骤见 [`DEMO_REPORT_XLSX.md`](DEMO_REPORT_XLSX.md)。
 
+`make demo-report-browse` 读取同一份样例，写两次，样例文件不改。`CAM-RB-S01`（棚区 S01，蘑菇数量 11，成熟数量 4）和 `CAM-RB-S02`（棚区 S02，蘑菇数量 17，成熟数量 9）。同一上海日再跑不另建一行。上海当天园区生长：不带棚区时有 S01 和 S02，行数更多；`shedCode=S02` 只有 S02，没有 S01。页面写出「棚区 全部 · 共 N 条」或「棚区 S02 · 共 M 条」，N 大于 M。`GET /api/v1/reports/export.xlsx` 用 S02 参数返回 xlsx，工作表是「园区生长」，里面有 S02，没有 S01。登录后打开终端打印的两个 `/reports?kind=growth&...`。点「导出」后写「已开始下载 growth.xlsx」。有行时点「打印」调用 `window.print()`。不确认、不关闭告警。不改 `make demo-report-xlsx`。不改接入观测。步骤见 [`DEMO_REPORT_BROWSE.md`](DEMO_REPORT_BROWSE.md)。
+
 告警闭环台账预览表里的等级、状态、关闭原因用告警页同一套中文（一般、待确认、已关闭、正常关闭）。`make demo-alert-ledger` 在棚区 `S01` 留下或沿用「台账待确认告警」（`CAM-ALED-OPEN`，待确认）和「台账已关闭告警」（`CAM-ALED-CLOSED`，已关闭）。已关闭这条没有时先 `POST /api/v1/alerts`，再 `POST /api/v1/alerts/:id/close`，备注「台账关闭」，关闭原因 `resolved`。预览窗口盖住两条的创建日。不带状态时两行都在；`status=open` 只有待确认那条，行数更少；`status=closed` 只有已关闭那条，行数更少。`export.xlsx` 用已关闭参数，工作表是「告警闭环」，里面有已关闭那条，没有待确认那条。`alerts.xlsx` 工作表是「告警」，里面也有已关闭那条。不发识别。不改 `make demo-report-xlsx`。步骤见 [`DEMO_ALERT_LEDGER.md`](DEMO_ALERT_LEDGER.md)。
 
-浏览器打印：预览区出现后，按钮调用 `window.print()`，打印当前页。没有单独的打印样式表。
+浏览器打印：预览有行时「打印」可点，调用 `window.print()`，打印当前页。没有行时按钮不可点。没有单独的打印样式表。
 
 页面上另有五个快捷下载，和上面的预览不是同一条读路径：
 
@@ -397,7 +399,7 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 | 图像识别 | 不接收画面做识别，不训练模型。只收边缘侧已经算好的计数字段和可选抓拍 |
 | 客户物联网链路 | 不替客户管传感器接入、网关和端侧推理。这里只有 HTTP / MQTT 收结果 |
 | LLM 产品摘要 | 没有面向用户的模型摘要、问答或自动周报 |
-| 报表浏览器走查 | `/reports` 有组件测试。没有登录后用浏览器走完筛选、导出、打印的端到端测试 |
+| 报表浏览器走查 | 登录后打开 `make demo-report-browse` 打印的两个预览地址，可以看全部棚与棚区 S02 的行数、点「导出」、点「打印」。仓库里没有无头浏览器自动完成登录并点选的测试 |
 | 演示规模 | 种子是 S01、S02、S03 三棚。`facts.json` 记载约 30 个棚区、110 路摄像头。当前库内数据和大屏样张不是该规模 |
 | Timescale 生产形态 | 默认仍是普通 Postgres。可选镜像与 `009` 的 NOTICE 没有把明细表改成 hypertable |
 | 对象生命周期 | 云归档默认未下发。本地热 MinIO 无远端存储类时，配置下发会失败。自建冷盘复制默认不执行 |
