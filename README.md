@@ -50,6 +50,7 @@ make web      # http://127.0.0.1:43123
 病害记录可查可见：[`docs/DEMO_DISEASE_LIST.md`](docs/DEMO_DISEASE_LIST.md)（`make demo-disease-list`）。  
 病害按等级筛选可查可见：[`docs/DEMO_DISEASE_GRADE_FILTER.md`](docs/DEMO_DISEASE_GRADE_FILTER.md)（`make demo-disease-grade-filter`）。  
 病害详情同一屏看到该棚当时的温度、湿度、CO₂ 和基质含水率：[`docs/DEMO_DISEASE_ENV_DETAIL.md`](docs/DEMO_DISEASE_ENV_DETAIL.md)（`make demo-disease-env-detail`）。  
+病害高发时段和棚区可查可见：[`docs/DEMO_DISEASE_HOTSPOT.md`](docs/DEMO_DISEASE_HOTSPOT.md)（`make demo-disease-hotspot`）。  
 采摘记录可查可见：[`docs/DEMO_HARVEST_LIST.md`](docs/DEMO_HARVEST_LIST.md)（`make demo-harvest-list`）。  
 按棚区和时间窗筛选采摘记录：[`docs/DEMO_HARVEST_FILTER.md`](docs/DEMO_HARVEST_FILTER.md)（`make demo-harvest-filter`）。  
 采摘任务可查可排：[`docs/DEMO_HARVEST_TASK.md`](docs/DEMO_HARVEST_TASK.md)（`make demo-harvest-task`）。  
