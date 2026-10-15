@@ -107,6 +107,17 @@ export interface DiseaseTrendSeries {
   }>;
 }
 
+export interface ShedLiveStats {
+  shedCode: string;
+  cameraCode: string | null;
+  available: boolean;
+  mushroomCount: number | null;
+  matureCount: number | null;
+  pendingMatureCount: number | null;
+  diseaseCount: number | null;
+  basis: 'latest_per_camera';
+}
+
 export interface GrowthTrendSeries {
   days: 7 | 30;
   grain: TrendGrain;
@@ -456,6 +467,66 @@ export class GrowthTrendService {
     return {
       ...empty,
       sheds: groupDisease(filterCamera(rows, cameraCode)),
+    };
+  }
+
+  /**
+   * 单棚当日实时。读 metric_buckets_day 当日最新的蘑菇、成熟、病害。
+   * 指定摄像头用这一台；不指定则把各摄像头最新相加，待成熟在相加之后再算。
+   * 不扫识别明细。
+   */
+  async liveStats(
+    user: AuthUser,
+    query: { shedCode?: string; cameraCode?: string },
+    now = new Date(),
+  ): Promise<ShedLiveStats> {
+    const shedCode = blank(query.shedCode);
+    if (!shedCode) throw new BadRequestException('请选择棚区');
+    const cameraCode = blank(query.cameraCode);
+    const scope = ShedScope.fromUser(user);
+    scope.assert(shedCode);
+    const empty: ShedLiveStats = {
+      shedCode,
+      cameraCode: cameraCode ?? null,
+      available: false,
+      mushroomCount: null,
+      matureCount: null,
+      pendingMatureCount: null,
+      diseaseCount: null,
+      basis: 'latest_per_camera',
+    };
+    if (scope.codes && scope.codes.length === 0) return empty;
+    const day = todayShanghai(now);
+    const { start, end } = shanghaiDayRange(day);
+    const rows = await this.loadWindow(
+      this.dayBuckets,
+      start,
+      end,
+      [METRIC_MUSHROOM_COUNT, METRIC_MATURE_COUNT, METRIC_DISEASE_COUNT],
+      scope,
+      shedCode,
+    );
+    const subject = rows.filter((row) =>
+      cameraCode ? row.cameraCode === cameraCode : row.cameraCode !== '',
+    );
+    const valued = subject.filter((row) => row.value !== null);
+    if (!valued.length) return empty;
+    const sum = (metric: string) =>
+      Math.round(
+        valued
+          .filter((row) => row.metric === metric)
+          .reduce((total, row) => total + (row.value ?? 0), 0),
+      );
+    const mushroomCount = sum(METRIC_MUSHROOM_COUNT);
+    const matureCount = sum(METRIC_MATURE_COUNT);
+    const diseaseCount = sum(METRIC_DISEASE_COUNT);
+    return {
+      ...empty,
+      available: true,
+      mushroomCount,
+      matureCount,
+      pendingMatureCount: pendingMatureCount(mushroomCount, matureCount),
+      diseaseCount,
     };
   }
 
@@ -959,6 +1030,12 @@ function parseWindow(days?: string): 7 | 30 {
   if (days === '7') return 7;
   if (days === '30') return 30;
   throw new BadRequestException('天数只支持 7 或 30');
+}
+
+export function pendingMatureCount(mushroom: number, mature: number): number {
+  if (!Number.isFinite(mushroom) || mushroom <= 0) return 0;
+  const pending = mushroom - mature;
+  return pending > 0 ? pending : 0;
 }
 
 function blank(value?: string): string | undefined {

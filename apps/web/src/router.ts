@@ -19,6 +19,7 @@ import ShedEnv24hView from './views/ShedEnv24hView.vue';
 import GrowthCompareView from './views/GrowthCompareView.vue';
 import GrowthTrendsView from './views/GrowthTrendsView.vue';
 import ShedGrowthDeltaView from './views/ShedGrowthDeltaView.vue';
+import ShedLiveStatsView from './views/ShedLiveStatsView.vue';
 import HarvestDetailView from './views/HarvestDetailView.vue';
 import HarvestView from './views/HarvestView.vue';
 import IngestObservabilityView from './views/IngestObservabilityView.vue';
@@ -80,6 +81,7 @@ const router = createRouter({
         { path: 'harvest', component: HarvestView, meta: { title: '采摘' } },
         { path: 'harvest/:id', component: HarvestDetailView, meta: { title: '采摘详情' } },
         { path: 'growth-trends', component: GrowthTrendsView, meta: { title: '生长趋势' } },
+        { path: 'shed-live-stats', component: ShedLiveStatsView, meta: { title: '单棚实时' } },
         { path: 'shed-growth-delta', component: ShedGrowthDeltaView, meta: { title: '单棚生长增量' } },
         { path: 'growth-compare', component: GrowthCompareView, meta: { title: '棚间对比' } },
         { path: 'batches', component: BatchesView, meta: { title: '出菇批次' } },
