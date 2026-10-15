@@ -22,7 +22,7 @@
 | `make smoke` | 边缘模拟向 HTTP / MQTT 发黄金报文，证据写入 `evidence/ingest-last-run/` |
 | `make gates` | 文档门禁。退出码 0 才算文稿过关 |
 | `make backup` | `pg_dump` 写出 `backups/mushroom-<时间>.sql`。Redis 与 MinIO 不在该文件中 |
-| `make object-tier` | 热冷复制。未设置 `MINIO_APPLY_TIER=1` 时只打印计划 |
+| `make object-tier` | 热冷复制。未设置 `MINIO_APPLY_TIER=1` 时只打印计划，对象键写「未列出」 |
 
 开发种子账号：`admin` / `Admin@123456`（角色 `super_admin`）。接入请求头：`X-Ingest-Token`，默认值 `dev-ingest-token`（环境变量 `INGEST_TOKEN`）。未带令牌的接入请求会被拒绝。
 
@@ -360,7 +360,9 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 | 登录日志 | 表 `login_logs`（迁移 `012_login_logs.sql`）。成功与失败都写：用户、结果、时间、IP、User-Agent。`GET /api/v1/login-logs` |
 | Postgres 备份 | `make backup` → `backups/mushroom-<时间>.sql`，并写入 `postgres_backup_runs`。超管在 `/backup` 看最近成功时间。Redis 不备份。MinIO 字节不在该文件中 |
 
-热冷复制脚本 `node scripts/object-tier.mjs`（`make object-tier`）。未设置 `MINIO_APPLY_TIER=1` 时只打印计划，退出码 0，不连接存储。设置之后必须同时有热端和冷端端点与密钥：把超过热天数的 `snapshots/` 复制到冷桶，读回字节一致才从热端删除。读回不一致或不可达时退出码非 0，当前对象留在热端。此脚本不调用 `setBucketLifecycle`。
+热冷复制脚本 `node scripts/object-tier.mjs`（`make object-tier`）。未设置 `MINIO_APPLY_TIER=1` 时只打印计划，退出码 0，不连接存储，并写 `热端对象键: 未列出` 与 `冷端对象键: 未列出`。设置之后必须同时有热端和冷端端点与密钥：把超过热天数的 `snapshots/` 复制到冷桶，读回字节一致才从热端删除。每个转走的键打印三行：`热端（前）`、`冷端（后）`、`热端（后）: 无 <键>`。读回不一致时没有最后一行，当前对象留在热端，退出码非 0。不可达时同样退出码非 0。此脚本不调用 `setBucketLifecycle`。
+
+`make demo-object-tier` 不连接 MinIO。先打印上述计划（热天数 90，对象键未列出），再用夹具复制：`snapshots/tier-old.jpg` 转到冷端后热端没有，`snapshots/tier-new.jpg` 与 `other/tier-leave.jpg` 仍留热端。步骤见 [`DEMO_OBJECT_TIER.md`](DEMO_OBJECT_TIER.md)。
 
 云归档脚本仍是 `node scripts/object-lifecycle.mjs`，计划在 `infra/object-lifecycle.json`：前缀 `snapshots/`，热 90 天（可用 `OBJECT_HOT_DAYS` 覆盖）后转到 `GLACIER`。
 

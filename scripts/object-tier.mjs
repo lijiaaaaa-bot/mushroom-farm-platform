@@ -111,14 +111,17 @@ export async function runObjectTier({
   log('本命令不调用 setBucketLifecycle，也不声明云存储类规则已经生效。');
 
   if (env.MINIO_APPLY_TIER !== '1') {
+    log('热端对象键: 未列出');
+    log('冷端对象键: 未列出');
     log(
       '热冷复制未执行。要执行请设置 MINIO_APPLY_TIER=1，以及热端 MINIO_ENDPOINT、MINIO_ACCESS_KEY、MINIO_SECRET_KEY 和冷端 MINIO_COLD_ENDPOINT、MINIO_COLD_ACCESS_KEY、MINIO_COLD_SECRET_KEY。',
     );
-    return { applied: false, exitCode: 0, moved: 0 };
+    log('执行后每个转走的对象会另打印三行：热端（前）、冷端（后）、热端（后）。');
+    return { applied: false, exitCode: 0, moved: 0, movedKeys: [] };
   }
   if (!Number.isInteger(hotDays) || hotDays < 1) {
     error(`OBJECT_HOT_DAYS 必须是正整数。未改对象。当前值：${env.OBJECT_HOT_DAYS}`);
-    return { applied: false, exitCode: 1, moved: 0 };
+    return { applied: false, exitCode: 1, moved: 0, movedKeys: [] };
   }
 
   const hotEndpoint = endpointOf(env, 'MINIO_ENDPOINT');
@@ -129,19 +132,20 @@ export async function runObjectTier({
   const coldSecret = endpointOf(env, 'MINIO_COLD_SECRET_KEY');
   if (!hotEndpoint || !hotKey || !hotSecret) {
     error('已要求执行热冷复制，但缺少热端 MINIO_ENDPOINT、MINIO_ACCESS_KEY 或 MINIO_SECRET_KEY。未改对象。');
-    return { applied: false, exitCode: 1, moved: 0 };
+    return { applied: false, exitCode: 1, moved: 0, movedKeys: [] };
   }
   if (!coldEndpoint || !coldKey || !coldSecret) {
     error(
       '已要求执行热冷复制，但缺少冷端 MINIO_COLD_ENDPOINT、MINIO_COLD_ACCESS_KEY 或 MINIO_COLD_SECRET_KEY。未改对象。',
     );
-    return { applied: false, exitCode: 1, moved: 0 };
+    return { applied: false, exitCode: 1, moved: 0, movedKeys: [] };
   }
 
   const hotBucket = endpointOf(env, 'MINIO_BUCKET') || source.bucket;
   const coldBucket = endpointOf(env, 'MINIO_COLD_BUCKET') || hotBucket;
   const cutoff = now.getTime() - hotDays * 24 * 60 * 60 * 1000;
   let moved = 0;
+  const movedKeys = [];
   try {
     const hot = await clientFactory('hot', {
       endpoint: hotEndpoint,
@@ -167,22 +171,26 @@ export async function runObjectTier({
         continue;
       }
       if (modified >= cutoff) continue;
+      log(`热端（前）: ${name}`);
       const bytes = await readBody(hot, hotBucket, name);
       await cold.putObject(coldBucket, name, bytes);
       const back = await readBody(cold, coldBucket, name);
       if (!sameBytes(bytes, back)) {
         error(`冷端读回与热端不一致：${name}。热端对象保留。`);
-        return { applied: false, exitCode: 1, moved };
+        return { applied: false, exitCode: 1, moved, movedKeys };
       }
       await hot.removeObject(hotBucket, name);
+      log(`冷端（后）: ${name}`);
+      log(`热端（后）: 无 ${name}`);
       moved += 1;
+      movedKeys.push(name);
     }
     if (skipped) {
       error(`跳过 ${skipped} 个没有修改时间的对象，未从热端删除。`);
     }
   } catch (cause) {
     error(`${failureText(cause)} 已转移 ${moved} 个；当前对象留在热端。`);
-    return { applied: false, exitCode: 1, moved };
+    return { applied: false, exitCode: 1, moved, movedKeys };
   }
 
   log(
@@ -190,7 +198,7 @@ export async function runObjectTier({
       ? `热冷复制已执行：从热桶 ${hotBucket} 转移 ${moved} 个对象到冷桶 ${coldBucket}，读回一致后已从热端删除。`
       : `热冷复制已执行：没有超过 ${hotDays} 天的 ${prefix} 对象。`,
   );
-  return { applied: true, exitCode: 0, moved };
+  return { applied: true, exitCode: 0, moved, movedKeys };
 }
 
 const invokedDirectly =

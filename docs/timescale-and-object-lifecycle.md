@@ -23,7 +23,7 @@ make migrate
 
 抓拍字节进 MinIO 或云 OSS，PostgreSQL 只存对象键和 URL。热数据按 90 天对齐补传窗口。更早的对象有两条路，都默认不执行：
 
-1. **自建热冷盘**：热 MinIO 用 `docker-compose.yml` 的卷 `minio-hot`（可用 `MINIO_HOT_DATA` 指到 SSD）。冷 MinIO 用可选文件 `docker-compose.minio-cold.yml`（卷 `minio-cold`，端口 9002）。`node scripts/object-tier.mjs` 在未设置 `MINIO_APPLY_TIER=1` 时退出码 0，输出含「未执行」，不连接存储，也不调用 `setBucketLifecycle`。设置该变量且冷热端点与密钥齐全时，把前缀 `snapshots/` 上超过热天数的对象复制到冷桶，读回字节一致后才从热端删除；读回不一致或不可达则退出码非 0，当前对象留在热端。本地单 MinIO 演示不需要冷端。
+1. **自建热冷盘**：热 MinIO 用 `docker-compose.yml` 的卷 `minio-hot`（可用 `MINIO_HOT_DATA` 指到 SSD）。冷 MinIO 用可选文件 `docker-compose.minio-cold.yml`（卷 `minio-cold`，端口 9002）。`node scripts/object-tier.mjs` 在未设置 `MINIO_APPLY_TIER=1` 时退出码 0，输出含「未执行」和「热端对象键: 未列出」「冷端对象键: 未列出」，不连接存储，也不调用 `setBucketLifecycle`。设置该变量且冷热端点与密钥齐全时，把前缀 `snapshots/` 上超过热天数的对象复制到冷桶，读回字节一致后才从热端删除，并打印该键的「热端（前）」「冷端（后）」「热端（后）」；读回不一致或不可达则退出码非 0，当前对象留在热端。本地单 MinIO 演示不需要冷端。不连接存储的前后对照是 `make demo-object-tier`，步骤见 [`DEMO_OBJECT_TIER.md`](DEMO_OBJECT_TIER.md)。
 2. **云归档存储类**：计划文件 `infra/object-lifecycle.json`（`hotDays` 可用 `OBJECT_HOT_DAYS` 覆盖），目标存储类 `GLACIER`。
 
 ```bash
