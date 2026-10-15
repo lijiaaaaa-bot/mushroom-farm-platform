@@ -509,6 +509,24 @@ describe('growth trend API', () => {
     ).toEqual(expect.objectContaining({ mushroomCount: 12, matureCount: 5 }));
   });
 
+  it('returns two sheds with different mushroom counts when shedCode is omitted', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/api/v1/growth-trends')
+      .set('x-test-role', 'super_admin');
+
+    expect(response.status).toBe(200);
+    const todayCount = (code: string) => {
+      const shed = response.body.sheds.find(
+        (item: { shedCode: string }) => item.shedCode === code,
+      );
+      return shed?.points.find((point: { day: string }) => point.day === today)
+        ?.mushroomCount;
+    };
+    expect(todayCount('S01')).toBe(20);
+    expect(todayCount('S02')).toBe(50);
+    expect(todayCount('S01')).not.toBe(todayCount('S02'));
+  });
+
   it('includes a 20-day-old point in the 30-day window and omits older days', async () => {
     const response = await request(app.getHttpServer())
       .get('/api/v1/growth-trends?days=30&shedCode=S01')

@@ -1,0 +1,30 @@
+{
+  "expect": "ok",
+  "temperature": 22.5,
+  "humidity": 88,
+  "co2": 900,
+  "substrateMoisture": 70,
+  "diseaseCount": 0,
+  "diseaseLevel": 0,
+  "snapshotBase64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAAAP/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8Af//Z",
+  "sheds": [
+    {
+      "shedCode": "S01",
+      "cameraCode": "CAM-SG-S01",
+      "points": [
+        { "offsetDays": 5, "mushroomCount": 8, "matureCount": 2 },
+        { "offsetDays": 2, "mushroomCount": 14, "matureCount": 5 },
+        { "offsetDays": 0, "mushroomCount": 21, "matureCount": 8 }
+      ]
+    },
+    {
+      "shedCode": "S02",
+      "cameraCode": "CAM-SG-S02",
+      "points": [
+        { "offsetDays": 5, "mushroomCount": 3, "matureCount": 1 },
+        { "offsetDays": 2, "mushroomCount": 5, "matureCount": 2 },
+        { "offsetDays": 0, "mushroomCount": 8, "matureCount": 3 }
+      ]
+    }
+  ]
+}
