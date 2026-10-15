@@ -69,6 +69,7 @@ const s01OtherSensor = {
   ...s01Reading,
   id: 'env-2',
   sensorCode: 'SEN-2',
+  observedAt: '2026-09-23T01:10:00.000Z',
   temperature: 21,
   humidity: 80,
   co2: 900,
@@ -214,13 +215,40 @@ describe('DiseaseDetailView', () => {
     const panel = wrapper.get('[data-testid="env-panel"]');
 
     expect(httpGet).toHaveBeenCalledWith('/diseases/d-1/environment', { params: {} });
+    expect(wrapper.get('[data-testid="disease-detail"]').text()).toContain('CAM-S01-01');
     expect(panel.text()).toContain('棚 S01');
-    expect(panel.text()).toContain('SEN-1');
-    expect(panel.text()).toContain('22.5');
-    expect(panel.text()).toContain('88');
-    expect(panel.text()).toContain('—');
-    expect(panel.text()).toContain('70');
-    expect(panel.get('[data-testid="env-readings"]').text()).not.toContain('S02');
+    expect(panel.text()).toContain(shanghaiStamp(s01Reading.observedAt));
+    expect(panel.text()).toContain(shanghaiStamp(s01OtherSensor.observedAt));
+    const readings = panel.get('[data-testid="env-readings"]');
+    expect(readings.text()).toContain('SEN-1');
+    expect(readings.text()).toContain('22.5℃');
+    expect(readings.text()).toContain('88%');
+    expect(readings.text()).toContain('—');
+    expect(readings.text()).toContain('70%');
+    expect(readings.text()).toContain('900');
+    expect(readings.text()).toContain('65%');
+    expect(readings.text()).not.toContain('S02');
+    wrapper.unmount();
+  });
+
+  it('shows the empty-window copy on the same screen and does not invent readings', async () => {
+    httpGet.mockImplementation((url: string, config?: { params?: { sensorCode?: string } }) => {
+      if (String(url).endsWith('/d-2')) return Promise.resolve({ data: withoutSnapshot });
+      if (String(url).includes('/environment')) {
+        return Promise.resolve({
+          data: environmentFor(String(url), config?.params?.sensorCode),
+        });
+      }
+      return Promise.resolve({ data: withoutSnapshot });
+    });
+    const wrapper = await mountDetail('d-2');
+
+    expect(wrapper.get('[data-testid="disease-detail"]').text()).toContain('CAM-S02-01');
+    expect(wrapper.get('[data-field="level"]').text()).toBe('轻度（1）');
+    expect(wrapper.get('[data-testid="env-empty"]').text()).toBe('该时间窗内无环境读数');
+    expect(wrapper.find('[data-testid="env-readings"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="env-panel"]').text()).not.toContain('22.5');
+    expect(wrapper.get('[data-testid="env-panel"]').text()).not.toContain('SEN-1');
     wrapper.unmount();
   });
 

@@ -96,6 +96,7 @@ describe('golden fixtures', () => {
       'environment.demo-latest.json',
       'environment.demo-history.json',
       'environment.demo-env-filter.json',
+      'environment.demo-disease-env-detail.json',
       'environment.demo-telemetry-threshold.json',
     ]) {
       const fixture = load(name);

@@ -1,0 +1,34 @@
+{
+  "clock": "2026-10-15T08:00:00.000Z",
+  "expect": "ok",
+  "outside": {
+    "idempotencyKey": "demo-disease-env-outside",
+    "shedCode": "S01",
+    "sensorCode": "SENSOR-DED-01",
+    "observedAt": "2026-10-15T05:00:00.000Z",
+    "temperature": 16.8,
+    "humidity": 82,
+    "co2": 700,
+    "substrateMoisture": 61
+  },
+  "older": {
+    "idempotencyKey": "demo-disease-env-inside-older",
+    "shedCode": "S01",
+    "sensorCode": "SENSOR-DED-01",
+    "observedAt": "2026-10-15T07:52:00.000Z",
+    "temperature": 23.8,
+    "humidity": 84,
+    "co2": 640,
+    "substrateMoisture": 73
+  },
+  "body": {
+    "idempotencyKey": "demo-disease-env-inside-now",
+    "shedCode": "S01",
+    "sensorCode": "SENSOR-DED-01",
+    "observedAt": "2026-10-15T07:58:00.000Z",
+    "temperature": 24.1,
+    "humidity": 86,
+    "co2": 710,
+    "substrateMoisture": 75
+  }
+}
