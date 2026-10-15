@@ -26,7 +26,7 @@
 
 开发种子账号：`admin` / `Admin@123456`（角色 `super_admin`）。接入请求头：`X-Ingest-Token`，默认值 `dev-ingest-token`（环境变量 `INGEST_TOKEN`）。未带令牌的接入请求会被拒绝。
 
-另外三枚种子账号在 API 启动时写入（已存在则不覆盖）：`producer` / `Producer@123456`（生产管理员，全场）、`shedlead` / `Shed@123456`（棚区负责人，仅 S01）、`viewer` / `Viewer@123456`（查看，仅 S01）。`make demo-rbac` 会把 `viewer` 重设成这个密码和棚号，方便用两个角色对照菜单。步骤见 [`DEMO_RBAC.md`](DEMO_RBAC.md)。
+另外三枚种子账号在 API 启动时写入（已存在则不覆盖）：`producer` / `Producer@123456`（生产管理员，全场）、`shedlead` / `Shed@123456`（棚区负责人，仅 S01）、`viewer` / `Viewer@123456`（查看，仅 S01）。`make demo-rbac` 会把 `viewer` 重设成这个密码和棚号，方便用两个角色对照菜单。步骤见 [`DEMO_RBAC.md`](DEMO_RBAC.md)。`make demo-shed-scope` 会把 `shedlead` 重设成这个密码和棚号 S01，并留下 S01、S02 各一条告警，方便对照棚列表、值班看板和告警。步骤见 [`DEMO_SHED_SCOPE.md`](DEMO_SHED_SCOPE.md)。
 
 ## 接入
 
@@ -329,6 +329,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 审计页 `/audit`：上方是登录日志，下方是操作审计。登录日志按用户名和起止时间查询，请求 `GET /api/v1/login-logs` 参数 `username`、`from`、`to`，每页 100 条。用户名是整名匹配。时间按登录时间比较，含两端，可以只传一端。地址栏同步，空着不传。筛着时写出「用户 …」「时间 … 至 …」和「共 N 条」。没有命中时写「没有符合条件的登录日志。」。没有登录日志、也没在筛时写「暂无登录日志。」。开始晚于结束或时间填不开时写「时间筛选无效」，不请求登录日志，不保留上一张登录表。操作审计按同一口径查询，请求 `GET /api/v1/audit-logs` 的 `username`、`from`、`to`。地址栏用 `auditUsername`、`auditFrom`、`auditTo`，与登录日志的三个参数分开，空着不传。没有命中时写「没有符合条件的操作审计。」。没有操作审计、也没在筛时写「暂无操作审计。」。时间无效时写「时间筛选无效」，不请求操作审计，不保留上一张操作审计表。开始晚于结束或时间填不开时接口返回 400。
 
 `make demo-rbac` 用 `admin` / `Admin@123456` 登录，把 `viewer` / `Viewer@123456` 写成查看、棚号 S01，再核对：超管菜单含审计和用户，查看菜单没有这两项；用户、审计、登录日志对查看是 403；查看的棚列表含 S01、不含 S02。不发识别，不发心跳，不改告警。
+
+`make demo-shed-scope` 用同一超管登录，把 `shedlead` / `Shed@123456` 写成棚区负责人、棚号只有 S01。再留下「棚范围一号棚」（棚区 S01，摄像头 `CAM-SCOPE-S01`）和「棚范围二号棚」（棚区 S02，摄像头 `CAM-SCOPE-S02`）。同标题同摄像头已在则只改时间，不另建一行。超管的 `GET /api/v1/sheds` 含 S01 和 S02，`GET /api/v1/dashboard/overview` 的棚数至少为 2，告警列表两条都在。负责人棚列表只有 S01，棚数是 1，告警有一号棚、搜索「棚范围二号棚」为空。`/sheds` 编号列、`/duty-screen` 棚卡和底部棚数、`/alerts` 棚区列读的就是这三处。`/big-screen` 棚点同样来自棚列表。不发识别，不发心跳，不改接入观测。不改 `make demo-rbac`。
 
 `make demo-audit-log` 用同一对账号。超管登录的 User-Agent 是 `audit-log-demo/1`，再对不存在的用户 `audit-demo` 做一次失败登录。`/audit` 上方登录日志有 `audit-demo` 失败和 `admin` 成功，User-Agent 都是 `audit-log-demo/1`。下方操作审计有「登录失败」（接口动作 `auth.login_failed`，明细 `audit-demo`）和 `admin` 的「登录成功」（`auth.login`）。`GET /api/v1/login-logs` 与 `GET /api/v1/audit-logs` 对超管是 200，第一页含这些行；查看仍是 403，打开 `/audit` 回到总览。已有 `viewer` 时重设密码，不另建一行。不发识别，不发心跳，不改告警。步骤见 [`DEMO_AUDIT_LOG.md`](DEMO_AUDIT_LOG.md)。
 
