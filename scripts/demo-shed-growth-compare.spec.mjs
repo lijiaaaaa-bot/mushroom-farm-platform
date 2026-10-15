@@ -30,6 +30,10 @@ test('payload keeps two sheds apart on the same Shanghai days', () => {
   );
   assert.equal(fixture.diseaseCount, 0);
   assert.equal(fixture.temperature, 22.5);
+  assert.equal(fixture.clock, '2026-10-15T02:03:04.000Z');
+  assert.equal(fixture.body.cameraCode, 'CAM-SG-S01');
+  assert.equal(fixture.body.mushroomCount, 21);
+  assert.equal(fixture.body.matureCount, 8);
   const samples = buildComparePayloads(now);
   assert.deepEqual(
     [...new Set(samples.map((sample) => sample.day))],

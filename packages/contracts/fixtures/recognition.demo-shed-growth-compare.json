@@ -1,4 +1,5 @@
 {
+  "clock": "2026-10-15T02:03:04.000Z",
   "expect": "ok",
   "temperature": 22.5,
   "humidity": 88,
@@ -7,6 +8,22 @@
   "diseaseCount": 0,
   "diseaseLevel": 0,
   "snapshotBase64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAAAP/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8Af//Z",
+  "body": {
+    "idempotencyKey": "demo-shed-growth-compare-CAM-SG-S01-2026-10-15",
+    "shedCode": "S01",
+    "cameraCode": "CAM-SG-S01",
+    "recognizedAt": "2026-10-15T02:03:04.000Z",
+    "mushroomCount": 21,
+    "matureCount": 8,
+    "capDiameters": [4.2],
+    "diseaseCount": 0,
+    "diseaseLevel": 0,
+    "snapshotBase64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAAAP/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8Af//Z",
+    "temperature": 22.5,
+    "humidity": 88,
+    "co2": 900,
+    "substrateMoisture": 70
+  },
   "sheds": [
     {
       "shedCode": "S01",

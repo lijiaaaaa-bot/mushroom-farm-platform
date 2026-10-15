@@ -16,7 +16,7 @@ API 监听 http://127.0.0.1:41821 。页面是 http://127.0.0.1:43123 。
 make demo-shed-growth-compare
 ```
 
-命令读取 `packages/contracts/fixtures/recognition.demo-shed-growth-compare.json`，写入两台摄像头的三天识别。数量以样例为准：
+命令读取 `packages/contracts/fixtures/recognition.demo-shed-growth-compare.json`，写入两台摄像头的三天识别。样例里的 `body` 供契约检查当天 S01 这一条，命令仍按运行时刻重算六条识别时间。数量以样例里的 `sheds` 为准：
 
 | 上海日 | S01 `CAM-SG-S01` | S02 `CAM-SG-S02` |
 | --- | --- | --- |
