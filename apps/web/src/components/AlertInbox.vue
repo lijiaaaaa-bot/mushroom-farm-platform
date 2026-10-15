@@ -68,11 +68,29 @@ async function enableBrowserNotify() {
   await requestAlertNotificationPermission();
 }
 
-onMounted(() => {
-  void load();
+async function readPollMs(): Promise<number> {
+  try {
+    const response = await http.get<{ alertUnreadPollSeconds?: unknown }>('/system-params');
+    const seconds = response.data?.alertUnreadPollSeconds;
+    if (typeof seconds === 'number' && Number.isInteger(seconds) && seconds >= 5 && seconds <= 300) {
+      return seconds * 1000;
+    }
+  } catch {
+    // 非超管是 403，沿用默认 15 秒。
+  }
+  return UNREAD_POLL_MS;
+}
+
+async function boot() {
+  await load();
+  const every = await readPollMs();
   timer = setInterval(() => {
     void load();
-  }, UNREAD_POLL_MS);
+  }, every);
+}
+
+onMounted(() => {
+  void boot();
 });
 
 onUnmounted(() => {

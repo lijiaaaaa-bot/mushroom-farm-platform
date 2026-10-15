@@ -2,10 +2,14 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { EnvironmentReading } from '../entities/environment-reading.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
+import { SystemParamsModule } from '../system-params';
 import { RetentionService } from './retention.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([RecognitionRecord, EnvironmentReading])],
+  imports: [
+    TypeOrmModule.forFeature([RecognitionRecord, EnvironmentReading]),
+    SystemParamsModule,
+  ],
   providers: [RetentionService],
 })
 export class MaintenanceModule {}

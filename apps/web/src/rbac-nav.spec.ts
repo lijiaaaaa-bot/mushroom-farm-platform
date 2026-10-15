@@ -44,6 +44,7 @@ describe('role menus', () => {
     expect(navRoles('/audit')).toEqual(['super_admin', 'production_admin']);
     expect(navRoles('/users')).toEqual(['super_admin']);
     expect(navRoles('/backup')).toEqual(['super_admin']);
+    expect(navRoles('/system-params')).toEqual(['super_admin']);
     expect(router.getRoutes().find((record) => record.path === '/audit')?.meta.roles).toEqual(
       navRoles('/audit'),
     );
@@ -52,6 +53,9 @@ describe('role menus', () => {
     );
     expect(router.getRoutes().find((record) => record.path === '/backup')?.meta.roles).toEqual(
       navRoles('/backup'),
+    );
+    expect(router.getRoutes().find((record) => record.path === '/system-params')?.meta.roles).toEqual(
+      navRoles('/system-params'),
     );
 
     const admin = visibleNav('super_admin').map((link) => link.label);
@@ -62,15 +66,19 @@ describe('role menus', () => {
     expect(admin).toContain('审计');
     expect(admin).toContain('用户');
     expect(admin).toContain('数据备份');
+    expect(admin).toContain('系统参数');
     expect(producer).toContain('审计');
     expect(producer).not.toContain('用户');
     expect(producer).not.toContain('数据备份');
+    expect(producer).not.toContain('系统参数');
     expect(shed).not.toContain('审计');
     expect(shed).not.toContain('用户');
     expect(shed).not.toContain('数据备份');
+    expect(shed).not.toContain('系统参数');
     expect(viewer).not.toContain('审计');
     expect(viewer).not.toContain('用户');
     expect(viewer).not.toContain('数据备份');
+    expect(viewer).not.toContain('系统参数');
     for (const label of ['总览', '基地大屏', '值班看板', '设备', '告警', '棚区']) {
       expect(viewer).toContain(label);
       expect(admin).toContain(label);
@@ -87,6 +95,7 @@ describe('role menus', () => {
     expect(labels).not.toContain('审计');
     expect(labels).not.toContain('用户');
     expect(labels).not.toContain('数据备份');
+    expect(labels).not.toContain('系统参数');
     expect(labels).toContain('总览');
     expect(labels).toContain('基地大屏');
     wrapper.unmount();
@@ -105,6 +114,8 @@ describe('role menus', () => {
     expect(wrapper.get('nav').find('a[href="/users"]').exists()).toBe(true);
     expect(labels).toContain('数据备份');
     expect(wrapper.get('nav').find('a[href="/backup"]').exists()).toBe(true);
+    expect(labels).toContain('系统参数');
+    expect(wrapper.get('nav').find('a[href="/system-params"]').exists()).toBe(true);
     wrapper.unmount();
   });
 
@@ -122,6 +133,10 @@ describe('role menus', () => {
     await flushPromises();
     expect(router.currentRoute.value.path).toBe('/');
 
+    await router.push('/system-params');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/');
+
     storeUser('super_admin');
     await router.push('/audit');
     await flushPromises();
@@ -134,6 +149,10 @@ describe('role menus', () => {
     await router.push('/backup');
     await flushPromises();
     expect(router.currentRoute.value.path).toBe('/backup');
+
+    await router.push('/system-params');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/system-params');
   });
 
   it('lets 生产管理员 open /audit and sends them away from /users', async () => {
@@ -147,6 +166,10 @@ describe('role menus', () => {
     expect(router.currentRoute.value.path).toBe('/');
 
     await router.push('/backup');
+    await flushPromises();
+    expect(router.currentRoute.value.path).toBe('/');
+
+    await router.push('/system-params');
     await flushPromises();
     expect(router.currentRoute.value.path).toBe('/');
   });

@@ -315,8 +315,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 | 代码 | 界面 | 棚范围 | 写操作 |
 |------|------|--------|--------|
-| `super_admin` | 超管 | 全场 | 用户新建、重设与启停、阈值规则、棚坐标、采摘修正、采摘任务、批次、设备导入、摄像头登记与备注、告警处置、审计 |
-| `production_admin` | 生产管理员 | 全场 | 与超管相同，但不能建用户 |
+| `super_admin` | 超管 | 全场 | 用户新建、重设与启停、阈值规则、棚坐标、采摘修正、采摘任务、批次、设备导入、摄像头登记与备注、告警处置、审计、系统参数 |
+| `production_admin` | 生产管理员 | 全场 | 与超管相同，但不能建用户、不能改系统参数 |
 | `shed_manager` | 棚区负责人 | 仅账号上的棚号 | 采摘修正、采摘任务、批次、设备导入、告警处置。不能改规则、不能改棚坐标、不能单条登记摄像头或改备注、不能看审计 |
 | `viewer` | 查看 | 仅账号上的棚号 | 只读。采摘、告警处置、规则、批次新建、设备登记均 403 |
 
@@ -343,6 +343,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 `make demo-user-enable-disable` 用 `admin` / `Admin@123456` 登录，保证 `user-enable-demo` / `Enable@123456`（显示名「启停演示」，角色查看，棚号 S01）。还没有这个用户名时新建。已有则不改密码、显示名、角色和棚号。启用列先是启用，该密码能登录。再 `PATCH` `enabled` 为 false。同一行仍在，启用列是停用，同一密码是 401。不改 `admin`、`viewer`、`user-create-demo`、`user-reset-demo`。不发识别，不发心跳，不改告警。步骤见 [`DEMO_USER_ENABLE_DISABLE.md`](DEMO_USER_ENABLE_DISABLE.md)。
 
 `/backup`（数据备份）只给超管。`GET /api/v1/backups/status` 与 `POST /api/v1/backups/run` 对生产管理员、棚区负责人和查看是 403。页面写出最近成功时间；没有成功记录时写「尚未成功备份」。最近一次是成功、失败或尚未运行。点「立即备份」后重新读取，成功时写「本次备份成功。最近成功时间是 …。」失败时保留上一次成功时间，并写「本次备份失败。」响应不含数据库连接串。`make demo-backup-run` 用 `admin` / `Admin@123456` 触发一次，最近成功时间从空或更早变为这次。查看 `viewer` / `Viewer@123456` 仍是 403。不发识别，不发心跳，不改告警。步骤见 [`DEMO_BACKUP_RUN.md`](DEMO_BACKUP_RUN.md)。
+
+`/system-params`（系统参数）只给超管，侧栏在「数据备份」后面。`GET /api/v1/system-params` 与 `PATCH /api/v1/system-params` 对生产管理员、棚区负责人和查看是 403。三项：图片保留天数（默认 30）、时序保留天数（默认 90）、告警未读轮询秒数（默认 15）。没改过时与 `IMAGE_RETENTION_DAYS`、`TIMESERIES_RETENTION_DAYS`、`ALERT_UNREAD_POLL_SECONDS` 相同。保存后页面写出「告警未读轮询：15 秒 → 45 秒」这一类前后文案，当前值换成新数。每天 03:00 的清理读取前两项。超管顶栏按第三项轮询未读；其他角色读不到这一接口，顶栏仍是 15 秒。补传窗口仍是契约里的 90 天。心跳超时仍由 `DEVICE_OFFLINE_AFTER_MS` 决定。`make demo-sys-params` 用 `admin` / `Admin@123456` 只改告警未读轮询：15 秒变成 45 秒，已经是 45 秒则改回 15 秒。图片保留和时序保留不动。查看 `viewer` / `Viewer@123456` 仍是 403。不发识别，不发心跳，不改告警。不改接入观测。步骤见 [`DEMO_SYS_PARAMS.md`](DEMO_SYS_PARAMS.md)。
 
 ## 存储
 

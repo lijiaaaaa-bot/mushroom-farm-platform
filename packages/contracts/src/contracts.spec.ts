@@ -10,6 +10,13 @@ import {
   parseAlertNote,
   parseCreateAlert,
   parseBackupStatus,
+  parsePatchSystemParams,
+  parseSystemParams,
+  parseSystemParamsPatchResult,
+  formatSystemParamChange,
+  SYSTEM_PARAM_DEFAULTS,
+  IMAGE_RETENTION_DAYS,
+  ALERT_UNREAD_POLL_SECONDS,
   parseSetUserEnabled,
   parseUserListItem,
   LIMITS,
@@ -306,6 +313,51 @@ describe('golden fixtures', () => {
       triggeredBy: null,
     });
     assert.equal(badState.ok, false);
+  });
+
+  it('accepts system params and rejects an empty or secret patch', () => {
+    assert.equal(SYSTEM_PARAM_DEFAULTS.imageRetentionDays, IMAGE_RETENTION_DAYS);
+    assert.equal(SYSTEM_PARAM_DEFAULTS.timeseriesRetentionDays, TIMESERIES_RETENTION_DAYS);
+    assert.equal(SYSTEM_PARAM_DEFAULTS.alertUnreadPollSeconds, ALERT_UNREAD_POLL_SECONDS);
+    const current = parseSystemParams({
+      imageRetentionDays: 30,
+      timeseriesRetentionDays: 90,
+      alertUnreadPollSeconds: 15,
+      updatedAt: null,
+      updatedBy: null,
+    });
+    assert.equal(current.ok, true);
+    const patched = parseSystemParamsPatchResult({
+      imageRetentionDays: 30,
+      timeseriesRetentionDays: 90,
+      alertUnreadPollSeconds: 45,
+      updatedAt: '2026-10-15T03:00:00.000Z',
+      updatedBy: 'admin',
+      changes: [
+        {
+          key: 'alertUnreadPollSeconds',
+          label: '告警未读轮询',
+          beforeText: '15 秒',
+          afterText: '45 秒',
+        },
+      ],
+    });
+    assert.equal(patched.ok, true);
+    if (patched.ok) {
+      assert.equal(
+        formatSystemParamChange(patched.value.changes[0]),
+        '告警未读轮询：15 秒 → 45 秒',
+      );
+    }
+    const empty = parsePatchSystemParams({});
+    assert.equal(empty.ok, false);
+    if (!empty.ok) assert.match(empty.errors.join(' '), /至少改一项/);
+    const extra = parsePatchSystemParams({ alertUnreadPollSeconds: 45, password: 'secret' });
+    assert.equal(extra.ok, false);
+    if (!extra.ok) assert.equal(extra.code, 'UNKNOWN_FIELD');
+    const low = parsePatchSystemParams({ alertUnreadPollSeconds: 1 });
+    assert.equal(low.ok, false);
+    if (!low.ok) assert.equal(low.code, 'VALIDATION_FAILED');
   });
 
   it('loads the snapshot key fixture', () => {
