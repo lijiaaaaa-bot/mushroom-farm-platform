@@ -8,6 +8,9 @@ import { BackupService } from './backup.service';
 @Module({
   imports: [TypeOrmModule.forFeature([PostgresBackupRun])],
   controllers: [BackupController],
-  providers: [BackupService, { provide: BACKUP_RUNNER, useValue: runPostgresBackup }],
+  providers: [
+    BackupService,
+    { provide: BACKUP_RUNNER, useValue: runPostgresBackup },
+  ],
 })
 export class BackupModule {}

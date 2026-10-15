@@ -1,4 +1,8 @@
-import { Inject, Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { BackupStatus, parseBackupStatus } from '@mushroom/contracts';
 import { Repository } from 'typeorm';
@@ -45,7 +49,10 @@ export function presentBackupStatus(
     lastStatus: latest ? latest.status : ('never' as const),
     lastFileName: latest?.fileName ?? null,
     lastBytes: latest ? asBytes(latest.bytes) : null,
-    lastError: latest?.status === 'failed' ? publicBackupError(latest.errorMessage) : null,
+    lastError:
+      latest?.status === 'failed'
+        ? publicBackupError(latest.errorMessage)
+        : null,
     triggeredBy: latest?.triggeredBy ?? null,
   };
   const parsed = parseBackupStatus(body);
@@ -85,7 +92,10 @@ export class BackupService {
         status: success ? 'success' : 'failed',
         finishedAt,
         fileName: backupFileName(result.file),
-        bytes: success && Number.isSafeInteger(bytes) && (bytes ?? 0) >= 0 ? bytes : null,
+        bytes:
+          success && Number.isSafeInteger(bytes) && (bytes ?? 0) >= 0
+            ? bytes
+            : null,
         errorMessage: success ? null : publicBackupError(result.errorMessage),
         triggeredBy: actor.username.slice(0, 120),
       }),

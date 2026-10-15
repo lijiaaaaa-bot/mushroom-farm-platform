@@ -13,7 +13,9 @@ export interface BackupRunResult {
 export type BackupRunner = (now: Date) => Promise<BackupRunResult>;
 
 /** 调用现有 `scripts/backup-postgres.mjs`。页面上的时间由服务写入，不在脚本里再写一行。 */
-export async function runPostgresBackup(now = new Date()): Promise<BackupRunResult> {
+export async function runPostgresBackup(
+  now = new Date(),
+): Promise<BackupRunResult> {
   const script = join(__dirname, '../../../../scripts/backup-postgres.mjs');
   const loaded = await import(pathToFileURL(script).href);
   const result = await loaded.runBackup({ now });

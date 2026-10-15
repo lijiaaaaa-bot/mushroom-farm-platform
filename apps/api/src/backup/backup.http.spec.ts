@@ -28,9 +28,11 @@ function memoryRuns() {
       return saved;
     },
     find: async (options?: FindManyOptions<PostgresBackupRun>) => {
-      const where = options?.where as { status?: PostgresBackupRun['status'] } | undefined;
+      const where = options?.where as
+        { status?: PostgresBackupRun['status'] } | undefined;
       let list = rows.slice();
-      if (where?.status) list = list.filter((row) => row.status === where.status);
+      if (where?.status)
+        list = list.filter((row) => row.status === where.status);
       list.sort((a, b) => b.finishedAt.getTime() - a.finishedAt.getTime());
       return list.slice(0, options?.take ?? list.length);
     },
@@ -182,9 +184,13 @@ describe('postgres backup status', () => {
   );
 
   it('rejects a request without a role', async () => {
-    const listed = await request(app.getHttpServer()).get('/api/v1/backups/status');
+    const listed = await request(app.getHttpServer()).get(
+      '/api/v1/backups/status',
+    );
     expect(listed.status).toBe(403);
-    const started = await request(app.getHttpServer()).post('/api/v1/backups/run');
+    const started = await request(app.getHttpServer()).post(
+      '/api/v1/backups/run',
+    );
     expect(started.status).toBe(403);
     expect(runs.rows).toHaveLength(0);
   });
