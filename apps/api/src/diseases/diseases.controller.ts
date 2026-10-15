@@ -48,6 +48,16 @@ export class DiseasesController {
     return this.trends.diseasePeaks(user, { grain, shedCode });
   }
 
+  @Get('trends')
+  trends(
+    @CurrentUser() user: AuthUser,
+    @Query('days') days?: string,
+    @Query('shedCode') shedCode?: string,
+    @Query('cameraCode') cameraCode?: string,
+  ) {
+    return this.trends.diseaseTrends(user, { days, shedCode, cameraCode });
+  }
+
   @Get()
   list(@CurrentUser() user: AuthUser, @Query() query: ListQuery) {
     return this.ingest.list(user, { ...query, diseased: '1' });

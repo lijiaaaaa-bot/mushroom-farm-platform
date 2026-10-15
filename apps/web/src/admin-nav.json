@@ -8,6 +8,7 @@
   { "to": "/shed-env-24h", "label": "环境24小时" },
   { "to": "/ingest-observability", "label": "接入观测" },
   { "to": "/diseases", "label": "病害" },
+  { "to": "/shed-disease-trend", "label": "病害趋势" },
   { "to": "/alerts", "label": "告警" },
   { "to": "/alert-rules", "label": "阈值规则" },
   { "to": "/harvest", "label": "采摘" },

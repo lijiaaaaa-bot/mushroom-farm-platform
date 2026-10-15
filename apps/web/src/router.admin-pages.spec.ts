@@ -20,6 +20,7 @@ import ShedEnv24hView from './views/ShedEnv24hView.vue';
 import IngestObservabilityView from './views/IngestObservabilityView.vue';
 import DiseaseDetailView from './views/DiseaseDetailView.vue';
 import DiseasesView from './views/DiseasesView.vue';
+import ShedDiseaseTrendView from './views/ShedDiseaseTrendView.vue';
 import BatchesView from './views/BatchesView.vue';
 import GrowthCompareView from './views/GrowthCompareView.vue';
 import GrowthTrendsView from './views/GrowthTrendsView.vue';
@@ -36,6 +37,7 @@ const pages = [
   { path: '/shed-env-24h', component: ShedEnv24hView, title: '单棚环境24小时', label: '环境24小时' },
   { path: '/ingest-observability', component: IngestObservabilityView, title: '接入观测', label: '接入观测' },
   { path: '/diseases', component: DiseasesView, title: '病害', label: '病害' },
+  { path: '/shed-disease-trend', component: ShedDiseaseTrendView, title: '单棚病害趋势', label: '病害趋势' },
   { path: '/alerts', component: AlertsView, title: '告警', label: '告警' },
   { path: '/alert-rules', component: RulesView, title: '阈值规则', label: '阈值规则' },
   { path: '/harvest', component: HarvestView, title: '采摘', label: '采摘' },

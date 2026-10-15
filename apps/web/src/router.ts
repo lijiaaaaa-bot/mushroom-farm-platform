@@ -10,6 +10,7 @@ import DutyShedDetailView from './views/DutyShedDetailView.vue';
 import DashboardView from './views/DashboardView.vue';
 import DiseaseDetailView from './views/DiseaseDetailView.vue';
 import DiseasesView from './views/DiseasesView.vue';
+import ShedDiseaseTrendView from './views/ShedDiseaseTrendView.vue';
 import DeviceDetailView from './views/DeviceDetailView.vue';
 import DevicesView from './views/DevicesView.vue';
 import EnvironmentView from './views/EnvironmentView.vue';
@@ -69,6 +70,7 @@ const router = createRouter({
         { path: 'shed-env-24h', component: ShedEnv24hView, meta: { title: '单棚环境24小时' } },
         { path: 'ingest-observability', component: IngestObservabilityView, meta: { title: '接入观测' } },
         { path: 'diseases', component: DiseasesView, meta: { title: '病害' } },
+        { path: 'shed-disease-trend', component: ShedDiseaseTrendView, meta: { title: '单棚病害趋势' } },
         { path: 'diseases/:id', component: DiseaseDetailView, meta: { title: '病害详情' } },
         { path: 'alerts', component: AlertsView, meta: { title: '告警' } },
         { path: 'alerts/:id', component: AlertDetailView, meta: { title: '告警详情' } },
