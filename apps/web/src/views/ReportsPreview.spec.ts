@@ -44,9 +44,11 @@ describe('ReportsView preview', () => {
     expect(wrapper.get('[data-testid="report-preview"]').text()).toContain('园区生长');
     expect(wrapper.get('[data-testid="report-preview"]').text()).toContain('S01');
     expect(wrapper.get('[data-testid="report-preview"]').text()).toContain('14');
+    expect(wrapper.get('[data-testid="report-summary"]').text()).toBe('棚区 全部 · 共 1 条');
 
-    const printButton = wrapper.findAll('button').find((button) => button.text() === '打印');
-    await printButton?.trigger('click');
+    const printButton = wrapper.get('[data-testid="report-print"]');
+    expect(printButton.element.disabled).toBe(false);
+    await printButton.trigger('click');
     expect(print).toHaveBeenCalled();
     print.mockRestore();
     wrapper.unmount();
@@ -215,8 +217,31 @@ describe('ReportsView preview', () => {
     });
     expect(wrapper.get('[data-testid="report-preview"]').text()).toContain('S02');
     expect(wrapper.get('[data-testid="report-preview"]').text()).toContain('17');
+    expect(wrapper.get('[data-testid="report-summary"]').text()).toBe('棚区 S02 · 共 1 条');
+    expect(wrapper.get('[data-testid="report-print"]').element.disabled).toBe(false);
     expect(window.location.pathname).toBe('/reports');
     expect(window.location.search).toContain('shedCode=S02');
+    wrapper.unmount();
+  });
+
+  it('keeps print disabled until the preview has rows', async () => {
+    const print = vi.spyOn(window, 'print').mockImplementation(() => undefined);
+    const wrapper = mount(ReportsView);
+    expect(wrapper.get('[data-testid="report-print"]').element.disabled).toBe(true);
+    await wrapper.get('[data-testid="report-print"]').trigger('click');
+    expect(print).not.toHaveBeenCalled();
+
+    httpGet.mockResolvedValue({
+      data: { title: '园区生长', columns: [], rows: [] },
+    });
+    await wrapper.get('form[data-testid="report-filters"]').trigger('submit');
+    await flushPromises();
+    expect(wrapper.get('[data-testid="report-summary"]').text()).toBe('棚区 全部 · 共 0 条');
+    expect(wrapper.text()).toContain('该筛选下没有数据。');
+    expect(wrapper.get('[data-testid="report-print"]').element.disabled).toBe(true);
+    await wrapper.get('[data-testid="report-print"]').trigger('click');
+    expect(print).not.toHaveBeenCalled();
+    print.mockRestore();
     wrapper.unmount();
   });
 });

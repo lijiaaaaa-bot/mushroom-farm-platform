@@ -153,6 +153,7 @@ async function exportPreview() {
 }
 
 function printPreview() {
+  if (!preview.value || preview.value.rows.length === 0) return;
   window.print();
 }
 
@@ -236,12 +237,21 @@ onMounted(() => {
       <div class="flex flex-wrap items-end gap-2">
         <button class="btn-primary" type="submit">预览</button>
         <button class="btn-ghost" type="button" @click="exportPreview">导出</button>
-        <button class="btn-ghost" type="button" @click="printPreview">打印</button>
+        <button
+          class="btn-ghost disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-line disabled:hover:text-ink"
+          type="button"
+          data-testid="report-print"
+          :disabled="!preview || preview.rows.length === 0"
+          @click="printPreview"
+        >打印</button>
       </div>
     </form>
     <p v-if="previewError" class="text-sm text-danger">{{ previewError }}</p>
     <div v-if="preview" data-testid="report-preview">
       <h3 class="text-base">{{ preview.title }}</h3>
+      <p class="text-sm text-mist" data-testid="report-summary">
+        棚区 {{ shedCode.trim() || '全部' }} · 共 {{ preview.rows.length }} 条
+      </p>
       <p v-if="!preview.rows.length" class="text-sm text-mist">该筛选下没有数据。</p>
       <table v-else class="data-table">
         <thead>
