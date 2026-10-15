@@ -303,4 +303,147 @@ describe('AuditView', () => {
     expect(wrapper.get('[data-testid="audit-log-table"]').text()).toContain('登录成功');
     wrapper.unmount();
   });
+
+  it('writes the operation-audit filters into the address and leaves the login filters', async () => {
+    httpGet.mockResolvedValue({ data: { items: [], total: 0 } });
+    const { wrapper, router } = await mountView({ username: 'admin' });
+
+    const from = '2026-10-15T01:00';
+    const to = '2026-10-15T05:00';
+    await wrapper.get('[data-testid="audit-log-username"]').setValue('audit-action-old');
+    await wrapper.get('[data-testid="audit-log-from"]').setValue(from);
+    await wrapper.get('[data-testid="audit-log-to"]').setValue(to);
+    await wrapper.get('form[data-testid="audit-log-filters"]').trigger('submit');
+    await flushPromises();
+
+    expect(router.currentRoute.value.query.username).toBe('admin');
+    expect(router.currentRoute.value.query.auditUsername).toBe('audit-action-old');
+    expect(router.currentRoute.value.query.auditFrom).toBe(new Date(from).toISOString());
+    expect(router.currentRoute.value.query.auditTo).toBe(new Date(to).toISOString());
+    expect(httpGet).toHaveBeenCalledWith('/audit-logs', {
+      params: {
+        pageSize: '100',
+        username: 'audit-action-old',
+        from: new Date(from).toISOString(),
+        to: new Date(to).toISOString(),
+      },
+    });
+    expect(httpGet).toHaveBeenCalledWith('/login-logs', {
+      params: { pageSize: '100', username: 'admin' },
+    });
+
+    await wrapper.get('[data-testid="audit-log-clear"]').trigger('click');
+    await flushPromises();
+
+    expect(router.currentRoute.value.query.username).toBe('admin');
+    expect(router.currentRoute.value.query.auditUsername).toBeUndefined();
+    expect(router.currentRoute.value.query.auditFrom).toBeUndefined();
+    expect(router.currentRoute.value.query.auditTo).toBeUndefined();
+    const auditCalls = httpGet.mock.calls.filter((call) => call[0] === '/audit-logs');
+    expect(auditCalls[auditCalls.length - 1]?.[1].params).toEqual({ pageSize: '100' });
+    wrapper.unmount();
+  });
+
+  it('opens an operation-audit query and shows only the matching rows', async () => {
+    const from = '2026-10-15T00:00:00.000Z';
+    const to = '2026-10-15T02:00:00.000Z';
+    httpGet.mockImplementation((url: string) => {
+      if (url.startsWith('/login-logs')) {
+        return Promise.resolve({ data: { items: [successLogin, failureLogin], total: 2 } });
+      }
+      return Promise.resolve({ data: { items: [failedAudit], total: 1 } });
+    });
+    const { wrapper } = await mountView({
+      auditUsername: 'login-log-fail',
+      auditFrom: from,
+      auditTo: to,
+    });
+
+    expect(httpGet).toHaveBeenCalledWith('/audit-logs', {
+      params: {
+        pageSize: '100',
+        username: 'login-log-fail',
+        from: new Date(from).toISOString(),
+        to: new Date(to).toISOString(),
+      },
+    });
+    expect(httpGet).toHaveBeenCalledWith('/login-logs', { params: { pageSize: '100' } });
+    const scope = wrapper.get('[data-testid="audit-log-scope"]');
+    expect(scope.text()).toContain('用户 login-log-fail');
+    expect(scope.text()).toContain('时间');
+    expect(wrapper.get('[data-testid="audit-log-count"]').text()).toBe('1');
+    expect(wrapper.get('[data-testid="audit-log-table"]').text()).toContain('登录失败');
+    expect(wrapper.get('[data-testid="audit-log-table"]').text()).not.toContain('登录成功');
+    expect(wrapper.get('[data-testid="login-log-table"]').text()).toContain('成功');
+    expect(wrapper.get('[data-testid="login-log-table"]').text()).toContain('失败');
+    wrapper.unmount();
+  });
+
+  it('says there is no matching operation audit when the filter is empty', async () => {
+    httpGet.mockImplementation((url: string) => {
+      if (url.startsWith('/audit-logs')) return Promise.resolve({ data: { items: [], total: 0 } });
+      return Promise.resolve({ data: { items: [successLogin], total: 1 } });
+    });
+    const { wrapper } = await mountView({ auditUsername: 'audit-action-old' });
+
+    expect(wrapper.get('[data-testid="audit-log-scope"]').text()).toContain('用户 audit-action-old');
+    expect(wrapper.get('[data-testid="audit-log-count"]').text()).toBe('0');
+    expect(wrapper.get('[data-testid="audit-log-empty"]').text()).toBe('没有符合条件的操作审计。');
+    expect(wrapper.find('[data-testid="audit-log-table"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('暂无操作审计');
+    expect(wrapper.get('[data-testid="login-log-table"]').text()).toContain('成功');
+    wrapper.unmount();
+  });
+
+  it('says there is no operation audit when the unfiltered list is empty', async () => {
+    httpGet.mockResolvedValue({ data: { items: [], total: 0 } });
+    const { wrapper } = await mountView();
+    expect(wrapper.get('[data-testid="audit-log-empty"]').text()).toBe('暂无操作审计。');
+    expect(wrapper.find('[data-testid="audit-log-scope"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('does not request operation audits when the address time window is invalid', async () => {
+    httpGet.mockImplementation((url: string) => {
+      if (url.startsWith('/login-logs')) {
+        return Promise.resolve({ data: { items: [successLogin], total: 1 } });
+      }
+      return Promise.resolve({ data: { items: [successAudit], total: 1 } });
+    });
+    const { wrapper } = await mountView({
+      auditFrom: 'not-a-time',
+      auditTo: '2026-10-15T00:00:00.000Z',
+    });
+
+    expect(wrapper.get('[data-testid="audit-log-time-error"]').text()).toBe('时间筛选无效');
+    expect(httpGet.mock.calls.filter((call) => call[0] === '/audit-logs')).toHaveLength(0);
+    expect(httpGet).toHaveBeenCalledWith('/login-logs', { params: { pageSize: '100' } });
+    expect(wrapper.find('[data-testid="audit-log-table"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="audit-log-empty"]').exists()).toBe(false);
+    expect(wrapper.get('[data-testid="login-log-table"]').text()).toContain('成功');
+    wrapper.unmount();
+  });
+
+  it('drops the operation-audit table when the start is after the end', async () => {
+    httpGet.mockImplementation((url: string) => {
+      if (url.startsWith('/login-logs')) {
+        return Promise.resolve({ data: { items: [successLogin], total: 1 } });
+      }
+      return Promise.resolve({ data: { items: [successAudit, failedAudit], total: 2 } });
+    });
+    const { wrapper } = await mountView();
+    expect(wrapper.find('[data-testid="audit-log-table"]').exists()).toBe(true);
+
+    await wrapper.get('[data-testid="audit-log-from"]').setValue('2026-10-15T18:00');
+    await wrapper.get('[data-testid="audit-log-to"]').setValue('2026-10-15T08:00');
+    await wrapper.get('form[data-testid="audit-log-filters"]').trigger('submit');
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="audit-log-time-error"]').text()).toBe('时间筛选无效');
+    expect(wrapper.find('[data-testid="audit-log-table"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain('没有符合条件的操作审计');
+    expect(wrapper.text()).not.toContain('暂无操作审计');
+    expect(wrapper.get('[data-testid="login-log-table"]').text()).toContain('成功');
+    wrapper.unmount();
+  });
 });
