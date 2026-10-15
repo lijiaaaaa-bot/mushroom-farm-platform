@@ -1249,6 +1249,168 @@ describe('hour buckets and disease peaks', () => {
       sensorCode: 'SENSOR-ENV24-01',
     });
   });
+
+  it('reads a rising disease day series from day buckets without a recognition scan', async () => {
+    const now = new Date('2026-10-15T02:00:00.000Z');
+    const hours = memoryMetricBuckets();
+    const daysRepo = memoryMetricBuckets();
+    const records = memoryRecords([]);
+    const scan = jest.spyOn(records, 'createQueryBuilder');
+    const service = new GrowthTrendService(
+      records as never,
+      hours as never,
+      daysRepo as never,
+    );
+    const counts = [
+      { offset: 5, diseaseCount: 1 },
+      { offset: 3, diseaseCount: 3 },
+      { offset: 1, diseaseCount: 6 },
+      { offset: 0, diseaseCount: 10 },
+    ];
+    for (const point of counts) {
+      await service.applyRecognition({
+        shedCode: 'S01',
+        cameraCode: 'CAM-SDT-01',
+        recognizedAt: new Date(now.getTime() - point.offset * 86_400_000),
+        mushroomCount: 40,
+        avgCapDiameter: 4.2,
+        matureCount: 4,
+        diseaseCount: point.diseaseCount,
+      });
+    }
+    await service.applyRecognition({
+      shedCode: 'S01',
+      cameraCode: 'CAM-OTHER',
+      recognizedAt: now,
+      mushroomCount: 40,
+      avgCapDiameter: 4.2,
+      matureCount: 4,
+      diseaseCount: 2,
+    });
+    const series = await service.diseaseTrends(
+      admin,
+      { days: '7', shedCode: 'S01', cameraCode: 'CAM-SDT-01' },
+      now,
+    );
+    expect(scan).not.toHaveBeenCalled();
+    expect(series.days).toBe(7);
+    expect(series.diseaseCount).toBe('latest_per_camera');
+    const camera = series.sheds[0]?.cameras.find(
+      (item) => item.cameraCode === 'CAM-SDT-01',
+    );
+    expect(camera?.points.map((point) => point.diseaseCount)).toEqual([
+      1, 3, 6, 10,
+    ]);
+    expect(series.sheds[0]?.cameras.map((item) => item.cameraCode)).toEqual([
+      'CAM-SDT-01',
+    ]);
+    const month = await service.diseaseTrends(
+      admin,
+      { days: '30', shedCode: 'S01', cameraCode: 'CAM-SDT-01' },
+      now,
+    );
+    expect(month.days).toBe(30);
+    expect(
+      month.sheds[0]?.cameras[0]?.points.map((point) => point.diseaseCount),
+    ).toEqual([1, 3, 6, 10]);
+    const shed = await service.diseaseTrends(
+      admin,
+      { days: '7', shedCode: 'S01' },
+      now,
+    );
+    expect(shed.sheds[0]?.points.map((point) => point.diseaseCount)).toEqual([
+      1, 3, 6, 12,
+    ]);
+    const empty = await service.diseaseTrends(
+      admin,
+      { days: '7', shedCode: 'S01', cameraCode: 'CAM-SDT-NONE' },
+      now,
+    );
+    expect(empty.sheds).toEqual([]);
+    const viewer: AuthUser = {
+      id: 'viewer',
+      username: 'viewer',
+      displayName: 'viewer',
+      role: 'viewer',
+      shedCodes: ['S01'],
+    };
+    await expect(
+      service.diseaseTrends(viewer, { shedCode: 'S02' }, now),
+    ).rejects.toThrow('无权访问该棚区');
+    await expect(
+      service.diseaseTrends(admin, { days: '14' }, now),
+    ).rejects.toThrow('天数只支持 7 或 30');
+  });
+
+  it('serves disease day trends over HTTP without listing disease rows', async () => {
+    const today = todayShanghai();
+    const dayStart = (offset: number) =>
+      shanghaiDayRange(shiftShanghaiDay(today, -offset)).start;
+    const hours = memoryMetricBuckets();
+    const days = memoryMetricBuckets();
+    const seeded = [
+      { offset: 5, diseaseCount: 1 },
+      { offset: 3, diseaseCount: 3 },
+      { offset: 1, diseaseCount: 6 },
+      { offset: 0, diseaseCount: 10 },
+    ];
+    for (const point of seeded) {
+      seedMetric(
+        days,
+        dayStart(point.offset),
+        'S01',
+        'CAM-SDT-01',
+        METRIC_DISEASE_COUNT,
+        point.diseaseCount,
+      );
+      seedMetric(
+        days,
+        dayStart(point.offset),
+        'S01',
+        '',
+        METRIC_DISEASE_COUNT,
+        point.diseaseCount,
+      );
+    }
+    const records = memoryRecords([]);
+    const scan = jest.spyOn(records, 'createQueryBuilder');
+    const listed = jest.fn().mockResolvedValue({ items: [], total: 0 });
+    const moduleRef = await Test.createTestingModule({
+      controllers: [DiseasesController],
+      providers: [
+        GrowthTrendService,
+        { provide: getRepositoryToken(RecognitionRecord), useValue: records },
+        { provide: getRepositoryToken(MetricBucketHour), useValue: hours },
+        { provide: getRepositoryToken(MetricBucketDay), useValue: days },
+        { provide: IngestService, useValue: { list: listed } },
+      ],
+    }).compile();
+    const http = moduleRef.createNestApplication();
+    http.use(assignUser);
+    configureApp(http);
+    await http.init();
+    const week = await request(http.getHttpServer())
+      .get('/api/v1/diseases/trends?days=7&shedCode=S01&cameraCode=CAM-SDT-01')
+      .set('x-test-role', 'super_admin');
+    expect(week.status).toBe(200);
+    expect(week.body.days).toBe(7);
+    expect(
+      week.body.sheds[0].cameras[0].points.map(
+        (point: { diseaseCount: number }) => point.diseaseCount,
+      ),
+    ).toEqual([1, 3, 6, 10]);
+    const denied = await request(http.getHttpServer())
+      .get('/api/v1/diseases/trends?days=7&shedCode=S02')
+      .set('x-test-role', 'viewer');
+    expect(denied.status).toBe(403);
+    const bad = await request(http.getHttpServer())
+      .get('/api/v1/diseases/trends?days=14')
+      .set('x-test-role', 'super_admin');
+    expect(bad.status).toBe(400);
+    expect(scan).not.toHaveBeenCalled();
+    expect(listed).not.toHaveBeenCalled();
+    await http.close();
+  });
 });
 
 describe('growth trend write path', () => {

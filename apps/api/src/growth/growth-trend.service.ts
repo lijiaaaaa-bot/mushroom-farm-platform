@@ -90,6 +90,23 @@ export interface EnvironmentMeans {
   avgSubstrateMoisture: number | null;
 }
 
+export interface DiseaseDayPoint {
+  day: string;
+  diseaseCount: number;
+}
+
+export interface DiseaseTrendSeries {
+  days: 7 | 30;
+  from: string;
+  to: string;
+  diseaseCount: 'latest_per_camera';
+  sheds: Array<{
+    shedCode: string;
+    points: DiseaseDayPoint[];
+    cameras: Array<{ cameraCode: string; points: DiseaseDayPoint[] }>;
+  }>;
+}
+
 export interface GrowthTrendSeries {
   days: 7 | 30;
   grain: TrendGrain;
@@ -404,6 +421,44 @@ export class GrowthTrendService {
     return { ...empty, byTime, byShed, peak };
   }
 
+  /**
+   * 单棚病害日趋势。读 metric_buckets_day 的 disease_count（当日最新），
+   * 不扫识别明细，也不按小时再聚合。
+   */
+  async diseaseTrends(
+    user: AuthUser,
+    query: { days?: string; shedCode?: string; cameraCode?: string },
+    now = new Date(),
+  ): Promise<DiseaseTrendSeries> {
+    const days = parseWindow(query.days);
+    const scope = ShedScope.fromUser(user);
+    const shedCode = blank(query.shedCode);
+    const cameraCode = blank(query.cameraCode);
+    if (shedCode) scope.assert(shedCode);
+    const to = todayShanghai(now);
+    const from = shiftShanghaiDay(to, -(days - 1));
+    const empty: DiseaseTrendSeries = {
+      days,
+      from,
+      to,
+      diseaseCount: 'latest_per_camera',
+      sheds: [],
+    };
+    if (scope.codes && scope.codes.length === 0) return empty;
+    const rows = await this.loadWindow(
+      this.dayBuckets,
+      shanghaiDayRange(from).start,
+      shanghaiDayRange(to).end,
+      [METRIC_DISEASE_COUNT],
+      scope,
+      shedCode,
+    );
+    return {
+      ...empty,
+      sheds: groupDisease(filterCamera(rows, cameraCode)),
+    };
+  }
+
   async todaySnapshot(
     scope: ShedScope,
     now = new Date(),
@@ -714,6 +769,46 @@ function filterCamera(rows: BucketView[], cameraCode?: string): BucketView[] {
       row.cameraCode === cameraCode ||
       (row.cameraCode === '' && shedsWithCamera.has(row.shedCode)),
   );
+}
+
+function groupDisease(rows: BucketView[]): DiseaseTrendSeries['sheds'] {
+  const sheds = new Map<
+    string,
+    { points: DiseaseDayPoint[]; cameras: Map<string, DiseaseDayPoint[]> }
+  >();
+  for (const row of rows) {
+    if (row.metric !== METRIC_DISEASE_COUNT) continue;
+    const day = shanghaiDate(new Date(row.bucketStart));
+    const point: DiseaseDayPoint = {
+      day,
+      diseaseCount: Math.round(row.value ?? 0),
+    };
+    const bucket = sheds.get(row.shedCode) ?? {
+      points: [],
+      cameras: new Map<string, DiseaseDayPoint[]>(),
+    };
+    if (!row.cameraCode) bucket.points.push(point);
+    else {
+      const list = bucket.cameras.get(row.cameraCode) ?? [];
+      list.push(point);
+      bucket.cameras.set(row.cameraCode, list);
+    }
+    sheds.set(row.shedCode, bucket);
+  }
+  const byDay = (points: DiseaseDayPoint[]) =>
+    [...points].sort((a, b) => a.day.localeCompare(b.day));
+  return [...sheds.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([shedCode, bucket]) => ({
+      shedCode,
+      points: byDay(bucket.points),
+      cameras: [...bucket.cameras.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([cameraCode, points]) => ({
+          cameraCode,
+          points: byDay(points),
+        })),
+    }));
 }
 
 function groupGrowth(
