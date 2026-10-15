@@ -331,6 +331,15 @@ export const setUserEnabledSchema = z
   .strict();
 export type SetUserEnabledInput = z.infer<typeof setUserEnabledSchema>;
 
+/** 登录用户改自己的密码。只接受当前密码和新密码。 */
+export const changeOwnPasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, '请输入当前密码'),
+    newPassword: z.string().min(6, '新密码至少 6 位'),
+  })
+  .strict();
+export type ChangeOwnPasswordInput = z.infer<typeof changeOwnPasswordSchema>;
+
 /** 超管看到的 Postgres 备份状态。时间是最近一次成功，以及最近一次运行。 */
 export const backupRunStateSchema = z.enum(['success', 'failed', 'never']);
 export const backupStatusSchema = z
@@ -861,6 +870,17 @@ export function parseSetUserEnabled(
   raw: unknown,
 ): ParseResult<SetUserEnabledInput> {
   const parsed = setUserEnabledSchema.safeParse(raw);
+  if (!parsed.success) {
+    const issue = zodErrors(parsed.error);
+    return fail(issue.code, issue.errors);
+  }
+  return { ok: true, value: parsed.data };
+}
+
+export function parseChangeOwnPassword(
+  raw: unknown,
+): ParseResult<ChangeOwnPasswordInput> {
+  const parsed = changeOwnPasswordSchema.safeParse(raw);
   if (!parsed.success) {
     const issue = zodErrors(parsed.error);
     return fail(issue.code, issue.errors);

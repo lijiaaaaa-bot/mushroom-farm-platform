@@ -15,6 +15,7 @@
   { "to": "/batches", "label": "出菇批次" },
   { "to": "/reports", "label": "报表" },
   { "to": "/sheds", "label": "棚区" },
+  { "to": "/account/password", "label": "修改密码" },
   { "to": "/audit", "label": "审计", "roles": ["super_admin", "production_admin"] },
   { "to": "/users", "label": "用户", "roles": ["super_admin"] },
   { "to": "/backup", "label": "数据备份", "roles": ["super_admin"] },

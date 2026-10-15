@@ -22,6 +22,7 @@ make web      # http://127.0.0.1:43123
 用户页 `/users`：超管能看到至少两条账号及角色（超管、查看），查看进不去：[`docs/DEMO_USER_MGMT.md`](docs/DEMO_USER_MGMT.md)（`make demo-user-mgmt`）。  
 用户页 `/users`：超管可新建 `user-create-demo`，并把 `user-reset-demo` 重设成新密码后登录：[`docs/DEMO_USER_CREATE_RESET.md`](docs/DEMO_USER_CREATE_RESET.md)（`make demo-user-create-reset`）。  
 用户页 `/users`：超管可停用 `user-enable-demo`，启用列从启用变为停用，该账号登录变为 401：[`docs/DEMO_USER_ENABLE_DISABLE.md`](docs/DEMO_USER_ENABLE_DISABLE.md)（`make demo-user-enable-disable`）。  
+修改密码页 `/account/password`：登录账号把自己的 `pwd-self-demo` 从旧密码改成新密码，旧密码登录 401：[`docs/DEMO_PASSWORD_SELF.md`](docs/DEMO_PASSWORD_SELF.md)（`make demo-password-self`）。  
 数据备份页 `/backup`：超管看到最近一次 Postgres 备份成功时间；跑之前是空或更早，跑之后是新时间：[`docs/DEMO_BACKUP_RUN.md`](docs/DEMO_BACKUP_RUN.md)（`make demo-backup-run`）。  
 热冷复制：未执行时不列出对象键；夹具里超龄 `snapshots/tier-old.jpg` 转到冷端后热端没有：[`docs/DEMO_OBJECT_TIER.md`](docs/DEMO_OBJECT_TIER.md)（`make demo-object-tier`）。  
 系统参数页 `/system-params`：超管看到图片保留、时序保留和告警未读轮询；改一项后页面写出改前→改后：[`docs/DEMO_SYS_PARAMS.md`](docs/DEMO_SYS_PARAMS.md)（`make demo-sys-params`）。  

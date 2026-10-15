@@ -39,6 +39,7 @@ const FIELD_LABEL: Record<string, string> = {
 const ACTION_LABEL: Record<string, string> = {
   'auth.login': '登录成功',
   'auth.login_failed': '登录失败',
+  'auth.password_change': '修改密码',
 };
 
 const PAGE_SIZE = '100';

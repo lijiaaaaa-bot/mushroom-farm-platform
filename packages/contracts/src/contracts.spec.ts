@@ -17,6 +17,7 @@ import {
   SYSTEM_PARAM_DEFAULTS,
   IMAGE_RETENTION_DAYS,
   ALERT_UNREAD_POLL_SECONDS,
+  parseChangeOwnPassword,
   parseSetUserEnabled,
   parseUserListItem,
   LIMITS,
@@ -266,6 +267,31 @@ describe('golden fixtures', () => {
     });
     assert.equal(secret.ok, false);
     if (!secret.ok) assert.equal(secret.code, 'UNKNOWN_FIELD');
+  });
+
+  it('accepts only the current password and a new password', () => {
+    const ok = parseChangeOwnPassword({
+      currentPassword: 'PwdOld@123456',
+      newPassword: 'PwdNew@123456',
+    });
+    assert.equal(ok.ok, true);
+    if (ok.ok) {
+      assert.equal(ok.value.currentPassword, 'PwdOld@123456');
+      assert.equal(ok.value.newPassword, 'PwdNew@123456');
+    }
+    const short = parseChangeOwnPassword({
+      currentPassword: 'PwdOld@123456',
+      newPassword: 'short',
+    });
+    assert.equal(short.ok, false);
+    if (!short.ok) assert.equal(short.code, 'VALIDATION_FAILED');
+    const extra = parseChangeOwnPassword({
+      currentPassword: 'PwdOld@123456',
+      newPassword: 'PwdNew@123456',
+      username: 'admin',
+    });
+    assert.equal(extra.ok, false);
+    if (!extra.ok) assert.equal(extra.code, 'UNKNOWN_FIELD');
   });
 
   it('accepts a backup status and rejects a secret field', () => {

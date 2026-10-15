@@ -1,4 +1,9 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import bcrypt from 'bcryptjs';
@@ -69,6 +74,33 @@ export class AuthService {
       ip,
     });
     return { accessToken, user: authUser };
+  }
+
+  async changeOwnPassword(
+    actor: AuthUser | undefined,
+    currentPassword: string,
+    newPassword: string,
+    ip?: string | null,
+  ) {
+    if (!actor?.id) throw new UnauthorizedException('请先登录');
+    const user = await this.users.findOne({ where: { id: actor.id } });
+    if (!user) throw new NotFoundException('用户不存在');
+    if (!user.enabled) throw new BadRequestException('账号已停用');
+    const matched = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!matched) throw new BadRequestException('当前密码不正确');
+    if (currentPassword === newPassword) {
+      throw new BadRequestException('新密码不能与当前密码相同');
+    }
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    await this.users.save(user);
+    await this.audit.write({
+      user: this.toAuthUser(user),
+      action: 'auth.password_change',
+      resource: `user:${user.id}`,
+      detail: { username: user.username },
+      ip: ip ?? null,
+    });
+    return { username: user.username, changed: true as const };
   }
 
   toAuthUser(user: User): AuthUser {

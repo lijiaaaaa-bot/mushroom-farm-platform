@@ -28,6 +28,7 @@ import RulesView from './views/RulesView.vue';
 import ShedsView from './views/ShedsView.vue';
 import UsersView from './views/UsersView.vue';
 import BackupView from './views/BackupView.vue';
+import ChangePasswordView from './views/ChangePasswordView.vue';
 import SystemParamsView from './views/SystemParamsView.vue';
 import { readSessionRole } from './auth';
 import { navRoles, roleCanOpen } from './nav';
@@ -78,6 +79,7 @@ const router = createRouter({
         { path: 'batches', component: BatchesView, meta: { title: '出菇批次' } },
         { path: 'reports', component: ReportsView, meta: { title: '报表' } },
         { path: 'sheds', component: ShedsView, meta: { title: '棚区' } },
+        { path: 'account/password', component: ChangePasswordView, meta: { title: '修改密码' } },
         { path: 'audit', component: AuditView, meta: { title: '审计', roles: navRoles('/audit') } },
         { path: 'users', component: UsersView, meta: { title: '用户', roles: navRoles('/users') } },
         { path: 'backup', component: BackupView, meta: { title: '数据备份', roles: navRoles('/backup') } },

@@ -1,6 +1,16 @@
-import { Body, Controller, Get, Post, Req } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Post,
+  Req,
+} from '@nestjs/common';
 import { IsString, MinLength } from 'class-validator';
 import { Request } from 'express';
+import { parseChangeOwnPassword } from '@mushroom/contracts';
 import { AuthUser } from '../common/auth-user';
 import { CurrentUser, Public } from '../common/decorators';
 import { AuthService } from './auth.service';
@@ -33,5 +43,28 @@ export class AuthController {
   @Get('me')
   me(@CurrentUser() user: AuthUser) {
     return user;
+  }
+
+  @Post('change-password')
+  @HttpCode(HttpStatus.OK)
+  changePassword(
+    @Body() body: unknown,
+    @CurrentUser() user: AuthUser,
+    @Req() request: Request,
+  ) {
+    const parsed = parseChangeOwnPassword(body);
+    if (!parsed.ok) {
+      throw new BadRequestException({
+        code: parsed.code,
+        message: '密码无效',
+        errors: parsed.errors,
+      });
+    }
+    return this.auth.changeOwnPassword(
+      user,
+      parsed.value.currentPassword,
+      parsed.value.newPassword,
+      request.ip ?? null,
+    );
   }
 }

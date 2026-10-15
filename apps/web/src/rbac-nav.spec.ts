@@ -79,7 +79,8 @@ describe('role menus', () => {
     expect(viewer).not.toContain('用户');
     expect(viewer).not.toContain('数据备份');
     expect(viewer).not.toContain('系统参数');
-    for (const label of ['总览', '基地大屏', '值班看板', '设备', '告警', '棚区']) {
+    expect(navRoles('/account/password')).toBeUndefined();
+    for (const label of ['总览', '基地大屏', '值班看板', '设备', '告警', '棚区', '修改密码']) {
       expect(viewer).toContain(label);
       expect(admin).toContain(label);
     }
@@ -98,7 +99,21 @@ describe('role menus', () => {
     expect(labels).not.toContain('系统参数');
     expect(labels).toContain('总览');
     expect(labels).toContain('基地大屏');
+    expect(labels).toContain('修改密码');
+    expect(wrapper.get('nav').find('a[href="/account/password"]').exists()).toBe(true);
     wrapper.unmount();
+  });
+
+  it('lets every logged-in role open 修改密码', async () => {
+    for (const role of ['super_admin', 'production_admin', 'shed_manager', 'viewer'] as const) {
+      expect(visibleNav(role).map((link) => link.label)).toContain('修改密码');
+      storeUser(role);
+      await router.push('/account/password');
+      await flushPromises();
+      expect(router.currentRoute.value.path).toBe('/account/password');
+      expect(router.currentRoute.value.meta.title).toBe('修改密码');
+      expect(router.currentRoute.value.meta.roles).toBeUndefined();
+    }
   });
 
   it('shows 审计 and 用户 in the sidebar for 超管', async () => {
