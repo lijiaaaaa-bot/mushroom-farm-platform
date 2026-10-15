@@ -95,8 +95,9 @@ const listReturn = computed(() => {
   return { path: '/diseases', query };
 });
 
-function metric(value: number | null): string {
-  return value === null || value === undefined ? '—' : String(value);
+function metric(value: number | null, unit = ''): string {
+  if (value === null || value === undefined) return '—';
+  return unit ? `${value}${unit}` : String(value);
 }
 
 function canvasReady(): boolean {
@@ -324,13 +325,13 @@ onBeforeUnmount(releaseChart);
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="reading in env.readings" :key="reading.id">
-                  <td class="font-mono text-xs">{{ shanghaiStamp(reading.observedAt) }}</td>
-                  <td class="font-mono">{{ reading.sensorCode }}</td>
-                  <td>{{ metric(reading.temperature) }}</td>
-                  <td>{{ metric(reading.humidity) }}</td>
-                  <td>{{ metric(reading.co2) }}</td>
-                  <td>{{ metric(reading.substrateMoisture) }}</td>
+                <tr v-for="reading in env.readings" :key="reading.id" data-testid="env-reading">
+                  <td class="font-mono text-xs" data-field="observed-at">{{ shanghaiStamp(reading.observedAt) }}</td>
+                  <td class="font-mono" data-field="sensor">{{ reading.sensorCode }}</td>
+                  <td data-field="temperature">{{ metric(reading.temperature, '℃') }}</td>
+                  <td data-field="humidity">{{ metric(reading.humidity, '%') }}</td>
+                  <td data-field="co2">{{ metric(reading.co2) }}</td>
+                  <td data-field="moisture">{{ metric(reading.substrateMoisture, '%') }}</td>
                 </tr>
               </tbody>
             </table>
