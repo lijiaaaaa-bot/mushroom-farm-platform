@@ -209,6 +209,9 @@ describe('users rbac', () => {
     expect(await bcrypt.compare('Viewer@123456', viewer!.passwordHash)).toBe(
       true,
     );
+    expect(await bcrypt.compare('Old@123456', viewer!.passwordHash)).toBe(
+      false,
+    );
     expect(users.rows).toHaveLength(2);
     expect(audit.rows.map((row) => row.action)).toEqual(['user.update']);
 
@@ -229,5 +232,16 @@ describe('users rbac', () => {
       'user.update',
       'user.create',
     ]);
+
+    const listed = await request(app.getHttpServer())
+      .get('/api/v1/users')
+      .set('x-test-role', 'super_admin');
+    expect(listed.status).toBe(200);
+    expect(
+      listed.body.map((row: { username: string }) => row.username),
+    ).toEqual(['admin', 'viewer', 'night']);
+    expect(JSON.stringify(listed.body)).not.toContain('Night@123456');
+    expect(JSON.stringify(listed.body)).not.toContain('Viewer@123456');
+    expect(JSON.stringify(listed.body)).not.toContain('password');
   });
 });
