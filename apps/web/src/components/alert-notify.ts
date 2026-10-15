@@ -1,7 +1,7 @@
-import { ALERT_LEVEL_LABEL, type AlertLevel } from '@mushroom/contracts';
+import { ALERT_LEVEL_LABEL, ALERT_UNREAD_POLL_SECONDS, type AlertLevel } from '@mushroom/contracts';
 
-/** 顶栏未读轮询间隔。不用 SSE/WebSocket。 */
-export const UNREAD_POLL_MS = 15_000;
+/** 顶栏未读轮询的默认间隔。超管若改了系统参数，顶栏改用保存的秒数。 */
+export const UNREAD_POLL_MS = ALERT_UNREAD_POLL_SECONDS * 1000;
 
 export interface UnreadAlertItem {
   id: string;

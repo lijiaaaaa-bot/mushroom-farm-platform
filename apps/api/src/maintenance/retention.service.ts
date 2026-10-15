@@ -2,15 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { IsNull, LessThan, Not, Repository } from 'typeorm';
-import {
-  IMAGE_RETENTION_DAYS,
-  TIMESERIES_RETENTION_DAYS,
-} from '@mushroom/contracts';
 import { EnvironmentReading } from '../entities/environment-reading.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { MinioStorageService } from '../storage';
+import { SystemParamsService } from '../system-params/system-params.service';
 
-/** 图片 30 天、时序 90 天。定时任务已接线，数据量上来后仍走同一入口。 */
+/** 图片与时序天数读 system_params。没改过时仍是 30 天和 90 天。 */
 @Injectable()
 export class RetentionService {
   private readonly logger = new Logger(RetentionService.name);
@@ -21,6 +18,7 @@ export class RetentionService {
     @InjectRepository(EnvironmentReading)
     private readonly readings: Repository<EnvironmentReading>,
     private readonly storage: MinioStorageService,
+    private readonly params: SystemParamsService,
   ) {}
 
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
@@ -30,11 +28,12 @@ export class RetentionService {
   }
 
   async purgeOnce() {
+    const params = await this.params.current();
     const imageCutoff = new Date(
-      Date.now() - IMAGE_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+      Date.now() - params.imageRetentionDays * 24 * 60 * 60 * 1000,
     );
     const seriesCutoff = new Date(
-      Date.now() - TIMESERIES_RETENTION_DAYS * 24 * 60 * 60 * 1000,
+      Date.now() - params.timeseriesRetentionDays * 24 * 60 * 60 * 1000,
     );
     const staleImages = await this.records.find({
       where: {

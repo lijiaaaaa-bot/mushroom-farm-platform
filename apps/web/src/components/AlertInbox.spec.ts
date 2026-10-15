@@ -32,6 +32,27 @@ const second = {
   message: '湿度偏高',
 };
 
+const defaultParams = {
+  imageRetentionDays: 30,
+  timeseriesRetentionDays: 90,
+  alertUnreadPollSeconds: 15,
+  updatedAt: null,
+  updatedBy: null,
+};
+
+function routeGets(
+  unread: Array<{ data: { unreadCount: number; items: unknown[] } }>,
+  params: { alertUnreadPollSeconds: number } = defaultParams,
+) {
+  const queue = [...unread];
+  httpGet.mockImplementation((url: string) => {
+    if (url === '/system-params') return Promise.resolve({ data: params });
+    const next = queue.shift();
+    if (!next) return Promise.reject(new Error('down'));
+    return Promise.resolve(next);
+  });
+}
+
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
@@ -40,7 +61,7 @@ afterEach(() => {
 
 describe('AlertInbox', () => {
   it('renders level, shed, time, and summary for unread alerts', async () => {
-    httpGet.mockResolvedValue({ data: { unreadCount: 1, items: [first] } });
+    routeGets([{ data: { unreadCount: 1, items: [first] } }]);
     const wrapper = mount(AlertInbox);
     await flushPromises();
 
@@ -57,10 +78,11 @@ describe('AlertInbox', () => {
   });
 
   it('drops the unread count after mark one and mark all', async () => {
-    httpGet
-      .mockResolvedValueOnce({ data: { unreadCount: 2, items: [first, second] } })
-      .mockResolvedValueOnce({ data: { unreadCount: 1, items: [second] } })
-      .mockResolvedValueOnce({ data: { unreadCount: 0, items: [] } });
+    routeGets([
+      { data: { unreadCount: 2, items: [first, second] } },
+      { data: { unreadCount: 1, items: [second] } },
+      { data: { unreadCount: 0, items: [] } },
+    ]);
     httpPost.mockResolvedValue({ data: {} });
     const wrapper = mount(AlertInbox);
     await flushPromises();
@@ -99,9 +121,10 @@ describe('AlertInbox', () => {
 
   it('updates the unread count on the next poll', async () => {
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
-    httpGet
-      .mockResolvedValueOnce({ data: { unreadCount: 1, items: [first] } })
-      .mockResolvedValueOnce({ data: { unreadCount: 2, items: [first, second] } });
+    routeGets([
+      { data: { unreadCount: 1, items: [first] } },
+      { data: { unreadCount: 2, items: [first, second] } },
+    ]);
     const wrapper = mount(AlertInbox);
     await flushPromises();
 
@@ -109,7 +132,11 @@ describe('AlertInbox', () => {
     await vi.advanceTimersByTimeAsync(UNREAD_POLL_MS);
     await flushPromises();
 
-    expect(httpGet).toHaveBeenCalledTimes(2);
+    expect(httpGet.mock.calls.map((call) => call[0])).toEqual([
+      '/alerts/unread',
+      '/system-params',
+      '/alerts/unread',
+    ]);
     expect(wrapper.get('[data-testid="unread-count"]').text()).toBe('2');
     wrapper.unmount();
   });
@@ -127,9 +154,10 @@ describe('AlertInbox', () => {
       }
     }
     vi.stubGlobal('Notification', FakeNotification);
-    httpGet
-      .mockResolvedValueOnce({ data: { unreadCount: 0, items: [] } })
-      .mockResolvedValueOnce({ data: { unreadCount: 1, items: [first] } });
+    routeGets([
+      { data: { unreadCount: 0, items: [] } },
+      { data: { unreadCount: 1, items: [first] } },
+    ]);
     const wrapper = mount(AlertInbox);
     await flushPromises();
     await wrapper.get('[data-testid="unread-entry"]').trigger('click');
@@ -157,15 +185,41 @@ describe('AlertInbox', () => {
       }
     }
     vi.stubGlobal('Notification', FakeNotification);
-    httpGet
-      .mockResolvedValueOnce({ data: { unreadCount: 1, items: [first] } })
-      .mockResolvedValueOnce({ data: { unreadCount: 2, items: [first, second] } });
+    routeGets([
+      { data: { unreadCount: 1, items: [first] } },
+      { data: { unreadCount: 2, items: [first, second] } },
+    ]);
     const wrapper = mount(AlertInbox);
     await flushPromises();
     await vi.advanceTimersByTimeAsync(UNREAD_POLL_MS);
     await flushPromises();
 
     expect(constructed).toEqual(['一般 · S02']);
+    wrapper.unmount();
+  });
+
+  it('uses the saved unread poll instead of 15 seconds', async () => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] });
+    let unreadCalls = 0;
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/system-params') {
+        return Promise.resolve({ data: { ...defaultParams, alertUnreadPollSeconds: 45 } });
+      }
+      unreadCalls += 1;
+      return Promise.resolve({ data: { unreadCount: unreadCalls, items: [] } });
+    });
+    const wrapper = mount(AlertInbox);
+    await flushPromises();
+
+    expect(wrapper.get('[data-testid="unread-count"]').text()).toBe('1');
+    await vi.advanceTimersByTimeAsync(UNREAD_POLL_MS);
+    await flushPromises();
+    expect(unreadCalls).toBe(1);
+
+    await vi.advanceTimersByTimeAsync(45_000 - UNREAD_POLL_MS);
+    await flushPromises();
+    expect(unreadCalls).toBe(2);
+    expect(wrapper.get('[data-testid="unread-count"]').text()).toBe('2');
     wrapper.unmount();
   });
 });

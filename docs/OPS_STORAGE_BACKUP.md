@@ -106,6 +106,18 @@ node scripts/object-lifecycle.mjs
 - 成功或失败后，若本机能连上库且已执行 `017_postgres_backup_runs.sql`，同一脚本再写一行到 `postgres_backup_runs`（触发人 `make-backup`）。写不进去时备份文件的退出码不变，页面上的时间不更新。
 - 超管打开 `/backup` 读取 `GET /api/v1/backups/status`，看到最近成功时间和最近一次结果。点「立即备份」调用 `POST /api/v1/backups/run`，走同一份 `scripts/backup-postgres.mjs`，触发人是当前超管。其他角色这两个接口是 403，侧栏没有「数据备份」。步骤见 `docs/DEMO_BACKUP_RUN.md`。
 
+## 系统参数
+
+迁移 `018_system_params.sql` 建表 `system_params`，只有一行。超管打开 `/system-params`，读取 `GET /api/v1/system-params`，保存走 `PATCH /api/v1/system-params`。其他角色这两个接口是 403，侧栏没有「系统参数」。
+
+| 参数 | 默认 | 谁用 |
+|------|------|------|
+| 图片保留天数 | 30（`IMAGE_RETENTION_DAYS`） | 每天 03:00 清理超龄抓拍对象 |
+| 时序保留天数 | 90（`TIMESERIES_RETENTION_DAYS`） | 同一清理删除超龄识别和环境明细 |
+| 告警未读轮询秒数 | 15（`ALERT_UNREAD_POLL_SECONDS`） | 超管顶栏的未读轮询。其他角色读不到这个接口，顶栏仍是 15 秒 |
+
+范围：保留天数 1–3650，轮询秒数 5–300。至少改一项；和当前值相同则 400「没有改动」。补传窗口仍是契约里的 90 天，不随这里的时序天数变。心跳超时仍由 `DEVICE_OFFLINE_AFTER_MS` 决定。步骤见 `docs/DEMO_SYS_PARAMS.md`。
+
 Redis 是幂等缓存，重启即丢，不在这份文件里。重复报文仍靠数据库唯一约束。
 
 MinIO 是独立数据卷（热卷，以及可选冷卷）。`pg_dump` 只有对象键。只恢复数据库、不保留磁盘时，旧抓拍键会指向已经不在的文件。要留住图片，热盘和已转出的冷盘一起保留。

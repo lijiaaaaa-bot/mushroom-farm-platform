@@ -22,6 +22,7 @@ import { MetaModule } from './meta';
 import { RedisModule } from './redis';
 import { ReportsModule } from './reports';
 import { SeedModule } from './seed';
+import { SystemParamsModule } from './system-params';
 import { ShedsModule } from './sheds';
 import { StorageModule } from './storage';
 
@@ -55,6 +56,7 @@ import { StorageModule } from './storage';
     DashboardModule,
     DiseasesModule,
     MaintenanceModule,
+    SystemParamsModule,
     MetaModule,
     SeedModule,
   ],

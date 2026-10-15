@@ -110,6 +110,8 @@ export const INGEST_ENVIRONMENT_HTTP_PATH = '/api/v1/ingest/environment';
 export const IMAGE_RETENTION_DAYS = 30;
 export const TIMESERIES_RETENTION_DAYS = 90;
 export const DEVICE_OFFLINE_AFTER_MS = 5 * 60 * 1000;
+/** 顶栏未读告警轮询的默认秒数。与管理端未改参数时的间隔一致。 */
+export const ALERT_UNREAD_POLL_SECONDS = 15;
 /** 病害对照默认取识别时间前后各这么多分钟的环境读数。 */
 export const DISEASE_ENV_WINDOW_MINUTES = 30;
 /** 产量估计要求近这么多个上海自然日都有成熟识别。 */
@@ -343,6 +345,87 @@ export const backupStatusSchema = z
   })
   .strict();
 export type BackupStatus = z.infer<typeof backupStatusSchema>;
+
+/** 超管可改的系统参数。默认与契约里的保留天数、未读轮询秒数相同。 */
+export const SYSTEM_PARAM_KEYS = [
+  'imageRetentionDays',
+  'timeseriesRetentionDays',
+  'alertUnreadPollSeconds',
+] as const;
+export type SystemParamKey = (typeof SYSTEM_PARAM_KEYS)[number];
+
+export const SYSTEM_PARAM_LABEL: Record<SystemParamKey, string> = {
+  imageRetentionDays: '图片保留',
+  timeseriesRetentionDays: '时序保留',
+  alertUnreadPollSeconds: '告警未读轮询',
+};
+
+export const SYSTEM_PARAM_BOUNDS: Record<SystemParamKey, { min: number; max: number }> = {
+  imageRetentionDays: { min: 1, max: 3650 },
+  timeseriesRetentionDays: { min: 1, max: 3650 },
+  alertUnreadPollSeconds: { min: 5, max: 300 },
+};
+
+export const SYSTEM_PARAM_DEFAULTS: Record<SystemParamKey, number> = {
+  imageRetentionDays: IMAGE_RETENTION_DAYS,
+  timeseriesRetentionDays: TIMESERIES_RETENTION_DAYS,
+  alertUnreadPollSeconds: ALERT_UNREAD_POLL_SECONDS,
+};
+
+function boundedInt(key: SystemParamKey) {
+  const bounds = SYSTEM_PARAM_BOUNDS[key];
+  return z.number().int().min(bounds.min).max(bounds.max);
+}
+
+export const systemParamsSchema = z
+  .object({
+    imageRetentionDays: boundedInt('imageRetentionDays'),
+    timeseriesRetentionDays: boundedInt('timeseriesRetentionDays'),
+    alertUnreadPollSeconds: boundedInt('alertUnreadPollSeconds'),
+    updatedAt: z.string().datetime().nullable(),
+    updatedBy: z.string().min(1).max(120).nullable(),
+  })
+  .strict();
+export type SystemParams = z.infer<typeof systemParamsSchema>;
+
+export const patchSystemParamsSchema = z
+  .object({
+    imageRetentionDays: boundedInt('imageRetentionDays').optional(),
+    timeseriesRetentionDays: boundedInt('timeseriesRetentionDays').optional(),
+    alertUnreadPollSeconds: boundedInt('alertUnreadPollSeconds').optional(),
+  })
+  .strict()
+  .refine((value) => SYSTEM_PARAM_KEYS.some((key) => value[key] !== undefined), {
+    message: '至少改一项',
+  });
+export type PatchSystemParams = z.infer<typeof patchSystemParamsSchema>;
+
+export const systemParamChangeSchema = z
+  .object({
+    key: z.enum(SYSTEM_PARAM_KEYS),
+    label: z.string().min(1),
+    beforeText: z.string().min(1),
+    afterText: z.string().min(1),
+  })
+  .strict();
+export type SystemParamChange = z.infer<typeof systemParamChangeSchema>;
+
+export const systemParamsPatchResultSchema = systemParamsSchema
+  .extend({
+    changes: z.array(systemParamChangeSchema).min(1),
+  })
+  .strict();
+export type SystemParamsPatchResult = z.infer<typeof systemParamsPatchResultSchema>;
+
+export function formatSystemParamValue(key: SystemParamKey, value: number): string {
+  return key === 'alertUnreadPollSeconds' ? `${value} 秒` : `${value} 天`;
+}
+
+export function formatSystemParamChange(
+  change: Pick<SystemParamChange, 'label' | 'beforeText' | 'afterText'>,
+): string {
+  return `${change.label}：${change.beforeText} → ${change.afterText}`;
+}
 
 export type ParseResult<T> =
   | { ok: true; value: T }
@@ -787,6 +870,37 @@ export function parseSetUserEnabled(
 
 export function parseBackupStatus(raw: unknown): ParseResult<BackupStatus> {
   const parsed = backupStatusSchema.safeParse(raw);
+  if (!parsed.success) {
+    const issue = zodErrors(parsed.error);
+    return fail(issue.code, issue.errors);
+  }
+  return { ok: true, value: parsed.data };
+}
+
+export function parseSystemParams(raw: unknown): ParseResult<SystemParams> {
+  const parsed = systemParamsSchema.safeParse(raw);
+  if (!parsed.success) {
+    const issue = zodErrors(parsed.error);
+    return fail(issue.code, issue.errors);
+  }
+  return { ok: true, value: parsed.data };
+}
+
+export function parsePatchSystemParams(
+  raw: unknown,
+): ParseResult<PatchSystemParams> {
+  const parsed = patchSystemParamsSchema.safeParse(raw);
+  if (!parsed.success) {
+    const issue = zodErrors(parsed.error);
+    return fail(issue.code, issue.errors);
+  }
+  return { ok: true, value: parsed.data };
+}
+
+export function parseSystemParamsPatchResult(
+  raw: unknown,
+): ParseResult<SystemParamsPatchResult> {
+  const parsed = systemParamsPatchResultSchema.safeParse(raw);
   if (!parsed.success) {
     const issue = zodErrors(parsed.error);
     return fail(issue.code, issue.errors);
