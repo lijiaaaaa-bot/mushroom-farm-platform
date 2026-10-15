@@ -9,6 +9,8 @@ import {
   parseAlertFalsePositive,
   parseAlertNote,
   parseCreateAlert,
+  parseSetUserEnabled,
+  parseUserListItem,
   LIMITS,
   parseEnvironmentIngress,
   parseHeartbeatIngress,
@@ -220,6 +222,42 @@ describe('golden fixtures', () => {
     assert.equal(typeof value.humidity, 'number');
     assert.equal(typeof value.co2, 'number');
     assert.equal(typeof value.substrateMoisture, 'number');
+  });
+
+  it('accepts a user list row and a boolean enable body', () => {
+    const row = parseUserListItem({
+      id: 'user-enable',
+      username: 'user-enable-demo',
+      displayName: '启停演示',
+      role: 'viewer',
+      shedCodes: ['S01'],
+      enabled: true,
+      createdAt: '2026-10-15T00:00:00.000Z',
+    });
+    assert.equal(row.ok, true);
+    if (row.ok) assert.equal(row.value.enabled, true);
+    const off = parseSetUserEnabled({ enabled: false });
+    assert.equal(off.ok, true);
+    if (off.ok) assert.equal(off.value.enabled, false);
+    const on = parseSetUserEnabled({ enabled: true });
+    assert.equal(on.ok, true);
+    const textFlag = parseSetUserEnabled({ enabled: 'false' });
+    assert.equal(textFlag.ok, false);
+    if (!textFlag.ok) assert.equal(textFlag.code, 'VALIDATION_FAILED');
+    const extra = parseSetUserEnabled({ enabled: false, password: 'x' });
+    assert.equal(extra.ok, false);
+    if (!extra.ok) assert.equal(extra.code, 'UNKNOWN_FIELD');
+    const secret = parseUserListItem({
+      id: 'user-enable',
+      username: 'user-enable-demo',
+      displayName: '启停演示',
+      role: 'viewer',
+      shedCodes: ['S01'],
+      enabled: false,
+      passwordHash: 'secret',
+    });
+    assert.equal(secret.ok, false);
+    if (!secret.ok) assert.equal(secret.code, 'UNKNOWN_FIELD');
   });
 
   it('loads the snapshot key fixture', () => {
