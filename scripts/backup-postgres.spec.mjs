@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import {
   INSERT_BACKUP_RUN_SQL,
@@ -204,4 +205,40 @@ test('recording a backup run does not throw when the insert fails', async () => 
   assert.equal(failed.ok, false);
   assert.match(failed.reason, /页面上的时间不更新/);
   assert.equal(failed.reason.includes('secret'), false);
+});
+
+test('docker dump settles when stdout is piped to the backup file', { timeout: 5000 }, async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'mushroom-backup-docker-'));
+  const bin = join(dir, 'bin');
+  await mkdir(bin);
+  const docker = join(bin, 'docker');
+  await writeFile(docker, '#!/bin/sh\nprintf "%s\\n" "-- PostgreSQL database dump"\n');
+  await chmod(docker, 0o755);
+  try {
+    const result = await runBackup({
+      env: {
+        PATH: bin,
+        BACKUP_VIA: 'docker',
+        DATABASE_URL: 'postgres://mushroom:mushroom@127.0.0.1:5432/mushroom',
+      },
+      repoRoot: dir,
+      now: new Date('2026-10-15T03:11:00.000Z'),
+      log: () => undefined,
+      error: () => undefined,
+    });
+    assert.equal(result.exitCode, 0);
+    assert.match(result.file, /mushroom-20261015T031100Z\.sql$/);
+    assert.match(await readFile(result.file, 'utf8'), /PostgreSQL database dump/);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test('api backup runner keeps a real dynamic import', async () => {
+  const runner = await readFile(
+    join(dirname(fileURLToPath(import.meta.url)), '../apps/api/src/backup/backup.runner.ts'),
+    'utf8',
+  );
+  assert.match(runner, /new Function\('u', 'return import\(u\)'\)/);
+  assert.equal(runner.includes('await import('), false);
 });

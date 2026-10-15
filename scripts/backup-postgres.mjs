@@ -111,24 +111,44 @@ function runProcess(command) {
   return new Promise((resolvePromise) => {
     const child = spawn(command.cmd, command.args, {
       cwd: command.cwd,
+      env: command.env,
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let stderr = '';
+    let settled = false;
+    const settle = (payload) => {
+      if (settled) return;
+      settled = true;
+      resolvePromise(payload);
+    };
     child.stderr.on('data', (chunk) => {
       stderr += chunk.toString();
     });
     if (command.stdoutFile) {
       const out = createWriteStream(command.stdoutFile);
       child.stdout.pipe(out);
+      const finishOut = () =>
+        new Promise((resolveFinish) => {
+          // pipe 可能已经 end()。writableEnded 时数据还没落盘，要等 finish，不能再 end() 一次，否则 finish 不再来。
+          if (out.writableFinished || out.destroyed) {
+            resolveFinish();
+            return;
+          }
+          out.once('finish', resolveFinish);
+          out.once('error', resolveFinish);
+          if (!out.writableEnded) out.end();
+        });
       child.on('close', (code) => {
-        out.end();
-        out.on('finish', () => resolvePromise({ code: code ?? 1, stderr }));
-        out.on('error', () => resolvePromise({ code: code ?? 1, stderr }));
+        finishOut().finally(() => settle({ code: code ?? 1, stderr }));
+      });
+      child.on('error', (err) => {
+        finishOut().finally(() => settle({ code: 1, stderr: stderr || String(err) }));
       });
       return;
     }
     child.stdout.resume();
-    child.on('close', (code) => resolvePromise({ code: code ?? 1, stderr }));
+    child.on('close', (code) => settle({ code: code ?? 1, stderr }));
+    child.on('error', (err) => settle({ code: 1, stderr: stderr || String(err) }));
   });
 }
 
@@ -270,6 +290,7 @@ export async function runBackup({
     database: target.database,
     cwd: repoRoot,
   });
+  command.env = env;
   log(
     `Postgres 备份写入 ${file}（${selected.mode}）。Redis 不在此文件中。MinIO 对象在独立数据卷，不在此文件中。`,
   );

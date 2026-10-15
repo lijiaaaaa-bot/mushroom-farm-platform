@@ -17,7 +17,13 @@ export async function runPostgresBackup(
   now = new Date(),
 ): Promise<BackupRunResult> {
   const script = join(__dirname, '../../../../scripts/backup-postgres.mjs');
-  const loaded = await import(pathToFileURL(script).href);
+  // tsc 会把 file URL 的动态 import 收成 require，运行时 500。用 Function 保住真正的 import。
+  const dynamicImport = new Function('u', 'return import(u)') as (
+    u: string,
+  ) => Promise<{
+    runBackup: (args: { now: Date }) => Promise<BackupRunResult>;
+  }>;
+  const loaded = await dynamicImport(pathToFileURL(script).href);
   const result = await loaded.runBackup({ now });
   return {
     exitCode: result.exitCode,
