@@ -1,0 +1,67 @@
+{
+  "clock": "2026-10-15T03:04:05.000Z",
+  "expect": "ok",
+  "temperature": 22.5,
+  "humidity": 88,
+  "co2": 900,
+  "substrateMoisture": 70,
+  "diseaseLevel": 1,
+  "mushroomCount": 12,
+  "matureCount": 4,
+  "snapshotBase64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAAAP/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8Af//Z",
+  "body": {
+    "idempotencyKey": "demo-disease-hotspot-CAM-DH-A-2026-10-15T03:00:00.000Z",
+    "shedCode": "S03",
+    "cameraCode": "CAM-DH-A",
+    "recognizedAt": "2026-10-15T03:04:05.000Z",
+    "mushroomCount": 12,
+    "matureCount": 4,
+    "capDiameters": [
+      4.2
+    ],
+    "diseaseCount": 4,
+    "diseaseLevel": 1,
+    "snapshotBase64": "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAAAP/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8Af//Z",
+    "temperature": 22.5,
+    "humidity": 88,
+    "co2": 900,
+    "substrateMoisture": 70
+  },
+  "points": [
+    {
+      "role": "peak",
+      "shedCode": "S03",
+      "cameraCode": "CAM-DH-A",
+      "offsetHours": 0,
+      "diseaseCount": 4
+    },
+    {
+      "role": "peak",
+      "shedCode": "S03",
+      "cameraCode": "CAM-DH-B",
+      "offsetHours": 0,
+      "diseaseCount": 4
+    },
+    {
+      "role": "peak",
+      "shedCode": "S03",
+      "cameraCode": "CAM-DH-C",
+      "offsetHours": 0,
+      "diseaseCount": 4
+    },
+    {
+      "role": "low-hour",
+      "shedCode": "S02",
+      "cameraCode": "CAM-DH-LOW",
+      "offsetHours": 3,
+      "diseaseCount": 1
+    },
+    {
+      "role": "low-day",
+      "shedCode": "S03",
+      "cameraCode": "CAM-DH-DAY",
+      "offsetHours": 48,
+      "diseaseCount": 1
+    }
+  ]
+}

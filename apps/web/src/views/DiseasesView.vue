@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { errorText, http } from '../api';
 import { DISEASE_LEVEL_OPTIONS, diseaseLevelText, shanghaiStamp } from '../disease-level';
@@ -26,16 +26,48 @@ const cameraDraft = ref('');
 const fromDraft = ref('');
 const toDraft = ref('');
 const levelDraft = ref('');
-const peaks = ref<{
+interface PeakPoint {
+  bucketStart: string;
+  diseaseCount: number;
+}
+
+interface ShedPeak {
+  shedCode: string;
+  diseaseCount: number;
+}
+
+interface Peaks {
   grain: string;
-  byTime: Array<{ bucketStart: string; diseaseCount: number }>;
-  byShed: Array<{ shedCode: string; diseaseCount: number }>;
-  peak: { bucketStart: string; diseaseCount: number } | null;
-} | null>(null);
+  from?: string;
+  to?: string;
+  byTime: PeakPoint[];
+  byShed: ShedPeak[];
+  peak: PeakPoint | null;
+}
+
+const peaks = ref<Peaks | null>(null);
+const peaksError = ref('');
+let peaksTicket = 0;
 
 function queryValue(key: string) {
   const value = route.query[key];
   return typeof value === 'string' ? value : '';
+}
+
+function grainQuery(): 'hour' | 'day' {
+  return queryValue('grain') === 'day' ? 'day' : 'hour';
+}
+
+function withGrain(query: Record<string, string>) {
+  const raw = queryValue('grain');
+  if (raw === 'hour' || raw === 'day') query.grain = raw;
+  return query;
+}
+
+function bucketLabel(value: string, grain: string) {
+  const text = shanghaiStamp(value);
+  if (text === '—') return text;
+  return grain === 'day' ? text.slice(0, 10) : text;
 }
 
 function invalidBound(value: string) {
@@ -72,12 +104,45 @@ const bounds = computed(() => ({
   diseaseLevel: queryValue('diseaseLevel').trim(),
 }));
 
+const timeMax = computed(() =>
+  Math.max(0, ...(peaks.value?.byTime ?? []).map((row) => row.diseaseCount)),
+);
+
+const shedMax = computed(() =>
+  Math.max(0, ...(peaks.value?.byShed ?? []).map((row) => row.diseaseCount)),
+);
+
+const topShed = computed(() => {
+  const rows = peaks.value?.byShed ?? [];
+  return rows.find((row) => row.diseaseCount > 0 && row.diseaseCount === shedMax.value) ?? null;
+});
+
+const windowText = computed(() => {
+  const grain = peaks.value?.grain === 'day' ? 'day' : grainQuery();
+  const title = grain === 'day' ? '近 7 日' : '近 24 小时';
+  if (!peaks.value?.from || !peaks.value?.to) return title;
+  return `${title} · ${bucketLabel(peaks.value.from, grain)} 至 ${bucketLabel(peaks.value.to, grain)}`;
+});
+
 const filterActive = computed(() => {
   const filter = bounds.value;
   return Boolean(
     filter.shedCode || filter.cameraCode || filter.from || filter.to || filter.diseaseLevel,
   );
 });
+
+function barWidth(count: number, max: number) {
+  if (max <= 0 || count <= 0) return '0%';
+  return `${Math.min(100, Math.max(8, Math.round((count / max) * 100)))}%`;
+}
+
+function isTimePeak(row: PeakPoint) {
+  return Boolean(peaks.value?.peak && peaks.value.peak.bucketStart === row.bucketStart);
+}
+
+function isShedPeak(row: ShedPeak) {
+  return row.diseaseCount > 0 && row.diseaseCount === shedMax.value;
+}
 
 function hasImage(row: Row) {
   return Boolean(row.snapshotObjectKey || row.snapshotUrl);
@@ -147,7 +212,7 @@ async function apply() {
   if (from) query.from = new Date(from).toISOString();
   if (to) query.to = new Date(to).toISOString();
   if (diseaseLevel) query.diseaseLevel = diseaseLevel;
-  await router.replace({ path: '/diseases', query });
+  await router.replace({ path: '/diseases', query: withGrain(query) });
 }
 
 async function clearFilters() {
@@ -156,7 +221,37 @@ async function clearFilters() {
   fromDraft.value = '';
   toDraft.value = '';
   levelDraft.value = '';
-  await router.replace({ path: '/diseases', query: {} });
+  await router.replace({ path: '/diseases', query: withGrain({}) });
+}
+
+async function setGrain(next: 'hour' | 'day') {
+  const query: Record<string, string> = {};
+  for (const key of ['shedCode', 'cameraCode', 'from', 'to', 'diseaseLevel'] as const) {
+    const value = queryValue(key);
+    if (value) query[key] = value;
+  }
+  query.grain = next;
+  await router.replace({ path: '/diseases', query });
+}
+
+async function loadPeaks() {
+  const ticket = ++peaksTicket;
+  const grain = grainQuery();
+  peaksError.value = '';
+  try {
+    const peakResponse = await http.get<Peaks>('/diseases/peaks', { params: { grain } });
+    if (ticket !== peaksTicket) return;
+    const data = peakResponse.data;
+    if (data && Array.isArray(data.byTime) && Array.isArray(data.byShed)) {
+      peaks.value = data;
+      return;
+    }
+    peaks.value = null;
+  } catch (cause) {
+    if (ticket !== peaksTicket) return;
+    peaks.value = null;
+    peaksError.value = errorText(cause);
+  }
 }
 
 watch(
@@ -174,41 +269,139 @@ watch(
   { immediate: true },
 );
 
-onMounted(async () => {
-  try {
-    const peakResponse = await http
-      .get<NonNullable<typeof peaks.value>>('/diseases/peaks')
-      .catch(() => null);
-    if (
-      peakResponse &&
-      Array.isArray(peakResponse.data.byTime) &&
-      Array.isArray(peakResponse.data.byShed)
-    ) {
-      peaks.value = peakResponse.data;
-    }
-  } catch {
-    peaks.value = null;
-  }
-});
+watch(
+  () => route.query.grain,
+  () => {
+    void loadPeaks();
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
   <section class="ops-page space-y-4">
     <section
-      v-if="peaks && (peaks.byTime.length || peaks.byShed.length)"
-      class="panel space-y-2"
+      v-if="peaks || peaksError"
+      class="panel space-y-3"
       data-testid="disease-peaks"
+      :data-grain="peaks?.grain || grainQuery()"
     >
-      <h2 class="text-lg text-ink">高发统计</h2>
-      <p class="text-sm text-mist">读小时桶或日桶里的病害数。档案仍是下面的识别记录。</p>
-      <p v-if="peaks.peak" class="font-mono text-sm">
-        峰值 {{ shanghaiStamp(peaks.peak.bucketStart) }} · {{ peaks.peak.diseaseCount }}
+      <div class="flex flex-wrap items-center gap-2">
+        <h2 class="text-lg text-ink">病害高发</h2>
+        <button
+          type="button"
+          data-testid="disease-grain-hour"
+          :class="grainQuery() === 'hour' ? 'btn-primary' : 'btn-ghost'"
+          :aria-pressed="grainQuery() === 'hour'"
+          @click="setGrain('hour')"
+        >
+          小时
+        </button>
+        <button
+          type="button"
+          data-testid="disease-grain-day"
+          :class="grainQuery() === 'day' ? 'btn-primary' : 'btn-ghost'"
+          :aria-pressed="grainQuery() === 'day'"
+          @click="setGrain('day')"
+        >
+          日
+        </button>
+      </div>
+      <p class="text-sm text-mist" data-testid="disease-peak-window">
+        {{ windowText }}。读小时桶或日桶里的病害数。档案仍是下面的识别记录。
       </p>
-      <ul class="text-sm">
-        <li v-for="row in peaks.byShed" :key="row.shedCode" class="font-mono">
-          {{ row.shedCode }} · {{ row.diseaseCount }}
-        </li>
-      </ul>
+      <p v-if="peaksError" class="text-danger" data-testid="disease-peak-error">{{ peaksError }}</p>
+      <p
+        v-else-if="peaks && !peaks.byTime.length && !peaks.byShed.length"
+        class="text-mist"
+        data-testid="disease-peak-empty"
+      >
+        该粒度下没有病害高发。
+      </p>
+      <template v-else-if="peaks">
+        <p v-if="peaks.peak" class="text-sm text-ink" data-testid="disease-peak-headline">
+          峰值时段 {{ bucketLabel(peaks.peak.bucketStart, peaks.grain) }} · 病害数量 {{ peaks.peak.diseaseCount }}
+          <template v-if="topShed">
+            · 最高棚区 {{ topShed.shedCode }} · 病害数量 {{ topShed.diseaseCount }}
+          </template>
+        </p>
+        <div class="grid gap-4 md:grid-cols-2">
+          <div>
+            <h3 class="mb-2 text-sm text-ink">高发时段</h3>
+            <table v-if="peaks.byTime.length" class="data-table" data-testid="disease-peak-times">
+              <thead>
+                <tr>
+                  <th>时段</th>
+                  <th>病害数量</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="row in peaks.byTime"
+                  :key="row.bucketStart"
+                  data-testid="disease-peak-time"
+                  :data-bucket="row.bucketStart"
+                  :data-peak="isTimePeak(row) ? '1' : '0'"
+                >
+                  <td class="font-mono text-xs" data-field="period">
+                    {{ bucketLabel(row.bucketStart, peaks.grain) }}
+                  </td>
+                  <td>
+                    <div class="flex items-center gap-2">
+                      <span class="font-mono" :data-count="row.diseaseCount">{{ row.diseaseCount }}</span>
+                      <span v-if="isTimePeak(row)" class="text-amber" data-testid="disease-peak-mark">峰值</span>
+                    </div>
+                    <div class="hotspot-track mt-1">
+                      <div
+                        class="hotspot-fill"
+                        data-testid="disease-peak-bar"
+                        :style="{ width: barWidth(row.diseaseCount, timeMax) }"
+                      />
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p v-else class="text-sm text-mist">该粒度下没有高发时段。</p>
+          </div>
+          <div>
+            <h3 class="mb-2 text-sm text-ink">高发棚区</h3>
+            <table v-if="peaks.byShed.length" class="data-table" data-testid="disease-peak-sheds">
+              <thead>
+                <tr>
+                  <th>棚区</th>
+                  <th>病害数量</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="row in peaks.byShed"
+                  :key="row.shedCode"
+                  data-testid="disease-peak-shed"
+                  :data-shed="row.shedCode"
+                  :data-peak="isShedPeak(row) ? '1' : '0'"
+                >
+                  <td class="font-mono" data-field="peak-shed">{{ row.shedCode }}</td>
+                  <td>
+                    <div class="flex items-center gap-2">
+                      <span class="font-mono" :data-count="row.diseaseCount">{{ row.diseaseCount }}</span>
+                      <span v-if="isShedPeak(row)" class="text-amber" data-testid="disease-shed-mark">最高</span>
+                    </div>
+                    <div class="hotspot-track mt-1">
+                      <div
+                        class="hotspot-fill"
+                        data-testid="disease-shed-bar"
+                        :style="{ width: barWidth(row.diseaseCount, shedMax) }"
+                      />
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <p v-else class="text-sm text-mist">该粒度下没有高发棚区。</p>
+          </div>
+        </div>
+      </template>
     </section>
     <div>
       <h2 class="text-lg text-ink">病害记录</h2>
@@ -274,3 +467,23 @@ onMounted(async () => {
     </div>
   </section>
 </template>
+
+<style scoped>
+tr[data-peak='1'] {
+  background: var(--bg-sidebar-active);
+}
+.hotspot-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--line);
+}
+.hotspot-fill {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+tr[data-peak='1'] .hotspot-fill {
+  background: var(--warn);
+}
+</style>
