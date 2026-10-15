@@ -224,6 +224,8 @@ curl -s "http://127.0.0.1:41821/api/v1/devices?type=camera" \
 
 `make demo-growth-trend` 读取 `recognition.demo-growth-trend.json`，写入 `CAM-GT-01`（棚区 S01）三天：前 5 日蘑菇 8、成熟 2；前 2 日蘑菇 14、成熟 5；当日蘑菇 21、成熟 8。同一上海日的幂等键已在则不另建一行。病害数量 0，温度 22.5℃，成熟占比低于种子规则「成熟占比一般」的 0.6。7 日和 30 日都能看到这三天，蘑菇数和成熟数后一天更大。`cameraCode=CAM-GT-NONE` 没有点。步骤见 [`DEMO_GROWTH_TREND.md`](DEMO_GROWTH_TREND.md)。
 
+页面 `/growth-compare`。侧栏「棚间对比」。仍读 `GET /api/v1/growth-trends?days=7|30`，不传 `shedCode`，一棚一条曲线。当日对照并排写出各棚蘑菇数、成熟数和菌盖直径，表里同一天相邻。至少两个棚有日聚合才画曲线。`make demo-shed-growth-compare` 读取 `recognition.demo-shed-growth-compare.json`，写入 `CAM-SG-S01`（棚区 S01）与 `CAM-SG-S02`（棚区 S02）各三天。当天蘑菇 21 与 8，成熟 8 与 3。同一上海日的幂等键已在则不另建一行。棚汇总是各摄像头当日最新蘑菇数相加；棚里只有这两台时，当天棚汇总就是 21 和 8。步骤见 [`DEMO_SHED_GROWTH_COMPARE.md`](DEMO_SHED_GROWTH_COMPARE.md)。
+
 写路径：识别入库按 `recognizedAt`（Asia/Shanghai）增量 upsert 小时桶与日桶，同一幂等键不双计。环境入库按 `observedAt` 同样增量写入。`daily_aggregates` 已停写并删除（迁移 `010_drop_daily_aggregates.sql`）。
 
 已知限制：每小时 cron 与采摘修正蘑菇数后，`refreshDay` 会重扫该上海日的识别明细，回写识别指标桶；环境桶留在原行。打开趋势页本身不扫识别明细。

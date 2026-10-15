@@ -14,6 +14,7 @@ import DeviceDetailView from './views/DeviceDetailView.vue';
 import DevicesView from './views/DevicesView.vue';
 import EnvironmentView from './views/EnvironmentView.vue';
 import EnvironmentReadingView from './views/EnvironmentReadingView.vue';
+import GrowthCompareView from './views/GrowthCompareView.vue';
 import GrowthTrendsView from './views/GrowthTrendsView.vue';
 import HarvestDetailView from './views/HarvestDetailView.vue';
 import HarvestView from './views/HarvestView.vue';
@@ -71,6 +72,7 @@ const router = createRouter({
         { path: 'harvest', component: HarvestView, meta: { title: '采摘' } },
         { path: 'harvest/:id', component: HarvestDetailView, meta: { title: '采摘详情' } },
         { path: 'growth-trends', component: GrowthTrendsView, meta: { title: '生长趋势' } },
+        { path: 'growth-compare', component: GrowthCompareView, meta: { title: '棚间对比' } },
         { path: 'batches', component: BatchesView, meta: { title: '出菇批次' } },
         { path: 'reports', component: ReportsView, meta: { title: '报表' } },
         { path: 'sheds', component: ShedsView, meta: { title: '棚区' } },

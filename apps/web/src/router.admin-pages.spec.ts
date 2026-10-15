@@ -20,6 +20,7 @@ import IngestObservabilityView from './views/IngestObservabilityView.vue';
 import DiseaseDetailView from './views/DiseaseDetailView.vue';
 import DiseasesView from './views/DiseasesView.vue';
 import BatchesView from './views/BatchesView.vue';
+import GrowthCompareView from './views/GrowthCompareView.vue';
 import GrowthTrendsView from './views/GrowthTrendsView.vue';
 import HarvestDetailView from './views/HarvestDetailView.vue';
 import HarvestView from './views/HarvestView.vue';
@@ -36,6 +37,7 @@ const pages = [
   { path: '/alert-rules', component: RulesView, title: '阈值规则', label: '阈值规则' },
   { path: '/harvest', component: HarvestView, title: '采摘', label: '采摘' },
   { path: '/growth-trends', component: GrowthTrendsView, title: '生长趋势', label: '生长趋势' },
+  { path: '/growth-compare', component: GrowthCompareView, title: '棚间对比', label: '棚间对比' },
   { path: '/batches', component: BatchesView, title: '出菇批次', label: '出菇批次' },
   { path: '/reports', component: ReportsView, title: '报表', label: '报表' },
 ] as const;
