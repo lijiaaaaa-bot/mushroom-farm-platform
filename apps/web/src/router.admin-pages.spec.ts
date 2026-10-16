@@ -22,6 +22,7 @@ import DiseaseDetailView from './views/DiseaseDetailView.vue';
 import DiseasesView from './views/DiseasesView.vue';
 import ShedDiseaseTrendView from './views/ShedDiseaseTrendView.vue';
 import BatchesView from './views/BatchesView.vue';
+import CapturePreviewView from './views/CapturePreviewView.vue';
 import GrowthCompareView from './views/GrowthCompareView.vue';
 import GrowthTrendsView from './views/GrowthTrendsView.vue';
 import ShedGrowthDeltaView from './views/ShedGrowthDeltaView.vue';
@@ -33,6 +34,7 @@ import RuleDetailView from './views/RuleDetailView.vue';
 import RulesView from './views/RulesView.vue';
 
 const pages = [
+  { path: '/capture-preview', component: CapturePreviewView, title: '抓拍对照', label: '抓拍对照' },
   { path: '/devices', component: DevicesView, title: '设备', label: '设备' },
   { path: '/environment', component: EnvironmentView, title: '环境读数', label: '环境读数' },
   { path: '/shed-env-24h', component: ShedEnv24hView, title: '单棚环境24小时', label: '环境24小时' },

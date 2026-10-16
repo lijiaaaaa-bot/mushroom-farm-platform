@@ -100,6 +100,8 @@ describe('role menus', () => {
     expect(labels).toContain('总览');
     expect(labels).toContain('基地大屏');
     expect(labels).toContain('修改密码');
+    expect(labels).toContain('抓拍对照');
+    expect(wrapper.get('nav').find('a[href="/capture-preview"]').exists()).toBe(true);
     expect(wrapper.get('nav').find('a[href="/account/password"]').exists()).toBe(true);
     wrapper.unmount();
   });

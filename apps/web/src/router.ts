@@ -26,6 +26,7 @@ import IngestObservabilityView from './views/IngestObservabilityView.vue';
 import LoginView from './views/LoginView.vue';
 import WecomPushView from './views/WecomPushView.vue';
 import RecognitionsView from './views/RecognitionsView.vue';
+import CapturePreviewView from './views/CapturePreviewView.vue';
 import ReportsView from './views/ReportsView.vue';
 import RuleDetailView from './views/RuleDetailView.vue';
 import RulesView from './views/RulesView.vue';
@@ -66,6 +67,7 @@ const router = createRouter({
         { path: 'devices', component: DevicesView, meta: { title: '设备' } },
         { path: 'devices/:id', component: DeviceDetailView, meta: { title: '镜头详情' } },
         { path: 'recognitions', component: RecognitionsView, meta: { title: '识别记录' } },
+        { path: 'capture-preview', component: CapturePreviewView, meta: { title: '抓拍对照' } },
         { path: 'environment', component: EnvironmentView, meta: { title: '环境读数' } },
         { path: 'environment/:id', component: EnvironmentReadingView, meta: { title: '环境读数详情' } },
         { path: 'shed-env-24h', component: ShedEnv24hView, meta: { title: '单棚环境24小时' } },
