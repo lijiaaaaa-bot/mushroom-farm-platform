@@ -24,6 +24,7 @@ export class DashboardService {
     const scope = ShedScope.fromUser(user);
     const today = await this.growth.todaySnapshot(scope);
     const live = await this.growth.liveMushroomTotals(scope);
+    const envMean = await this.growth.farmEnvironmentMeans(scope);
     const deviceCounts = await this.devices.counts(user);
     const shedQb = this.sheds.createQueryBuilder('s');
     if (scope.codes) {
@@ -66,6 +67,10 @@ export class DashboardService {
       liveMushroomTotal: live.liveMushroomTotal,
       liveMatureTotal: live.liveMatureTotal,
       liveImmatureTotal: live.liveImmatureTotal,
+      envMeanTemperature: envMean.envMeanTemperature,
+      envMeanHumidity: envMean.envMeanHumidity,
+      envMeanCo2: envMean.envMeanCo2,
+      envMeanSubstrateMoisture: envMean.envMeanSubstrateMoisture,
       harvestableCameras: today.harvestableCameras,
       openAlerts,
       severeAlerts,

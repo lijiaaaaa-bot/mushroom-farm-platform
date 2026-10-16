@@ -6,9 +6,13 @@ import {
   ALERT_LEVEL_LABEL,
   ALERT_STATUS_LABEL,
   DEVICE_TYPE_LABEL,
+  ENV_MEAN_LABEL,
   LIVE_MUSHROOM_TOTAL_LABEL,
   ROLE_LABEL,
+  formatEnvMeanNote,
+  formatEnvMeanValue,
   formatLiveMushroomTotalsNote,
+  type FarmEnvMeans,
   shanghaiDate,
   shanghaiDayRange,
   type AlertLevel,
@@ -32,6 +36,10 @@ interface Overview {
   liveMushroomTotal?: number;
   liveMatureTotal?: number;
   liveImmatureTotal?: number;
+  envMeanTemperature?: number | null;
+  envMeanHumidity?: number | null;
+  envMeanCo2?: number | null;
+  envMeanSubstrateMoisture?: number | null;
   openAlerts: number;
   severeAlerts: number;
   env: {
@@ -271,6 +279,42 @@ const liveMushroomNote = computed(() => {
     liveImmatureTotal: summary.liveImmatureTotal ?? 0,
   });
 });
+function finiteOrNull(value: number | null | undefined) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+const envMeans = computed((): FarmEnvMeans => ({
+  envMeanTemperature: finiteOrNull(overview.value?.envMeanTemperature),
+  envMeanHumidity: finiteOrNull(overview.value?.envMeanHumidity),
+  envMeanCo2: finiteOrNull(overview.value?.envMeanCo2),
+  envMeanSubstrateMoisture: finiteOrNull(overview.value?.envMeanSubstrateMoisture),
+}));
+const envMeanCards = computed(() => {
+  const means = envMeans.value;
+  const label = ENV_MEAN_LABEL;
+  return [
+    {
+      key: 'env-mean-temperature',
+      label: label.envMeanTemperature,
+      value: formatEnvMeanValue(means.envMeanTemperature, '℃'),
+    },
+    {
+      key: 'env-mean-humidity',
+      label: label.envMeanHumidity,
+      value: formatEnvMeanValue(means.envMeanHumidity, '%'),
+    },
+    {
+      key: 'env-mean-co2',
+      label: label.envMeanCo2,
+      value: formatEnvMeanValue(means.envMeanCo2, 'ppm'),
+    },
+    {
+      key: 'env-mean-moisture',
+      label: label.envMeanSubstrateMoisture,
+      value: formatEnvMeanValue(means.envMeanSubstrateMoisture, '%'),
+    },
+  ];
+});
+const envMeanNote = computed(() => formatEnvMeanNote(envMeans.value));
 
 const points = computed(() =>
   sheds.value.map((shed, index) => {
@@ -800,6 +844,14 @@ onBeforeUnmount(() => {
           </article>
           <p class="today-note" data-field="live-mushroom-note">{{ liveMushroomNote }}</p>
         </div>
+        <div class="env-mean-totals" aria-label="全园环境参数均值">
+          <p class="env-mean-title" data-field="env-mean-title">{{ ENV_MEAN_LABEL.title }}</p>
+          <article v-for="card in envMeanCards" :key="card.key" class="tile" :data-field="card.key">
+            <p class="tile-label">{{ card.label }}</p>
+            <p class="tile-value">{{ card.value }}</p>
+          </article>
+          <p class="today-note" data-field="env-mean-note">{{ envMeanNote }}</p>
+        </div>
       </template>
     </section>
 
@@ -1075,6 +1127,20 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+}
+
+.env-mean-totals {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.env-mean-title {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .today-note {
@@ -1754,7 +1820,8 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr 1fr;
   }
 
-  .live-mushroom-totals {
+  .live-mushroom-totals,
+  .env-mean-totals {
     grid-template-columns: 1fr;
   }
 }

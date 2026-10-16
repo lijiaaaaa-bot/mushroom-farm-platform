@@ -34,6 +34,10 @@ const overview = {
   liveMushroomTotal: 30,
   liveMatureTotal: 11,
   liveImmatureTotal: 19,
+  envMeanTemperature: 24,
+  envMeanHumidity: 85,
+  envMeanCo2: 800,
+  envMeanSubstrateMoisture: 73,
   harvestableCameras: 6,
   openAlerts: 8,
   severeAlerts: 2,
@@ -88,6 +92,14 @@ describe('DashboardView', () => {
     expect(wrapper.get('[data-field="live-immature"]').text()).toBe('19');
     expect(wrapper.get('[data-field="live-mushroom-note"]').text()).toBe(
       '在养蘑菇总数 30 · 成熟可采摘总数 11 · 待成熟数量 19',
+    );
+    expect(wrapper.get('[data-field="env-mean-title"]').text()).toBe('全园环境参数均值');
+    expect(wrapper.get('[data-field="env-mean-temperature"]').text()).toBe('24℃');
+    expect(wrapper.get('[data-field="env-mean-humidity"]').text()).toBe('85%');
+    expect(wrapper.get('[data-field="env-mean-co2"]').text()).toBe('800ppm');
+    expect(wrapper.get('[data-field="env-mean-moisture"]').text()).toBe('73%');
+    expect(wrapper.get('[data-field="env-mean-note"]').text()).toBe(
+      '全园环境参数均值 温度 24℃ · 湿度 85% · CO₂ 800ppm · 基质含水率 73%',
     );
     expect(wrapper.text()).toContain('在养蘑菇总数');
     expect(wrapper.text()).toContain('成熟可采摘总数');

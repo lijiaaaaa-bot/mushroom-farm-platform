@@ -3,11 +3,14 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
+  meanFarmEnvironment,
   shanghaiDate,
   shanghaiDayRange,
   shanghaiHourStart,
   sumShedLiveMushroomTotals,
   todayShanghai,
+  type EnvSensorDayReading,
+  type FarmEnvMeans,
   type LiveMushroomTotals,
 } from '@mushroom/contracts';
 import { AuthUser } from '../common/auth-user';
@@ -581,6 +584,49 @@ export class GrowthTrendService {
       byShed.set(row.shedCode, slot);
     }
     return sumShedLiveMushroomTotals([...byShed.values()]);
+  }
+
+  /**
+   * 全园环境参数均值。读 metric_buckets_day 当日传感器行的四个环境指标。
+   * 每个传感器取当天日桶 value（写入时的当日均值；只有一条读数时等于该读数），
+   * 全园对温度、湿度、CO₂、基质含水率分别做算术平均，保留 1 位小数。
+   * 棚级行（cameraCode 为空）不重复计入。不扫环境明细。
+   * 今日是 observedAt 的上海自然日。没有读数的指标是 null。
+   */
+  async farmEnvironmentMeans(
+    scope: ShedScope,
+    now = new Date(),
+  ): Promise<FarmEnvMeans> {
+    const empty: FarmEnvMeans = {
+      envMeanTemperature: null,
+      envMeanHumidity: null,
+      envMeanCo2: null,
+      envMeanSubstrateMoisture: null,
+    };
+    if (scope.codes && scope.codes.length === 0) return empty;
+    const day = todayShanghai(now);
+    const { start, end } = shanghaiDayRange(day);
+    const rows = await this.loadWindow(
+      this.dayBuckets,
+      start,
+      end,
+      [...ENVIRONMENT_METRICS],
+      scope,
+    );
+    const bySensor = new Map<string, EnvSensorDayReading>();
+    for (const row of rows) {
+      if (!row.cameraCode || row.value === null) continue;
+      const key = `${row.shedCode}\0${row.cameraCode}`;
+      const slot = bySensor.get(key) ?? {};
+      if (row.metric === METRIC_ENV_TEMPERATURE) slot.temperature = row.value;
+      else if (row.metric === METRIC_ENV_HUMIDITY) slot.humidity = row.value;
+      else if (row.metric === METRIC_ENV_CO2) slot.co2 = row.value;
+      else if (row.metric === METRIC_ENV_MOISTURE) {
+        slot.substrateMoisture = row.value;
+      }
+      bySensor.set(key, slot);
+    }
+    return meanFarmEnvironment([...bySensor.values()]);
   }
 
   async todaySnapshot(

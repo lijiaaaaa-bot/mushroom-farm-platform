@@ -31,7 +31,9 @@ import {
   METRIC_CAP_DIAMETER_MEAN,
   METRIC_CAPTURE_COUNT,
   METRIC_DISEASE_COUNT,
+  METRIC_ENV_CO2,
   METRIC_ENV_HUMIDITY,
+  METRIC_ENV_MOISTURE,
   METRIC_ENV_TEMPERATURE,
   METRIC_MATURE_COUNT,
   METRIC_MUSHROOM_COUNT,
@@ -1142,6 +1144,83 @@ describe('hour buckets and disease peaks', () => {
       liveMushroomTotal: 0,
       liveMatureTotal: 0,
       liveImmatureTotal: 0,
+    });
+  });
+
+  it('averages today sensor environment day buckets farm-wide', async () => {
+    const now = new Date('2026-09-24T03:30:00.000Z');
+    const today = todayShanghai(now);
+    const start = shanghaiDayRange(today).start;
+    const yesterday = shanghaiDayRange(shiftShanghaiDay(today, -1)).start;
+    const days = memoryMetricBuckets();
+    const seedEnv = (
+      at: Date,
+      shed: string,
+      sensor: string,
+      temperature: number | null,
+      humidity: number | null,
+      co2: number | null,
+      moisture: number | null,
+    ) => {
+      if (temperature !== null) {
+        seedMetric(days, at, shed, sensor, METRIC_ENV_TEMPERATURE, temperature);
+      }
+      if (humidity !== null) {
+        seedMetric(days, at, shed, sensor, METRIC_ENV_HUMIDITY, humidity);
+      }
+      if (co2 !== null) seedMetric(days, at, shed, sensor, METRIC_ENV_CO2, co2);
+      if (moisture !== null) {
+        seedMetric(days, at, shed, sensor, METRIC_ENV_MOISTURE, moisture);
+      }
+    };
+    seedEnv(start, 'S01', 'SENSOR-EM-01', 22, 78, 620, 68);
+    seedEnv(start, 'S02', 'SENSOR-EM-02', 26, 92, 980, 78);
+    seedEnv(start, 'S01', '', 99, 99, 9999, 99);
+    seedEnv(yesterday, 'S01', 'SENSOR-EM-YDAY', 16, 80, 500, 60);
+    seedEnv(start, 'S03', 'SENSOR-PART', 20, null, null, null);
+    const records = memoryRecords([]);
+    const scan = jest.spyOn(records, 'createQueryBuilder');
+    const service = new GrowthTrendService(
+      records as never,
+      memoryMetricBuckets() as never,
+      days as never,
+    );
+    const { ShedScope } = await import('../common/shed-scope');
+    const all = await service.farmEnvironmentMeans(
+      ShedScope.fromUser(admin),
+      now,
+    );
+    expect(scan).not.toHaveBeenCalled();
+    expect(all).toEqual({
+      envMeanTemperature: 22.7,
+      envMeanHumidity: 85,
+      envMeanCo2: 800,
+      envMeanSubstrateMoisture: 73,
+    });
+    const manager: AuthUser = {
+      ...admin,
+      role: 'shed_manager',
+      shedCodes: ['S01'],
+    };
+    const scoped = await service.farmEnvironmentMeans(
+      ShedScope.fromUser(manager),
+      now,
+    );
+    expect(scoped).toEqual({
+      envMeanTemperature: 22,
+      envMeanHumidity: 78,
+      envMeanCo2: 620,
+      envMeanSubstrateMoisture: 68,
+    });
+    const empty = await service.farmEnvironmentMeans(
+      ShedScope.fromUser({ ...admin, role: 'viewer', shedCodes: [] }),
+      now,
+    );
+    expect(empty).toEqual({
+      envMeanTemperature: null,
+      envMeanHumidity: null,
+      envMeanCo2: null,
+      envMeanSubstrateMoisture: null,
     });
   });
 

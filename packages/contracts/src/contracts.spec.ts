@@ -29,6 +29,11 @@ import {
   sumShedLiveMushroomTotals,
   formatLiveMushroomTotalsNote,
   LIVE_MUSHROOM_TOTAL_LABEL,
+  ENV_MEAN_LABEL,
+  formatEnvMeanNote,
+  formatEnvMeanValue,
+  meanFarmEnvironment,
+  parseFarmEnvMeans,
   TIMESERIES_RETENTION_DAYS,
   transitionError,
 } from './index';
@@ -439,6 +444,64 @@ describe('golden fixtures', () => {
       liveImmatureTotal: 0,
     });
     assert.equal(fraction.ok, false);
+  });
+
+  it('averages farm environment means per sensor and formats the note', () => {
+    const clean = meanFarmEnvironment([
+      { temperature: 22, humidity: 78, co2: 620, substrateMoisture: 68 },
+      { temperature: 26, humidity: 92, co2: 980, substrateMoisture: 78 },
+    ]);
+    assert.deepEqual(clean, {
+      envMeanTemperature: 24,
+      envMeanHumidity: 85,
+      envMeanCo2: 800,
+      envMeanSubstrateMoisture: 73,
+    });
+    const partial = meanFarmEnvironment([
+      { temperature: 22, humidity: 78, co2: 620, substrateMoisture: 68 },
+      { temperature: 26, humidity: null, co2: 980, substrateMoisture: 78 },
+      { temperature: 20, co2: null },
+    ]);
+    assert.equal(partial.envMeanTemperature, 22.7);
+    assert.equal(partial.envMeanHumidity, 78);
+    assert.equal(partial.envMeanCo2, 800);
+    assert.equal(partial.envMeanSubstrateMoisture, 73);
+    assert.deepEqual(meanFarmEnvironment([]), {
+      envMeanTemperature: null,
+      envMeanHumidity: null,
+      envMeanCo2: null,
+      envMeanSubstrateMoisture: null,
+    });
+    assert.equal(
+      formatEnvMeanNote(clean),
+      '全园环境参数均值 温度 24℃ · 湿度 85% · CO₂ 800ppm · 基质含水率 73%',
+    );
+    assert.equal(
+      formatEnvMeanNote(meanFarmEnvironment([])),
+      '全园环境参数均值 温度 — · 湿度 — · CO₂ — · 基质含水率 —',
+    );
+    assert.equal(ENV_MEAN_LABEL.title, '全园环境参数均值');
+    assert.equal(formatEnvMeanValue(22.66, '℃'), '22.7℃');
+    assert.equal(formatEnvMeanValue(null, '℃'), '—');
+    const parsed = parseFarmEnvMeans({
+      ...clean,
+      liveMushroomTotal: 30,
+      env: { avgTemp: 1 },
+    });
+    assert.equal(parsed.ok, true);
+    if (parsed.ok) assert.deepEqual(parsed.value, clean);
+    const missing = parseFarmEnvMeans({});
+    assert.equal(missing.ok, true);
+    if (missing.ok) {
+      assert.equal(missing.value.envMeanTemperature, null);
+    }
+    const text = parseFarmEnvMeans({
+      envMeanTemperature: '24',
+      envMeanHumidity: 85,
+      envMeanCo2: 800,
+      envMeanSubstrateMoisture: 73,
+    });
+    assert.equal(text.ok, false);
   });
 
   it('loads the snapshot key fixture', () => {
