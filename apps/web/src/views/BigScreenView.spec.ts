@@ -34,6 +34,7 @@ const overview = {
   todayMature: 7,
   todayRecognitionCount: 3,
   todayCaptureCount: 2,
+  todayDiseaseCount: 5,
   openAlerts: 1,
   severeAlerts: 1,
   env: {
@@ -109,6 +110,7 @@ const emptyOverview = {
   todayMature: 0,
   todayRecognitionCount: 0,
   todayCaptureCount: 0,
+  todayDiseaseCount: 0,
   openAlerts: 0,
   severeAlerts: 0,
   env: {
@@ -208,7 +210,10 @@ describe('BigScreenView', () => {
     expect(wrapper.get('[data-field="recognitions"]').text()).toContain('3');
     expect(wrapper.get('[data-field="captures"]').text()).toContain('今日抓拍总量');
     expect(wrapper.get('[data-field="captures"]').text()).toContain('2');
+    expect(wrapper.get('[data-field="diseases"]').text()).toContain('当日病害总数');
+    expect(wrapper.get('[data-field="diseases"]').text()).toContain('5');
     expect(wrapper.get('[data-field="today-note"]').text()).toBe('今日识别次数 3 · 今日抓拍总量 2');
+    expect(wrapper.get('[data-field="today-disease-note"]').text()).toBe('当日病害总数 5');
     expect(screen.left.text()).toContain('棚区平面');
     expect(screen.left.text()).toContain('S01');
     expect(screen.left.text()).toContain('一号棚');

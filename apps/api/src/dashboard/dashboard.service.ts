@@ -61,6 +61,7 @@ export class DashboardService {
       todayMature: today.matureCount,
       todayRecognitionCount: today.recognitionCount,
       todayCaptureCount: today.captureCount,
+      todayDiseaseCount: today.diseaseCount,
       harvestableCameras: today.harvestableCameras,
       openAlerts,
       severeAlerts,

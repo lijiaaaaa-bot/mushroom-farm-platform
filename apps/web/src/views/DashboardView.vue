@@ -47,6 +47,7 @@ interface Overview {
   todayMature?: number;
   todayRecognitionCount?: number;
   todayCaptureCount?: number;
+  todayDiseaseCount?: number;
   harvestableCameras?: number;
   openAlerts?: number;
   severeAlerts?: number;
@@ -125,6 +126,9 @@ const todayNote = computed(() => {
   const capture = formatCount(data.value?.todayCaptureCount);
   return `今日识别次数 ${recognition} · 今日抓拍总量 ${capture}`;
 });
+const todayDiseaseNote = computed(
+  () => `当日病害总数 ${formatCount(data.value?.todayDiseaseCount)}`,
+);
 
 function formatCount(value: number | null | undefined) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '0';
@@ -499,7 +503,7 @@ onBeforeUnmount(() => {
   <p v-if="loading" class="text-mist">加载中…</p>
   <p v-else-if="error" class="text-danger">{{ error }}</p>
   <div v-else-if="data" class="ops-page tb-board" data-layout="tb-ops">
-    <section class="today-counts" aria-label="今日识别与抓拍">
+    <section class="today-counts" aria-label="今日识别、抓拍与当日病害总数">
       <article class="tb-card">
         <h2>今日识别次数</h2>
         <p class="today-count" data-field="today-recognition">{{ formatCount(data.todayRecognitionCount) }}</p>
@@ -508,7 +512,12 @@ onBeforeUnmount(() => {
         <h2>今日抓拍总量</h2>
         <p class="today-count" data-field="today-capture">{{ formatCount(data.todayCaptureCount) }}</p>
       </article>
+      <article class="tb-card">
+        <h2>当日病害总数</h2>
+        <p class="today-count" data-field="today-disease">{{ formatCount(data.todayDiseaseCount) }}</p>
+      </article>
       <p class="today-counts-note" data-field="today-note">{{ todayNote }}</p>
+      <p class="today-counts-note" data-field="today-disease-note">{{ todayDiseaseNote }}</p>
     </section>
     <section class="tb-top">
       <article class="tb-card">

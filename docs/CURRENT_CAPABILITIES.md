@@ -54,7 +54,7 @@
 
 ## 总览与大屏
 
-总览页面路由是 `/`（`DashboardView`）。接口是 `GET /api/v1/dashboard/overview`，同页还读 `GET /api/v1/sheds`、`GET /api/v1/devices`、`GET /api/v1/harvest/daily`、`GET /api/v1/ingest/environment-readings`、`GET /api/v1/alert-rules`。有序列时画近端成熟、总数、病害；温度图的阈值线只来自已启用规则。棚区平面只用已配置的 `mapX` / `mapY`。总览 `/` 与基地大屏 `/big-screen` 用该接口的 `todayRecognitionCount`、`todayCaptureCount` 显示「今日识别次数」和「今日抓拍总量」：按识别时间的上海自然日，识别次数是各棚日桶 `sample_count` 之和，抓拍总量是带抓拍对象键或 URL 的 `capture_count` 之和。
+总览页面路由是 `/`（`DashboardView`）。接口是 `GET /api/v1/dashboard/overview`，同页还读 `GET /api/v1/sheds`、`GET /api/v1/devices`、`GET /api/v1/harvest/daily`、`GET /api/v1/ingest/environment-readings`、`GET /api/v1/alert-rules`。有序列时画近端成熟、总数、病害；温度图的阈值线只来自已启用规则。棚区平面只用已配置的 `mapX` / `mapY`。总览 `/` 与基地大屏 `/big-screen` 用该接口的 `todayRecognitionCount`、`todayCaptureCount` 显示「今日识别次数」和「今日抓拍总量」：按识别时间的上海自然日，识别次数是各棚日桶 `sample_count` 之和，抓拍总量是带抓拍对象键或 URL 的 `capture_count` 之和。同一两页用 `todayDiseaseCount` 显示「当日病害总数」：同一上海自然日，各棚日桶棚级 `disease_count` 相加，棚级行是各摄像头当天最新病害数量之和。
 
 大屏路由 `/big-screen`，根节点 `data-skin=tb-night`（夜色只在这一页）。默认一屏为指标、棚区平面、抓拍墙、告警与环境；可切抓拍墙或带时间轴的多区。时间轴进入 `/growth-trends`，或按上海日打开 `/recognitions`。数据来自总览、棚区、告警、设备、识别列表，以及 `GET /api/v1/growth-trends`（7 日）或 `GET /api/v1/growth-trends/hours`（24 小时）。侧栏「基地大屏」链到此页。`/phase2/big-screen` 重定向到 `/big-screen`。
 
