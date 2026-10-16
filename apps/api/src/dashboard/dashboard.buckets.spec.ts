@@ -1,3 +1,4 @@
+import { shanghaiDate, shiftShanghaiDate } from '@mushroom/contracts';
 import { DashboardService } from './dashboard.service';
 import { AuthUser } from '../common/auth-user';
 
@@ -50,6 +51,7 @@ describe('dashboard overview bucket reads', () => {
           severeCount: 0,
         },
       ]),
+      capDiameterDayPoints: jest.fn().mockResolvedValue([]),
       farmEnvironmentMeans: jest.fn().mockResolvedValue({
         envMeanTemperature: 24,
         envMeanHumidity: 85,
@@ -145,6 +147,11 @@ describe('dashboard overview bucket reads', () => {
     expect(overview.diseaseWarnSevereActive).toBe(false);
     expect(overview.diseaseWarnSevereCount).toBe(0);
     expect(overview.diseaseWarnSevereNote).toBe('');
+    expect(growth.capDiameterDayPoints).toHaveBeenCalled();
+    expect(overview.growthStallThreshold).toBeNull();
+    expect(overview.growthStallActive).toBe(false);
+    expect(overview.growthStallCurrent).toBe(0);
+    expect(overview.growthStallNote).toBe('');
     expect(overview.envMeanTemperature).toBe(24);
     expect(overview.envMeanHumidity).toBe(85);
     expect(overview.envMeanCo2).toBe(800);
@@ -222,6 +229,32 @@ describe('dashboard overview bucket reads', () => {
           severeCount: 0,
         },
       ]),
+      capDiameterDayPoints: jest.fn().mockResolvedValue([
+        {
+          shedCode: 'S01',
+          cameraCode: 'CAM-GST-01',
+          day: stallDay(-2),
+          capDiameterMean: 4,
+        },
+        {
+          shedCode: 'S01',
+          cameraCode: 'CAM-GST-01',
+          day: stallDay(-1),
+          capDiameterMean: 4,
+        },
+        {
+          shedCode: 'S01',
+          cameraCode: 'CAM-GST-01',
+          day: stallDay(0),
+          capDiameterMean: 4,
+        },
+        {
+          shedCode: 'S02',
+          cameraCode: 'CAM-GST-ZERO',
+          day: stallDay(0),
+          capDiameterMean: 4,
+        },
+      ]),
       farmEnvironmentMeans: jest.fn().mockResolvedValue({
         envMeanTemperature: null,
         envMeanHumidity: null,
@@ -274,6 +307,20 @@ describe('dashboard overview bucket reads', () => {
           enabled: true,
           shedCode: 'S02',
         },
+        {
+          id: 'rule-stall',
+          metric: 'live_growth_stall',
+          threshold: 2,
+          enabled: true,
+          shedCode: null,
+        },
+        {
+          id: 'rule-stall-shed',
+          metric: 'live_growth_stall',
+          threshold: 1,
+          enabled: true,
+          shedCode: 'S02',
+        },
       ]),
     };
     const dashboard = new DashboardService(
@@ -319,5 +366,15 @@ describe('dashboard overview bucket reads', () => {
     expect(overview.diseaseWarnSevereCount).toBe(4);
     expect(overview.diseaseWarnSevereActive).toBe(true);
     expect(overview.diseaseWarnSevereNote).toBe('病害预警 重度≥4 当前4');
+    expect(overview.growthStallRuleId).toBe('rule-stall');
+    expect(overview.growthStallShedCode).toBeNull();
+    expect(overview.growthStallThreshold).toBe(2);
+    expect(overview.growthStallCurrent).toBe(2);
+    expect(overview.growthStallActive).toBe(true);
+    expect(overview.growthStallNote).toBe('生长异常预警 停滞≥2 当前2');
   });
 });
+
+function stallDay(offset: number) {
+  return shiftShanghaiDate(shanghaiDate(new Date()), offset);
+}

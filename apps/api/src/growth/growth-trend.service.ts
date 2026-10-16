@@ -4,12 +4,14 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
   countEnvAnomalyPoints,
+  GROWTH_STALL_WINDOW_DAYS,
   meanFarmEnvironment,
   shanghaiDate,
   shanghaiDayRange,
   shanghaiHourStart,
   sumShedLiveMushroomTotals,
   todayShanghai,
+  type CapDiameterDayPoint,
   type EnvAnomalySensorReading,
   type ShedDiseaseLive,
   type EnvThresholdRule,
@@ -588,6 +590,37 @@ export class GrowthTrendService {
       diseaseCount: Math.round(slot.diseaseCount),
       severeCount: Math.round(slot.severeCount),
     }));
+  }
+
+  /**
+   * 近 30 个上海日的摄像头菌盖均值。读 metric_buckets_day 的 cap_diameter_mean。
+   * 与生长趋势同一指标、同一 30 日窗口。棚级行不计入。不扫识别明细。
+   */
+  async capDiameterDayPoints(
+    scope: ShedScope,
+    now = new Date(),
+  ): Promise<CapDiameterDayPoint[]> {
+    if (scope.codes && scope.codes.length === 0) return [];
+    const to = todayShanghai(now);
+    const from = shiftShanghaiDay(to, -(GROWTH_STALL_WINDOW_DAYS - 1));
+    const rows = await this.loadWindow(
+      this.dayBuckets,
+      shanghaiDayRange(from).start,
+      shanghaiDayRange(to).end,
+      [METRIC_CAP_DIAMETER_MEAN],
+      scope,
+    );
+    const points: CapDiameterDayPoint[] = [];
+    for (const row of rows) {
+      if (!row.cameraCode || row.value === null) continue;
+      points.push({
+        shedCode: row.shedCode,
+        cameraCode: row.cameraCode,
+        day: shanghaiDate(new Date(row.bucketStart)),
+        capDiameterMean: row.value,
+      });
+    }
+    return points;
   }
 
   private async todayShedMushroomMature(

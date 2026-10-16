@@ -2,11 +2,15 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
+  GROWTH_STALL_METRIC,
   MATURE_PICK_METRIC,
   diseaseWarnOverviewFields,
   evaluateDiseaseWarning,
+  evaluateGrowthStallWarning,
   evaluateMaturePickReminder,
+  growthStallOverviewFields,
   maturePickOverviewFields,
+  todayShanghai,
 } from '@mushroom/contracts';
 import { AuthUser } from '../common/auth-user';
 import { ShedScope } from '../common/shed-scope';
@@ -103,6 +107,21 @@ export class DashboardService {
         })),
       shedDisease,
     );
+    const now = new Date();
+    const growthStall = evaluateGrowthStallWarning(
+      ruleRows
+        .filter((rule) => rule.metric === GROWTH_STALL_METRIC)
+        .filter((rule) => !rule.shedCode || scope.allows(rule.shedCode))
+        .map((rule) => ({
+          id: rule.id,
+          metric: rule.metric,
+          threshold: Number(rule.threshold),
+          enabled: rule.enabled,
+          shedCode: rule.shedCode,
+        })),
+      await this.growth.capDiameterDayPoints(scope, now),
+      todayShanghai(now),
+    );
     return {
       shedCount,
       deviceTotal: deviceCounts.total,
@@ -123,6 +142,7 @@ export class DashboardService {
       liveImmatureTotal: live.liveImmatureTotal,
       ...maturePickOverviewFields(maturePick),
       ...diseaseWarnOverviewFields(diseaseWarn),
+      ...growthStallOverviewFields(growthStall),
       envMeanTemperature: envMean.envMeanTemperature,
       envMeanHumidity: envMean.envMeanHumidity,
       envMeanCo2: envMean.envMeanCo2,

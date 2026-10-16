@@ -70,6 +70,7 @@ export const alertMetricSchema = z.enum([
   'live_mature_pick',
   'live_disease_ratio',
   'live_disease_severe',
+  'live_growth_stall',
   'disease_count',
   'disease_level',
   'growth_stall',
@@ -88,6 +89,7 @@ export const ALERT_METRIC_LABEL: Record<AlertMetric, string> = {
   live_mature_pick: '成熟菇数量',
   live_disease_ratio: '病害比例',
   live_disease_severe: '重度病害数量',
+  live_growth_stall: '菌盖生长停滞',
   disease_count: '病害数量',
   disease_level: '病害等级',
   growth_stall: '生长停滞',
@@ -1497,6 +1499,205 @@ export function diseaseWarnFromOverview(row: DiseaseWarnOverview): DiseaseWarnin
       note: row.diseaseWarnSevereNote,
     },
   };
+}
+
+/**
+ * 生长异常预警用的规则指标。写在已有 alert_rules 上，棚区空着是全场。
+ * 不按单条识别新开告警。种子指标 growth_stall 仍按窗内菌盖差开告警，本条不复用它。
+ * 总览读日桶 cap_diameter_mean 的摄像头行（与生长趋势同一指标，棚级行不计入）。
+ * 窗口与生长趋势 30 日相同。每天的菌盖均值先保留两位小数，再和前一个上海日相减。
+ * 从今天往前，相邻两日都有值且增量 ≤ 0 记 1 个停滞日；增量为正或中间缺日就停止。
+ * 今天没有菌盖日桶时，这台摄像头的停滞天数是 0。
+ * 全场取范围内各摄像头停滞天数的最大值；有棚则只比该棚。
+ * 当前天数 ≥ 阈值（整数天）时预警生效。
+ */
+export const GROWTH_STALL_METRIC = 'live_growth_stall' as const;
+export const GROWTH_STALL_WINDOW_DAYS = 30;
+
+export const GROWTH_STALL_LABEL = {
+  title: '生长异常预警',
+  threshold: '菌盖生长停滞阈值',
+  scopeAll: '全场',
+  unset: '尚未配置菌盖生长停滞阈值',
+} as const;
+
+export const GROWTH_STALL_THRESHOLD_ERROR = '菌盖生长停滞阈值须为大于等于 0 的整数';
+
+/** 整数 ≥ 0。2.0 算整数，小数和负数不算。 */
+export function growthStallThresholdInteger(value: unknown): number | null {
+  return maturePickThresholdInteger(value);
+}
+
+export interface CapDiameterDayPoint {
+  shedCode: string;
+  cameraCode: string;
+  day: string;
+  capDiameterMean: number;
+}
+
+export interface GrowthStallWarning {
+  ruleId: string | null;
+  shedCode: string | null;
+  threshold: number | null;
+  current: number;
+  active: boolean;
+  note: string;
+}
+
+function roundDiameter(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+/**
+ * 从今天往前数连续停滞日。停滞日是相邻上海日菌盖均值增量 ≤ 0。
+ * 今天没有值、或和前一天之间缺日、或增量为正，连续天数在这里停下。
+ */
+export function trailingStallDays(
+  points: Array<{ day: string; capDiameterMean: number }>,
+  today: string,
+): number {
+  const byDay = new Map<string, number>();
+  for (const point of points) {
+    if (!point.day || !Number.isFinite(point.capDiameterMean)) continue;
+    byDay.set(point.day, roundDiameter(point.capDiameterMean));
+  }
+  if (!byDay.has(today)) return 0;
+  let streak = 0;
+  let day = today;
+  const limit = GROWTH_STALL_WINDOW_DAYS - 1;
+  while (streak < limit) {
+    const prev = shiftShanghaiDate(day, -1);
+    const current = byDay.get(day);
+    const previous = byDay.get(prev);
+    if (current === undefined || previous === undefined) break;
+    const delta = roundDiameter(current - previous);
+    if (delta > 0) break;
+    streak += 1;
+    day = prev;
+  }
+  return streak;
+}
+
+function maxStallDays(points: CapDiameterDayPoint[], today: string, shedCode: string | null): number {
+  const groups = new Map<string, CapDiameterDayPoint[]>();
+  for (const point of points) {
+    const camera = typeof point.cameraCode === 'string' ? point.cameraCode.trim() : '';
+    const shed = blankShedCode(point.shedCode);
+    if (!camera || !shed) continue;
+    if (shedCode && shed !== shedCode) continue;
+    const key = `${shed}\0${camera}`;
+    const list = groups.get(key) ?? [];
+    list.push(point);
+    groups.set(key, list);
+  }
+  let max = 0;
+  for (const list of groups.values()) {
+    max = Math.max(max, trailingStallDays(list, today));
+  }
+  return max;
+}
+
+export function formatGrowthStallNote(
+  warning: Pick<GrowthStallWarning, 'active' | 'threshold' | 'current' | 'shedCode'>,
+): string {
+  if (!warning.active || warning.threshold === null) return '';
+  const scope = warning.shedCode ? `棚区 ${warning.shedCode} ` : '';
+  return `生长异常预警 ${scope}停滞≥${warning.threshold} 当前${warning.current}`;
+}
+
+export function formatGrowthStallConfig(
+  warning: Pick<GrowthStallWarning, 'threshold' | 'current' | 'shedCode'>,
+): string {
+  if (warning.threshold === null) return GROWTH_STALL_LABEL.unset;
+  const scope = warning.shedCode ? `棚区 ${warning.shedCode}` : GROWTH_STALL_LABEL.scopeAll;
+  return `${GROWTH_STALL_LABEL.threshold} ${warning.threshold} · ${scope} · 当前停滞 ${warning.current}`;
+}
+
+/**
+ * 已启用的菌盖生长停滞规则。有全场规则时用全场（空棚区），否则用阈值最小的棚规则。
+ * 当前停滞天数 ≥ 阈值时预警生效。没有启用规则时阈值是空，不预警。
+ */
+export function evaluateGrowthStallWarning(
+  rules: MaturePickRuleInput[],
+  points: CapDiameterDayPoint[],
+  today: string,
+): GrowthStallWarning {
+  const chosen = chooseDiseaseRule(rules, GROWTH_STALL_METRIC);
+  const current = maxStallDays(points, today, chosen?.shedCode ?? null);
+  const warning: GrowthStallWarning = {
+    ruleId: chosen?.ruleId ?? null,
+    shedCode: chosen?.shedCode ?? null,
+    threshold: chosen?.threshold ?? null,
+    current,
+    active: chosen ? current >= chosen.threshold : false,
+    note: '',
+  };
+  warning.note = formatGrowthStallNote(warning);
+  return warning;
+}
+
+export const growthStallOverviewSchema = z
+  .object({
+    growthStallRuleId: z.string().min(1).nullable(),
+    growthStallShedCode: z.string().min(1).nullable(),
+    growthStallThreshold: z.number().int().nonnegative().nullable(),
+    growthStallCurrent: z.number().int().nonnegative(),
+    growthStallActive: z.boolean(),
+    growthStallNote: z.string(),
+  })
+  .strict()
+  .refine(
+    (row) =>
+      row.growthStallNote ===
+      formatGrowthStallNote({
+        active: row.growthStallActive,
+        threshold: row.growthStallThreshold,
+        current: row.growthStallCurrent,
+        shedCode: row.growthStallShedCode,
+      }),
+    { message: '生长异常预警旁注与停滞天数、阈值不一致' },
+  );
+
+export type GrowthStallOverview = z.infer<typeof growthStallOverviewSchema>;
+
+export function growthStallOverviewFields(warning: GrowthStallWarning): GrowthStallOverview {
+  return {
+    growthStallRuleId: warning.ruleId,
+    growthStallShedCode: warning.shedCode,
+    growthStallThreshold: warning.threshold,
+    growthStallCurrent: warning.current,
+    growthStallActive: warning.active,
+    growthStallNote: warning.note,
+  };
+}
+
+export function growthStallFromOverview(row: GrowthStallOverview): GrowthStallWarning {
+  return {
+    ruleId: row.growthStallRuleId,
+    shedCode: row.growthStallShedCode,
+    threshold: row.growthStallThreshold,
+    current: row.growthStallCurrent,
+    active: row.growthStallActive,
+    note: row.growthStallNote,
+  };
+}
+
+/** 从总览响应里取出生长异常预警。其余字段不参与。 */
+export function parseGrowthStallWarning(raw: unknown): ParseResult<GrowthStallOverview> {
+  const record = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const parsed = growthStallOverviewSchema.safeParse({
+    growthStallRuleId: record.growthStallRuleId,
+    growthStallShedCode: record.growthStallShedCode,
+    growthStallThreshold: record.growthStallThreshold,
+    growthStallCurrent: record.growthStallCurrent,
+    growthStallActive: record.growthStallActive,
+    growthStallNote: record.growthStallNote,
+  });
+  if (!parsed.success) {
+    const issue = zodErrors(parsed.error);
+    return fail(issue.code, issue.errors);
+  }
+  return { ok: true, value: parsed.data };
 }
 
 /** 从总览响应里取出病害预警。其余字段不参与。 */

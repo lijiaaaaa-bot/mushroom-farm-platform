@@ -16,11 +16,14 @@ import {
   DISEASE_SEVERE_METRIC,
   DISEASE_SEVERE_THRESHOLD_ERROR,
   ERROR_CODES,
+  GROWTH_STALL_METRIC,
+  GROWTH_STALL_THRESHOLD_ERROR,
   MATURE_PICK_METRIC,
   MATURE_PICK_THRESHOLD_ERROR,
   type AlertLevel,
   type AlertMetric,
   diseaseWarnThresholdInteger,
+  growthStallThresholdInteger,
   isAlertLevel,
   isAlertMetric,
   maturePickThresholdInteger,
@@ -453,6 +456,13 @@ function overviewThresholdFor(metric: string, threshold: number): number {
           ? DISEASE_RATIO_THRESHOLD_ERROR
           : DISEASE_SEVERE_THRESHOLD_ERROR,
       );
+    }
+    return integer;
+  }
+  if (metric === GROWTH_STALL_METRIC) {
+    const integer = growthStallThresholdInteger(threshold);
+    if (integer === null) {
+      throw new BadRequestException(GROWTH_STALL_THRESHOLD_ERROR);
     }
     return integer;
   }

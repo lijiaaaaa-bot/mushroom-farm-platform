@@ -140,6 +140,8 @@ describe('DashboardView', () => {
     expect(wrapper.get('[data-field="disease-warn-config"]').text()).toBe('尚未配置病害比例/重度阈值');
     expect(wrapper.find('[data-field="disease-warn-ratio-note"]').exists()).toBe(false);
     expect(wrapper.find('[data-field="disease-warn-severe-note"]').exists()).toBe(false);
+    expect(wrapper.get('[data-field="growth-stall-config"]').text()).toBe('尚未配置菌盖生长停滞阈值');
+    expect(wrapper.find('[data-field="growth-stall-note"]').exists()).toBe(false);
     expect(wrapper.text()).toContain('在养蘑菇总数');
     expect(wrapper.text()).toContain('成熟可采摘总数');
     expect(wrapper.text()).toContain('待成熟数量');
@@ -338,6 +340,9 @@ describe('DashboardView', () => {
     expect(wrapper.find('[data-field="mature-pick-save"]').exists()).toBe(false);
     expect(wrapper.get('[data-field="disease-warn-config"]').text()).toBe('尚未配置病害比例/重度阈值');
     expect(wrapper.find('[data-field="disease-warn-save"]').exists()).toBe(false);
+    expect(wrapper.get('[data-field="growth-stall-config"]').text()).toBe('尚未配置菌盖生长停滞阈值');
+    expect(wrapper.find('[data-field="growth-stall-note"]').exists()).toBe(false);
+    expect(wrapper.find('[data-field="growth-stall-save"]').exists()).toBe(false);
     wrapper.unmount();
   });
 
@@ -389,6 +394,76 @@ describe('DashboardView', () => {
 
     expect(httpPatch).toHaveBeenCalledWith('/alert-rules/rule-ratio', { threshold: 25, enabled: true });
     expect(httpPatch).toHaveBeenCalledWith('/alert-rules/rule-severe', { threshold: 6, enabled: true });
+    wrapper.unmount();
+  });
+
+  it('shows the growth-stall warning and lets an admin save the day threshold', async () => {
+    currentUser.value = admin;
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/dashboard/overview') {
+        return Promise.resolve({
+          data: {
+            ...overview,
+            growthStallRuleId: 'rule-stall',
+            growthStallShedCode: null,
+            growthStallThreshold: 2,
+            growthStallCurrent: 2,
+            growthStallActive: true,
+            growthStallNote: '生长异常预警 停滞≥2 当前2',
+          },
+        });
+      }
+      if (url === '/alert-rules') return Promise.resolve({ data: [] });
+      if (url === '/sheds') return Promise.resolve({ data: [] });
+      return Promise.resolve({ data: { items: [] } });
+    });
+    httpPatch.mockResolvedValue({ data: {} });
+    const wrapper = mount(DashboardView);
+    await flushPromises();
+
+    expect(wrapper.get('[data-field="growth-stall-title"]').text()).toBe('生长异常预警');
+    expect(wrapper.get('[data-field="growth-stall-threshold"]').element).toHaveProperty('value', '2');
+    expect(wrapper.get('[data-field="growth-stall-config"]').text()).toBe(
+      '菌盖生长停滞阈值 2 · 全场 · 当前停滞 2',
+    );
+    expect(wrapper.get('[data-field="growth-stall-note"]').text()).toBe('生长异常预警 停滞≥2 当前2');
+    expect(wrapper.get('[data-field="mature-pick-config"]').text()).toBe('尚未配置成熟菇数量阈值');
+    expect(wrapper.get('[data-field="disease-warn-config"]').text()).toBe('尚未配置病害比例/重度阈值');
+
+    await wrapper.get('[data-field="growth-stall-threshold"]').setValue('3');
+    await wrapper.get('form.growth-stall-form').trigger('submit');
+    await flushPromises();
+
+    expect(httpPatch).toHaveBeenCalledWith('/alert-rules/rule-stall', { threshold: 3, enabled: true });
+    wrapper.unmount();
+  });
+
+  it('keeps the growth-stall threshold read-only for a viewer', async () => {
+    currentUser.value = { ...admin, role: 'viewer' };
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/dashboard/overview') {
+        return Promise.resolve({
+          data: {
+            ...overview,
+            growthStallRuleId: 'rule-stall',
+            growthStallShedCode: null,
+            growthStallThreshold: 2,
+            growthStallCurrent: 2,
+            growthStallActive: true,
+            growthStallNote: '生长异常预警 停滞≥2 当前2',
+          },
+        });
+      }
+      if (url === '/alert-rules') return Promise.resolve({ data: [] });
+      if (url === '/sheds') return Promise.resolve({ data: [] });
+      return Promise.resolve({ data: { items: [] } });
+    });
+    const wrapper = mount(DashboardView);
+    await flushPromises();
+
+    expect(wrapper.get('[data-field="growth-stall-note"]').text()).toBe('生长异常预警 停滞≥2 当前2');
+    expect(wrapper.find('[data-field="growth-stall-save"]').exists()).toBe(false);
+    expect(wrapper.get('[data-field="growth-stall-threshold"]').attributes('disabled')).toBeDefined();
     wrapper.unmount();
   });
 });
