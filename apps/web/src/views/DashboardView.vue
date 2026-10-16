@@ -9,19 +9,27 @@ import {
   ENV_ANOMALY_POINT_LABEL,
   ENV_MEAN_LABEL,
   LIVE_MUSHROOM_TOTAL_LABEL,
+  MATURE_PICK_LABEL,
+  MATURE_PICK_METRIC,
+  MATURE_PICK_THRESHOLD_ERROR,
   formatDeviceOnlineByTypeNote,
   formatDeviceOnlineRatio,
   formatEnvAnomalyPointNote,
+  formatMaturePickConfig,
   parseDeviceOnlineByType,
   formatEnvMeanNote,
   formatEnvMeanValue,
   formatLiveMushroomTotalsNote,
+  maturePickReminderFromOverview,
+  maturePickThresholdInteger,
+  parseMaturePickReminder,
   type FarmEnvMeans,
   type AlertLevel,
   type AlertMetric,
   type AlertStatus,
 } from '@mushroom/contracts';
 import { errorText, http } from '../api';
+import { canWriteRules, currentUser } from '../auth';
 import { farmOpsTokens as tokens } from '../farm-ops-tokens';
 
 interface TrendPoint {
@@ -63,6 +71,12 @@ interface Overview {
   liveMushroomTotal?: number;
   liveMatureTotal?: number;
   liveImmatureTotal?: number;
+  maturePickRuleId?: string | null;
+  maturePickShedCode?: string | null;
+  maturePickThreshold?: number | null;
+  maturePickMatureCount?: number;
+  maturePickActive?: boolean;
+  maturePickNote?: string;
   envMeanTemperature?: number | null;
   envMeanHumidity?: number | null;
   envMeanCo2?: number | null;
@@ -189,6 +203,32 @@ const deviceOnlineByType = computed(() => {
       };
 });
 const deviceOnlineNote = computed(() => formatDeviceOnlineByTypeNote(deviceOnlineByType.value));
+const emptyMaturePick = {
+  ruleId: null,
+  shedCode: null,
+  threshold: null,
+  matureCount: 0,
+  active: false,
+  note: '',
+};
+const maturePick = computed(() => {
+  const parsed = parseMaturePickReminder(data.value ?? {});
+  return parsed.ok ? maturePickReminderFromOverview(parsed.value) : emptyMaturePick;
+});
+const maturePickConfig = computed(() => formatMaturePickConfig(maturePick.value));
+const maturePickDraft = ref('');
+const savingPick = ref(false);
+const pickError = ref('');
+const canEditPick = computed(() => canWriteRules(currentUser.value?.role));
+
+watch(
+  () => maturePick.value.threshold,
+  (value) => {
+    if (savingPick.value) return;
+    maturePickDraft.value = value === null ? '' : String(value);
+  },
+  { immediate: true },
+);
 
 function formatCount(value: number | null | undefined) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '0';
@@ -510,8 +550,7 @@ function onResize() {
   for (const chart of charts) chart.resize();
 }
 
-onMounted(async () => {
-  window.addEventListener('resize', onResize);
+async function loadBoard() {
   const jobs = [
     ['overview', http.get<Overview>('/dashboard/overview')],
     ['sheds', http.get<ShedItem[]>('/sheds')],
@@ -546,6 +585,40 @@ onMounted(async () => {
     rules.value = asArray<RuleItem>(byKey.rules.value);
   }
   loading.value = false;
+}
+
+async function saveMaturePick() {
+  if (!canEditPick.value || savingPick.value) return;
+  const threshold = maturePickThresholdInteger(maturePickDraft.value);
+  if (threshold === null) {
+    pickError.value = MATURE_PICK_THRESHOLD_ERROR;
+    return;
+  }
+  savingPick.value = true;
+  pickError.value = '';
+  try {
+    const ruleId = maturePick.value.ruleId;
+    if (ruleId) {
+      await http.patch(`/alert-rules/${ruleId}`, { threshold, enabled: true });
+    } else {
+      await http.post('/alert-rules', {
+        name: MATURE_PICK_LABEL.title,
+        metric: MATURE_PICK_METRIC,
+        threshold,
+        level: 'info',
+      });
+    }
+    await loadBoard();
+  } catch (cause) {
+    pickError.value = errorText(cause);
+  } finally {
+    savingPick.value = false;
+  }
+}
+
+onMounted(async () => {
+  window.addEventListener('resize', onResize);
+  await loadBoard();
 });
 
 watch(
@@ -597,6 +670,33 @@ onBeforeUnmount(() => {
         <p class="today-count" data-field="live-immature">{{ formatCount(data.liveImmatureTotal) }}</p>
       </article>
       <p class="today-counts-note" data-field="live-mushroom-note">{{ liveMushroomNote }}</p>
+    </section>
+    <section class="mature-pick-block" aria-label="采摘提醒" data-field="mature-pick">
+      <h2 data-field="mature-pick-title">{{ MATURE_PICK_LABEL.title }}</h2>
+      <form class="mature-pick-form" @submit.prevent="saveMaturePick">
+        <label>
+          {{ MATURE_PICK_LABEL.threshold }}
+          <input
+            v-model="maturePickDraft"
+            data-field="mature-pick-threshold"
+            type="number"
+            min="0"
+            step="1"
+            inputmode="numeric"
+            :disabled="!canEditPick || savingPick"
+            :aria-label="MATURE_PICK_LABEL.threshold"
+          />
+        </label>
+        <button v-if="canEditPick" type="submit" data-field="mature-pick-save" :disabled="savingPick">
+          {{ savingPick ? '保存中…' : '保存' }}
+        </button>
+      </form>
+      <p class="today-counts-note" data-field="mature-pick-config">{{ maturePickConfig }}</p>
+      <p v-if="maturePick.active" class="mature-pick-banner" data-field="mature-pick-note">{{ maturePick.note }}</p>
+      <p v-else-if="maturePick.threshold !== null" class="today-counts-note" data-field="mature-pick-idle">
+        当前成熟 {{ maturePick.matureCount }}，未达到阈值 {{ maturePick.threshold }}
+      </p>
+      <p v-if="pickError" class="text-danger" data-field="mature-pick-error">{{ pickError }}</p>
     </section>
     <section class="env-mean-block" aria-label="全园环境参数均值">
       <h2 class="env-mean-title" data-field="env-mean-title">{{ ENV_MEAN_LABEL.title }}</h2>

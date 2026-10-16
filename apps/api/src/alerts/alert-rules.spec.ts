@@ -194,7 +194,12 @@ describe('alert-rules HTTP', () => {
     const created = await request(app.getHttpServer())
       .post('/api/v1/alert-rules')
       .set('x-test-role', 'super_admin')
-      .send({ ...body, name: '列表可见规则', shedCode: 'S01', windowMinutes: 360 });
+      .send({
+        ...body,
+        name: '列表可见规则',
+        shedCode: 'S01',
+        windowMinutes: 360,
+      });
     expect(created.status).toBe(201);
 
     const opened = await request(app.getHttpServer())
@@ -227,6 +232,46 @@ describe('alert-rules HTTP', () => {
       .get('/api/v1/alert-rules/missing-rule')
       .set('x-test-role', 'super_admin');
     expect(missing.status).toBe(404);
+  });
+
+  it('accepts an integer mature-pick threshold and rejects a fraction', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/alert-rules')
+      .set('x-test-role', 'super_admin')
+      .send({
+        name: '采摘提醒',
+        metric: 'live_mature_pick',
+        threshold: 8,
+        level: 'info',
+      });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({
+      name: '采摘提醒',
+      metric: 'live_mature_pick',
+      threshold: 8,
+      shedCode: null,
+      enabled: true,
+    });
+
+    const fraction = await request(app.getHttpServer())
+      .patch(`/api/v1/alert-rules/${created.body.id}`)
+      .set('x-test-role', 'super_admin')
+      .send({ threshold: 8.5 });
+    expect(fraction.status).toBe(400);
+    expect(JSON.stringify(fraction.body)).toContain(
+      '成熟菇数量阈值须为大于等于 0 的整数',
+    );
+
+    const negative = await request(app.getHttpServer())
+      .post('/api/v1/alert-rules')
+      .set('x-test-role', 'super_admin')
+      .send({
+        name: '采摘提醒负数',
+        metric: 'live_mature_pick',
+        threshold: -1,
+        level: 'info',
+      });
+    expect(negative.status).toBe(400);
   });
 
   it('rejects a rule whose metric is not in the contract', async () => {

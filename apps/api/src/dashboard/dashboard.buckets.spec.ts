@@ -39,6 +39,9 @@ describe('dashboard overview bucket reads', () => {
         liveMatureTotal: 11,
         liveImmatureTotal: 19,
       }),
+      shedLiveMatureCounts: jest
+        .fn()
+        .mockResolvedValue([{ shedCode: 'S01', matureCount: 11 }]),
       farmEnvironmentMeans: jest.fn().mockResolvedValue({
         envMeanTemperature: 24,
         envMeanHumidity: 85,
@@ -120,6 +123,11 @@ describe('dashboard overview bucket reads', () => {
     expect(overview.liveMushroomTotal).toBe(30);
     expect(overview.liveMatureTotal).toBe(11);
     expect(overview.liveImmatureTotal).toBe(19);
+    expect(overview.maturePickThreshold).toBeNull();
+    expect(overview.maturePickActive).toBe(false);
+    expect(overview.maturePickMatureCount).toBe(11);
+    expect(overview.maturePickNote).toBe('');
+    expect(growth.shedLiveMatureCounts).toHaveBeenCalled();
     expect(overview.envMeanTemperature).toBe(24);
     expect(overview.envMeanHumidity).toBe(85);
     expect(overview.envMeanCo2).toBe(800);
@@ -143,5 +151,109 @@ describe('dashboard overview bucket reads', () => {
       avgCo2: 600,
       avgSubstrateMoisture: 55,
     });
+  });
+
+  it('marks a pick reminder when live mature meets the base-wide threshold', async () => {
+    const qb = {
+      where() {
+        return qb;
+      },
+      andWhere() {
+        return qb;
+      },
+      orderBy() {
+        return qb;
+      },
+      take() {
+        return qb;
+      },
+      clone() {
+        return qb;
+      },
+      getCount: async () => 0,
+      getMany: async () => [],
+    };
+    const growth = {
+      todaySnapshot: jest.fn().mockResolvedValue({
+        mushroomCount: 20,
+        matureCount: 8,
+        harvestableCameras: 1,
+        recognitionCount: 1,
+        captureCount: 0,
+        diseaseCount: 0,
+      }),
+      liveMushroomTotals: jest.fn().mockResolvedValue({
+        liveMushroomTotal: 20,
+        liveMatureTotal: 8,
+        liveImmatureTotal: 12,
+      }),
+      shedLiveMatureCounts: jest.fn().mockResolvedValue([
+        { shedCode: 'S01', matureCount: 8 },
+        { shedCode: 'S02', matureCount: 0 },
+      ]),
+      farmEnvironmentMeans: jest.fn().mockResolvedValue({
+        envMeanTemperature: null,
+        envMeanHumidity: null,
+        envMeanCo2: null,
+        envMeanSubstrateMoisture: null,
+      }),
+      farmEnvAnomalyPointCount: jest.fn().mockResolvedValue(0),
+      trendFromDayBuckets: jest.fn().mockResolvedValue([]),
+      latestEnvironment: jest.fn().mockResolvedValue({
+        avgTemp: null,
+        avgHumidity: null,
+        avgCo2: null,
+        avgSubstrateMoisture: null,
+      }),
+    };
+    const rules = {
+      find: jest.fn().mockResolvedValue([
+        {
+          id: 'rule-pick',
+          metric: 'live_mature_pick',
+          threshold: 8,
+          enabled: true,
+          shedCode: null,
+        },
+        {
+          id: 'rule-shed',
+          metric: 'live_mature_pick',
+          threshold: 1,
+          enabled: true,
+          shedCode: 'S02',
+        },
+      ]),
+    };
+    const dashboard = new DashboardService(
+      {
+        counts: async () => ({ total: 0, online: 0 }),
+        countsByType: async () => ({
+          cameraOnline: 0,
+          cameraTotal: 0,
+          aiBoxOnline: 0,
+          aiBoxTotal: 0,
+          sensorOnline: 0,
+          sensorTotal: 0,
+        }),
+      } as never,
+      { createQueryBuilder: () => qb } as never,
+      { createQueryBuilder: () => qb } as never,
+      { createQueryBuilder: () => qb } as never,
+      growth as never,
+      rules as never,
+    );
+    const overview = await dashboard.overview({
+      id: 'admin',
+      username: 'admin',
+      displayName: 'admin',
+      role: 'super_admin',
+      shedCodes: [],
+    });
+    expect(overview.maturePickRuleId).toBe('rule-pick');
+    expect(overview.maturePickShedCode).toBeNull();
+    expect(overview.maturePickThreshold).toBe(8);
+    expect(overview.maturePickMatureCount).toBe(8);
+    expect(overview.maturePickActive).toBe(true);
+    expect(overview.maturePickNote).toBe('采摘提醒 成熟≥8 当前8');
   });
 });
