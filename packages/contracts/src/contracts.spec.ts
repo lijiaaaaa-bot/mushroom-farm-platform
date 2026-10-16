@@ -29,11 +29,16 @@ import {
   sumShedLiveMushroomTotals,
   formatLiveMushroomTotalsNote,
   LIVE_MUSHROOM_TOTAL_LABEL,
+  ENV_ANOMALY_POINT_LABEL,
   ENV_MEAN_LABEL,
+  countEnvAnomalyPoints,
+  formatEnvAnomalyPointNote,
   formatEnvMeanNote,
   formatEnvMeanValue,
   meanFarmEnvironment,
+  parseEnvAnomalyPointCount,
   parseFarmEnvMeans,
+  sensorIsEnvAnomaly,
   TIMESERIES_RETENTION_DAYS,
   transitionError,
 } from './index';
@@ -502,6 +507,103 @@ describe('golden fixtures', () => {
       envMeanSubstrateMoisture: 73,
     });
     assert.equal(text.ok, false);
+  });
+
+  it('counts distinct sensors outside enabled env thresholds', () => {
+    const seed = [
+      { metric: 'temperature_high', threshold: 28, enabled: true, shedCode: null },
+      { metric: 'temperature_low', threshold: 12, enabled: true, shedCode: null },
+      { metric: 'humidity_low', threshold: 70, enabled: true, shedCode: null },
+      { metric: 'humidity_high', threshold: 98, enabled: true, shedCode: null },
+      { metric: 'co2_high', threshold: 2000, enabled: true, shedCode: null },
+      { metric: 'substrate_moisture_low', threshold: 50, enabled: true, shedCode: null },
+      { metric: 'disease_count', threshold: 1, enabled: true, shedCode: null },
+    ];
+    const hotAndDry = {
+      shedCode: 'S01',
+      sensorCode: 'SENSOR-EAC-01',
+      temperature: 32,
+      humidity: 55,
+      co2: 800,
+      substrateMoisture: 65,
+    };
+    const drySubstrate = {
+      shedCode: 'S02',
+      sensorCode: 'SENSOR-EAC-02',
+      temperature: 22,
+      humidity: 80,
+      co2: 900,
+      substrateMoisture: 40,
+    };
+    const normal = {
+      shedCode: 'S01',
+      sensorCode: 'SENSOR-EAC-OK',
+      temperature: 22,
+      humidity: 80,
+      co2: 800,
+      substrateMoisture: 65,
+    };
+    const edge = {
+      shedCode: 'S01',
+      sensorCode: 'SENSOR-EAC-EDGE',
+      temperature: 28,
+      humidity: 70,
+      co2: 2000,
+      substrateMoisture: 50,
+    };
+    assert.equal(sensorIsEnvAnomaly(hotAndDry, seed), true);
+    assert.equal(sensorIsEnvAnomaly(drySubstrate, seed), true);
+    assert.equal(sensorIsEnvAnomaly(normal, seed), false);
+    assert.equal(sensorIsEnvAnomaly(edge, seed), false);
+    assert.equal(
+      countEnvAnomalyPoints(
+        [
+          hotAndDry,
+          drySubstrate,
+          normal,
+          edge,
+          { ...hotAndDry, humidity: 40 },
+          { shedCode: 'S01', sensorCode: '', temperature: 40, humidity: 40, co2: 3000, substrateMoisture: 10 },
+        ],
+        seed,
+      ),
+      2,
+    );
+    assert.equal(countEnvAnomalyPoints([], seed), 0);
+    assert.equal(countEnvAnomalyPoints([hotAndDry], []), 0);
+    assert.equal(
+      countEnvAnomalyPoints([hotAndDry], [{ ...seed[0], enabled: false }]),
+      0,
+    );
+    const shedTight = [
+      { metric: 'temperature_high', threshold: 28, enabled: true, shedCode: null },
+      { metric: 'temperature_high', threshold: 20, enabled: true, shedCode: 'S01' },
+    ];
+    const warm = {
+      shedCode: 'S01',
+      sensorCode: 'SENSOR-WARM',
+      temperature: 22,
+      humidity: 80,
+      co2: 800,
+      substrateMoisture: 65,
+    };
+    assert.equal(sensorIsEnvAnomaly(warm, shedTight), true);
+    assert.equal(
+      sensorIsEnvAnomaly({ ...warm, shedCode: 'S02', sensorCode: 'SENSOR-WARM-S02' }, shedTight),
+      false,
+    );
+    assert.equal(ENV_ANOMALY_POINT_LABEL, '异常环境点位数');
+    assert.equal(formatEnvAnomalyPointNote(2), '异常环境点位数 2');
+    assert.equal(formatEnvAnomalyPointNote(0), '异常环境点位数 0');
+    const parsed = parseEnvAnomalyPointCount({
+      envAnomalyPointCount: 2,
+      envMeanTemperature: 24,
+    });
+    assert.equal(parsed.ok, true);
+    if (parsed.ok) assert.deepEqual(parsed.value, { envAnomalyPointCount: 2 });
+    assert.equal(parseEnvAnomalyPointCount({}).ok, false);
+    assert.equal(parseEnvAnomalyPointCount({ envAnomalyPointCount: 1.5 }).ok, false);
+    assert.equal(parseEnvAnomalyPointCount({ envAnomalyPointCount: -1 }).ok, false);
   });
 
   it('loads the snapshot key fixture', () => {

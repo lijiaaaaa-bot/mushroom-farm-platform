@@ -1093,6 +1093,149 @@ export function parseFarmEnvMeans(raw: unknown): ParseResult<FarmEnvMeans> {
   return { ok: true, value: parsed.data };
 }
 
+/** 总览与基地大屏上的异常环境点位数。一个传感器计一个点。 */
+export const ENV_ANOMALY_POINT_LABEL = '异常环境点位数';
+
+/** 环境上下限。与告警规则里的环境指标相同，比较方向也相同。 */
+export const ENV_THRESHOLD_METRICS = [
+  'temperature_high',
+  'temperature_low',
+  'humidity_high',
+  'humidity_low',
+  'co2_high',
+  'substrate_moisture_low',
+] as const;
+
+export type EnvThresholdMetric = (typeof ENV_THRESHOLD_METRICS)[number];
+
+const ENV_THRESHOLD_METRIC_SET = new Set<string>(ENV_THRESHOLD_METRICS);
+
+/** 已启用的环境阈值。shedCode 为空表示全场。 */
+export interface EnvThresholdRule {
+  metric: string;
+  threshold: number;
+  enabled?: boolean;
+  shedCode?: string | null;
+}
+
+/** 一个传感器当天日桶上的四个环境数，带棚区。棚级行不要传进来。 */
+export interface EnvAnomalySensorReading extends EnvSensorDayReading {
+  shedCode: string;
+  sensorCode: string;
+}
+
+export const envAnomalyPointCountSchema = z
+  .object({
+    envAnomalyPointCount: z.number().int().nonnegative(),
+  })
+  .strict();
+
+export type EnvAnomalyPointCount = z.infer<typeof envAnomalyPointCountSchema>;
+
+function finiteEnv(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function envRuleValue(metric: string, row: EnvSensorDayReading): number | null {
+  switch (metric) {
+    case 'temperature_high':
+    case 'temperature_low':
+      return finiteEnv(row.temperature);
+    case 'humidity_high':
+    case 'humidity_low':
+      return finiteEnv(row.humidity);
+    case 'co2_high':
+      return finiteEnv(row.co2);
+    case 'substrate_moisture_low':
+      return finiteEnv(row.substrateMoisture);
+    default:
+      return null;
+  }
+}
+
+/**
+ * 与告警引擎一致：过高是大于阈值，过低是小于阈值。
+ * 等于阈值不算超出。
+ */
+export function envThresholdBreached(
+  metric: string,
+  value: number,
+  threshold: number,
+): boolean {
+  if (!Number.isFinite(value) || !Number.isFinite(threshold)) return false;
+  if (metric.endsWith('_low')) return value < threshold;
+  if (metric.endsWith('_high')) return value > threshold;
+  return false;
+}
+
+function ruleApplies(rule: EnvThresholdRule, shedCode: string): boolean {
+  if (rule.enabled === false) return false;
+  if (!ENV_THRESHOLD_METRIC_SET.has(rule.metric)) return false;
+  if (!Number.isFinite(rule.threshold)) return false;
+  if (rule.shedCode && rule.shedCode !== shedCode) return false;
+  return true;
+}
+
+/** 这一台传感器的当天读数是否突破至少一条适用于该棚的已启用环境阈值。 */
+export function sensorIsEnvAnomaly(
+  row: EnvAnomalySensorReading,
+  rules: EnvThresholdRule[],
+): boolean {
+  const sensor = row.sensorCode?.trim() ?? '';
+  if (!sensor) return false;
+  for (const rule of rules) {
+    if (!ruleApplies(rule, row.shedCode)) continue;
+    const value = envRuleValue(rule.metric, row);
+    if (value === null) continue;
+    if (envThresholdBreached(rule.metric, value, rule.threshold)) return true;
+  }
+  return false;
+}
+
+/**
+ * 异常环境点位数。每个传感器最多计 1，同一台多个指标超限仍是 1。
+ * 空传感器编号（棚级行）不计入。没有任何读数或没有任何适用规则时是 0。
+ * 调用方只传入当天日桶的传感器行。
+ */
+export function countEnvAnomalyPoints(
+  readings: EnvAnomalySensorReading[],
+  rules: EnvThresholdRule[],
+): number {
+  const anomalous = new Set<string>();
+  for (const row of readings) {
+    const sensor = row.sensorCode?.trim() ?? '';
+    if (!sensor) continue;
+    const key = `${row.shedCode}\0${sensor}`;
+    if (anomalous.has(key)) continue;
+    if (sensorIsEnvAnomaly(row, rules)) anomalous.add(key);
+  }
+  return anomalous.size;
+}
+
+export function formatEnvAnomalyPointNote(count: number): string {
+  const shown =
+    typeof count === 'number' && Number.isFinite(count) && count >= 0
+      ? String(Math.trunc(count))
+      : '0';
+  return `${ENV_ANOMALY_POINT_LABEL} ${shown}`;
+}
+
+/** 从总览响应里取出异常环境点位数。其余字段不参与。 */
+export function parseEnvAnomalyPointCount(
+  raw: unknown,
+): ParseResult<EnvAnomalyPointCount> {
+  const record =
+    raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const parsed = envAnomalyPointCountSchema.safeParse({
+    envAnomalyPointCount: record.envAnomalyPointCount,
+  });
+  if (!parsed.success) {
+    const issue = zodErrors(parsed.error);
+    return fail(issue.code, issue.errors);
+  }
+  return { ok: true, value: parsed.data };
+}
+
 export function isRole(value: string): value is Role {
   return roleSchema.safeParse(value).success;
 }

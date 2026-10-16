@@ -6,9 +6,11 @@ import {
   ALERT_LEVEL_LABEL,
   ALERT_STATUS_LABEL,
   DEVICE_TYPE_LABEL,
+  ENV_ANOMALY_POINT_LABEL,
   ENV_MEAN_LABEL,
   LIVE_MUSHROOM_TOTAL_LABEL,
   ROLE_LABEL,
+  formatEnvAnomalyPointNote,
   formatEnvMeanNote,
   formatEnvMeanValue,
   formatLiveMushroomTotalsNote,
@@ -40,6 +42,7 @@ interface Overview {
   envMeanHumidity?: number | null;
   envMeanCo2?: number | null;
   envMeanSubstrateMoisture?: number | null;
+  envAnomalyPointCount?: number;
   openAlerts: number;
   severeAlerts: number;
   env: {
@@ -315,6 +318,12 @@ const envMeanCards = computed(() => {
   ];
 });
 const envMeanNote = computed(() => formatEnvMeanNote(envMeans.value));
+const envAnomalyPointCount = computed(() => {
+  const value = overview.value?.envAnomalyPointCount;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return 0;
+  return Math.trunc(value);
+});
+const envAnomalyNote = computed(() => formatEnvAnomalyPointNote(envAnomalyPointCount.value));
 
 const points = computed(() =>
   sheds.value.map((shed, index) => {
@@ -852,6 +861,13 @@ onBeforeUnmount(() => {
           </article>
           <p class="today-note" data-field="env-mean-note">{{ envMeanNote }}</p>
         </div>
+        <div class="env-anomaly-totals" aria-label="异常环境点位数">
+          <article class="tile" data-field="env-anomaly">
+            <p class="tile-label" data-field="env-anomaly-title">{{ ENV_ANOMALY_POINT_LABEL }}</p>
+            <p class="tile-value" data-field="env-anomaly-count">{{ envAnomalyPointCount }}</p>
+          </article>
+          <p class="today-note" data-field="env-anomaly-note">{{ envAnomalyNote }}</p>
+        </div>
       </template>
     </section>
 
@@ -1141,6 +1157,13 @@ onBeforeUnmount(() => {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
+}
+
+.env-anomaly-totals {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(0, 240px);
+  gap: 8px;
 }
 
 .today-note {
@@ -1821,7 +1844,8 @@ onBeforeUnmount(() => {
   }
 
   .live-mushroom-totals,
-  .env-mean-totals {
+  .env-mean-totals,
+  .env-anomaly-totals {
     grid-template-columns: 1fr;
   }
 }

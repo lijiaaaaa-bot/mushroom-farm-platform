@@ -211,6 +211,10 @@ body {
   color: var(--accent);
 }
 
+.env-anomaly-block {
+  grid-template-columns: minmax(0, 280px);
+}
+
 .tb-top,
 .tb-bottom {
   display: grid;
