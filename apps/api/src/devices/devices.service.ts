@@ -322,6 +322,48 @@ export class DevicesService {
     return { total, online };
   }
 
+  /**
+   * 全园（或当前账号可见棚）按类型的在线与总数。
+   * 与 counts() 同一份档案、同一在线字段。不含未知类型。
+   * 值班看板仍读 counts() 的总在线、总离线，不读这里。
+   */
+  async countsByType(user: AuthUser) {
+    const zero = {
+      cameraOnline: 0,
+      cameraTotal: 0,
+      aiBoxOnline: 0,
+      aiBoxTotal: 0,
+      sensorOnline: 0,
+      sensorTotal: 0,
+    };
+    const scope = ShedScope.fromUser(user);
+    if (scope.codes && !scope.codes.length) return zero;
+    const ofType = async (type: DeviceType) => {
+      const qb = this.devices.createQueryBuilder('d');
+      if (scope.codes) {
+        qb.andWhere('d.shedCode IN (:...codes)', { codes: scope.codes });
+      }
+      qb.andWhere('d.type = :type', { type });
+      const total = await qb.getCount();
+      const online = await qb
+        .clone()
+        .andWhere('d.onlineStatus = :s', { s: 'online' })
+        .getCount();
+      return { total, online };
+    };
+    const camera = await ofType('camera');
+    const aiBox = await ofType('ai_box');
+    const sensor = await ofType('sensor');
+    return {
+      cameraOnline: camera.online,
+      cameraTotal: camera.total,
+      aiBoxOnline: aiBox.online,
+      aiBoxTotal: aiBox.total,
+      sensorOnline: sensor.online,
+      sensorTotal: sensor.total,
+    };
+  }
+
   async touchCamera(shedCode: string, cameraCode: string) {
     await this.ensureShed(shedCode);
     await this.touch(shedCode, cameraCode, 'camera', true);

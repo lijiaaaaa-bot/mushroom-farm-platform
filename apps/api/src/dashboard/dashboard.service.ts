@@ -39,6 +39,7 @@ export class DashboardService {
       })),
     );
     const deviceCounts = await this.devices.counts(user);
+    const deviceByType = await this.devices.countsByType(user);
     const shedQb = this.sheds.createQueryBuilder('s');
     if (scope.codes) {
       if (!scope.codes.length) shedQb.andWhere('1 = 0');
@@ -72,6 +73,12 @@ export class DashboardService {
       shedCount,
       deviceTotal: deviceCounts.total,
       deviceOnline: deviceCounts.online,
+      cameraOnline: deviceByType.cameraOnline,
+      cameraTotal: deviceByType.cameraTotal,
+      aiBoxOnline: deviceByType.aiBoxOnline,
+      aiBoxTotal: deviceByType.aiBoxTotal,
+      sensorOnline: deviceByType.sensorOnline,
+      sensorTotal: deviceByType.sensorTotal,
       todayMushroom: today.mushroomCount,
       todayMature: today.matureCount,
       todayRecognitionCount: today.recognitionCount,

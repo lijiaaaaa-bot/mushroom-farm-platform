@@ -1236,6 +1236,102 @@ export function parseEnvAnomalyPointCount(
   return { ok: true, value: parsed.data };
 }
 
+/** 总览与基地大屏上的分类型在线。全园档案，不按日桶。 */
+export const DEVICE_ONLINE_BY_TYPE_LABEL = {
+  title: '全局设备在线',
+  camera: '摄像头',
+  aiBox: 'AI盒子',
+  sensor: '传感器',
+} as const;
+
+export const deviceOnlineByTypeSchema = z
+  .object({
+    cameraOnline: z.number().int().nonnegative(),
+    cameraTotal: z.number().int().nonnegative(),
+    aiBoxOnline: z.number().int().nonnegative(),
+    aiBoxTotal: z.number().int().nonnegative(),
+    sensorOnline: z.number().int().nonnegative(),
+    sensorTotal: z.number().int().nonnegative(),
+  })
+  .strict()
+  .refine(
+    (row) =>
+      row.cameraOnline <= row.cameraTotal &&
+      row.aiBoxOnline <= row.aiBoxTotal &&
+      row.sensorOnline <= row.sensorTotal,
+    { message: '在线数不能大于总数' },
+  );
+
+export type DeviceOnlineByType = z.infer<typeof deviceOnlineByTypeSchema>;
+
+export function emptyDeviceOnlineByType(): DeviceOnlineByType {
+  return {
+    cameraOnline: 0,
+    cameraTotal: 0,
+    aiBoxOnline: 0,
+    aiBoxTotal: 0,
+    sensorOnline: 0,
+    sensorTotal: 0,
+  };
+}
+
+/** 按设备档案计在线与总数。未知类型不计入。online 以外的状态只进总数。 */
+export function countDevicesOnlineByType(
+  devices: Array<{ type?: string | null; onlineStatus?: string | null }>,
+): DeviceOnlineByType {
+  const counts = emptyDeviceOnlineByType();
+  for (const device of devices) {
+    const online = device.onlineStatus === 'online';
+    if (device.type === 'camera') {
+      counts.cameraTotal += 1;
+      if (online) counts.cameraOnline += 1;
+    } else if (device.type === 'ai_box') {
+      counts.aiBoxTotal += 1;
+      if (online) counts.aiBoxOnline += 1;
+    } else if (device.type === 'sensor') {
+      counts.sensorTotal += 1;
+      if (online) counts.sensorOnline += 1;
+    }
+  }
+  return counts;
+}
+
+export function formatDeviceOnlineRatio(online: number, total: number): string {
+  const shown = (value: number) =>
+    typeof value === 'number' && Number.isFinite(value) && value >= 0
+      ? String(Math.trunc(value))
+      : '0';
+  return `${shown(online)}/${shown(total)}`;
+}
+
+export function formatDeviceOnlineByTypeNote(counts: DeviceOnlineByType): string {
+  const label = DEVICE_ONLINE_BY_TYPE_LABEL;
+  return [
+    `${label.camera} ${formatDeviceOnlineRatio(counts.cameraOnline, counts.cameraTotal)}`,
+    `${label.aiBox} ${formatDeviceOnlineRatio(counts.aiBoxOnline, counts.aiBoxTotal)}`,
+    `${label.sensor} ${formatDeviceOnlineRatio(counts.sensorOnline, counts.sensorTotal)}`,
+  ].join(' · ');
+}
+
+/** 从总览响应里取出分类型在线。其余字段不参与。 */
+export function parseDeviceOnlineByType(raw: unknown): ParseResult<DeviceOnlineByType> {
+  const record =
+    raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const parsed = deviceOnlineByTypeSchema.safeParse({
+    cameraOnline: record.cameraOnline,
+    cameraTotal: record.cameraTotal,
+    aiBoxOnline: record.aiBoxOnline,
+    aiBoxTotal: record.aiBoxTotal,
+    sensorOnline: record.sensorOnline,
+    sensorTotal: record.sensorTotal,
+  });
+  if (!parsed.success) {
+    const issue = zodErrors(parsed.error);
+    return fail(issue.code, issue.errors);
+  }
+  return { ok: true, value: parsed.data };
+}
+
 export function isRole(value: string): value is Role {
   return roleSchema.safeParse(value).success;
 }

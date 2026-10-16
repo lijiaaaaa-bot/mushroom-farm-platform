@@ -5,12 +5,16 @@ import { useRouter } from 'vue-router';
 import {
   ALERT_LEVEL_LABEL,
   ALERT_STATUS_LABEL,
+  DEVICE_ONLINE_BY_TYPE_LABEL,
   DEVICE_TYPE_LABEL,
   ENV_ANOMALY_POINT_LABEL,
   ENV_MEAN_LABEL,
   LIVE_MUSHROOM_TOTAL_LABEL,
   ROLE_LABEL,
+  formatDeviceOnlineByTypeNote,
+  formatDeviceOnlineRatio,
   formatEnvAnomalyPointNote,
+  parseDeviceOnlineByType,
   formatEnvMeanNote,
   formatEnvMeanValue,
   formatLiveMushroomTotalsNote,
@@ -43,6 +47,12 @@ interface Overview {
   envMeanCo2?: number | null;
   envMeanSubstrateMoisture?: number | null;
   envAnomalyPointCount?: number;
+  cameraOnline?: number;
+  cameraTotal?: number;
+  aiBoxOnline?: number;
+  aiBoxTotal?: number;
+  sensorOnline?: number;
+  sensorTotal?: number;
   openAlerts: number;
   severeAlerts: number;
   env: {
@@ -324,6 +334,41 @@ const envAnomalyPointCount = computed(() => {
   return Math.trunc(value);
 });
 const envAnomalyNote = computed(() => formatEnvAnomalyPointNote(envAnomalyPointCount.value));
+const deviceOnlineByType = computed(() => {
+  const parsed = parseDeviceOnlineByType(overview.value ?? {});
+  return parsed.ok
+    ? parsed.value
+    : {
+        cameraOnline: 0,
+        cameraTotal: 0,
+        aiBoxOnline: 0,
+        aiBoxTotal: 0,
+        sensorOnline: 0,
+        sensorTotal: 0,
+      };
+});
+const deviceOnlineCards = computed(() => {
+  const counts = deviceOnlineByType.value;
+  const label = DEVICE_ONLINE_BY_TYPE_LABEL;
+  return [
+    {
+      key: 'device-online-camera',
+      label: label.camera,
+      value: formatDeviceOnlineRatio(counts.cameraOnline, counts.cameraTotal),
+    },
+    {
+      key: 'device-online-aibox',
+      label: label.aiBox,
+      value: formatDeviceOnlineRatio(counts.aiBoxOnline, counts.aiBoxTotal),
+    },
+    {
+      key: 'device-online-sensor',
+      label: label.sensor,
+      value: formatDeviceOnlineRatio(counts.sensorOnline, counts.sensorTotal),
+    },
+  ];
+});
+const deviceOnlineNote = computed(() => formatDeviceOnlineByTypeNote(deviceOnlineByType.value));
 
 const points = computed(() =>
   sheds.value.map((shed, index) => {
@@ -868,6 +913,14 @@ onBeforeUnmount(() => {
           </article>
           <p class="today-note" data-field="env-anomaly-note">{{ envAnomalyNote }}</p>
         </div>
+        <div class="device-online-totals" aria-label="全局设备在线">
+          <p class="device-online-title" data-field="device-online-title">{{ DEVICE_ONLINE_BY_TYPE_LABEL.title }}</p>
+          <article v-for="card in deviceOnlineCards" :key="card.key" class="tile" :data-field="card.key">
+            <p class="tile-label">{{ card.label }}</p>
+            <p class="tile-value">{{ card.value }}</p>
+          </article>
+          <p class="today-note" data-field="device-online-note">{{ deviceOnlineNote }}</p>
+        </div>
       </template>
     </section>
 
@@ -1164,6 +1217,20 @@ onBeforeUnmount(() => {
   display: grid;
   grid-template-columns: minmax(0, 240px);
   gap: 8px;
+}
+
+.device-online-totals {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.device-online-title {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
 }
 
 .today-note {
@@ -1845,7 +1912,8 @@ onBeforeUnmount(() => {
 
   .live-mushroom-totals,
   .env-mean-totals,
-  .env-anomaly-totals {
+  .env-anomaly-totals,
+  .device-online-totals {
     grid-template-columns: 1fr;
   }
 }

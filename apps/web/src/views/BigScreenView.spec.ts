@@ -43,6 +43,12 @@ const overview = {
   envMeanCo2: 800,
   envMeanSubstrateMoisture: 73,
   envAnomalyPointCount: 2,
+  cameraOnline: 2,
+  cameraTotal: 3,
+  aiBoxOnline: 1,
+  aiBoxTotal: 2,
+  sensorOnline: 1,
+  sensorTotal: 2,
   openAlerts: 1,
   severeAlerts: 1,
   env: {
@@ -251,6 +257,18 @@ describe('BigScreenView', () => {
     expect(wrapper.get('[data-field="env-anomaly-title"]').text()).toBe('异常环境点位数');
     expect(wrapper.get('[data-field="env-anomaly-count"]').text()).toBe('2');
     expect(wrapper.get('[data-field="env-anomaly-note"]').text()).toBe('异常环境点位数 2');
+    expect(wrapper.get('[data-field="device-online-title"]').text()).toBe('全局设备在线');
+    expect(wrapper.get('[data-field="device-online-camera"]').text()).toContain('摄像头');
+    expect(wrapper.get('[data-field="device-online-camera"]').text()).toContain('2/3');
+    expect(wrapper.get('[data-field="device-online-aibox"]').text()).toContain('AI盒子');
+    expect(wrapper.get('[data-field="device-online-aibox"]').text()).toContain('1/2');
+    expect(wrapper.get('[data-field="device-online-sensor"]').text()).toContain('传感器');
+    expect(wrapper.get('[data-field="device-online-sensor"]').text()).toContain('1/2');
+    expect(wrapper.get('[data-field="device-online-note"]').text()).toBe(
+      '摄像头 2/3 · AI盒子 1/2 · 传感器 1/2',
+    );
+    expect(wrapper.get('[data-field="devices"]').text()).toContain('设备在线');
+    expect(wrapper.get('[data-field="devices"]').text()).toContain('1/1');
     expect(screen.left.text()).toContain('棚区平面');
     expect(screen.left.text()).toContain('S01');
     expect(screen.left.text()).toContain('一号棚');
@@ -274,6 +292,9 @@ describe('BigScreenView', () => {
     expect(wrapper.get('[data-field="env-mean-note"]').text()).toContain('24℃');
     expect(wrapper.get('[data-field="env-mean-note"]').text()).not.toContain('22.5');
     expect(wrapper.get('[data-field="env-anomaly-note"]').text()).toBe('异常环境点位数 2');
+    expect(wrapper.get('[data-field="device-online-note"]').text()).toBe(
+      '摄像头 2/3 · AI盒子 1/2 · 传感器 1/2',
+    );
     expect(screen.right.text()).toContain('设备');
     expect(screen.right.text()).toContain('CAM-S01');
     expect(screen.bottom.text()).toContain('滚动');
@@ -321,6 +342,13 @@ describe('BigScreenView', () => {
     expect(wrapper.get('[data-field="env-anomaly-title"]').text()).toBe('异常环境点位数');
     expect(wrapper.get('[data-field="env-anomaly-count"]').text()).toBe('0');
     expect(wrapper.get('[data-field="env-anomaly-note"]').text()).toBe('异常环境点位数 0');
+    expect(wrapper.get('[data-field="device-online-title"]').text()).toBe('全局设备在线');
+    expect(wrapper.get('[data-field="device-online-camera"]').text()).toContain('0/0');
+    expect(wrapper.get('[data-field="device-online-aibox"]').text()).toContain('0/0');
+    expect(wrapper.get('[data-field="device-online-sensor"]').text()).toContain('0/0');
+    expect(wrapper.get('[data-field="device-online-note"]').text()).toBe(
+      '摄像头 0/0 · AI盒子 0/0 · 传感器 0/0',
+    );
     expect(screen.bottom.text()).toContain('暂无告警与识别记录');
     expect(screen.bottom.text()).toContain('暂无识别时间，不能按抓拍时段筛选。');
     expect(wrapper.find('a.timeline-filter').exists()).toBe(false);
