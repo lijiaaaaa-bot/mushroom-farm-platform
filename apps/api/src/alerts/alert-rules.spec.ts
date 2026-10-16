@@ -327,6 +327,46 @@ describe('alert-rules HTTP', () => {
     );
   });
 
+  it('accepts an integer growth-stall threshold and rejects a fraction', async () => {
+    const created = await request(app.getHttpServer())
+      .post('/api/v1/alert-rules')
+      .set('x-test-role', 'super_admin')
+      .send({
+        name: '生长异常预警',
+        metric: 'live_growth_stall',
+        threshold: 2,
+        level: 'info',
+      });
+    expect(created.status).toBe(201);
+    expect(created.body).toMatchObject({
+      name: '生长异常预警',
+      metric: 'live_growth_stall',
+      threshold: 2,
+      shedCode: null,
+      enabled: true,
+    });
+
+    const fraction = await request(app.getHttpServer())
+      .patch(`/api/v1/alert-rules/${created.body.id}`)
+      .set('x-test-role', 'production_admin')
+      .send({ threshold: 2.5 });
+    expect(fraction.status).toBe(400);
+    expect(JSON.stringify(fraction.body)).toContain(
+      '菌盖生长停滞阈值须为大于等于 0 的整数',
+    );
+
+    const negative = await request(app.getHttpServer())
+      .post('/api/v1/alert-rules')
+      .set('x-test-role', 'super_admin')
+      .send({
+        name: '生长异常预警负数',
+        metric: 'live_growth_stall',
+        threshold: -1,
+        level: 'info',
+      });
+    expect(negative.status).toBe(400);
+  });
+
   it('rejects a rule whose metric is not in the contract', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/alert-rules')

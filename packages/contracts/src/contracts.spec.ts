@@ -46,6 +46,17 @@ import {
   formatDiseaseWarnRatioNote,
   formatDiseaseWarnSevereNote,
   parseDiseaseWarning,
+  GROWTH_STALL_LABEL,
+  GROWTH_STALL_METRIC,
+  GROWTH_STALL_THRESHOLD_ERROR,
+  evaluateGrowthStallWarning,
+  formatGrowthStallConfig,
+  formatGrowthStallNote,
+  growthStallFromOverview,
+  growthStallOverviewFields,
+  growthStallThresholdInteger,
+  parseGrowthStallWarning,
+  trailingStallDays,
   pendingLiveCount,
   sumShedLiveMushroomTotals,
   formatLiveMushroomTotalsNote,
@@ -624,6 +635,112 @@ describe('golden fixtures', () => {
     assert.equal(parseDiseaseWarning({}).ok, false);
     assert.match(DISEASE_RATIO_THRESHOLD_ERROR, /大于等于 0 的整数/);
     assert.match(DISEASE_SEVERE_THRESHOLD_ERROR, /大于等于 0 的整数/);
+  });
+
+  it('warns when trailing cap-diameter stall days meet the integer threshold', () => {
+    assert.equal(growthStallThresholdInteger(2), 2);
+    assert.equal(growthStallThresholdInteger('0'), 0);
+    assert.equal(growthStallThresholdInteger(2.5), null);
+    assert.equal(growthStallThresholdInteger(-1), null);
+    assert.equal(GROWTH_STALL_METRIC, 'live_growth_stall');
+    const today = '2026-10-16';
+    const flat = [
+      { shedCode: 'S01', cameraCode: 'CAM-GST-01', day: '2026-10-14', capDiameterMean: 4 },
+      { shedCode: 'S01', cameraCode: 'CAM-GST-01', day: '2026-10-15', capDiameterMean: 4 },
+      { shedCode: 'S01', cameraCode: 'CAM-GST-01', day: '2026-10-16', capDiameterMean: 4 },
+      { shedCode: 'S02', cameraCode: 'CAM-GST-ZERO', day: '2026-10-16', capDiameterMean: 4 },
+      { shedCode: 'S01', cameraCode: '', day: '2026-10-16', capDiameterMean: 9 },
+    ];
+    assert.equal(
+      trailingStallDays(
+        flat.filter((point) => point.cameraCode === 'CAM-GST-01'),
+        today,
+      ),
+      2,
+    );
+    assert.equal(
+      trailingStallDays(
+        [
+          { day: '2026-10-15', capDiameterMean: 4 },
+          { day: '2026-10-16', capDiameterMean: 4.2 },
+        ],
+        today,
+      ),
+      0,
+    );
+    assert.equal(trailingStallDays([{ day: '2026-10-16', capDiameterMean: 4 }], today), 0);
+    assert.equal(
+      trailingStallDays(
+        [
+          { day: '2026-10-14', capDiameterMean: 4 },
+          { day: '2026-10-16', capDiameterMean: 4 },
+        ],
+        today,
+      ),
+      0,
+    );
+    assert.equal(
+      trailingStallDays(
+        [
+          { day: '2026-10-15', capDiameterMean: 4.2 },
+          { day: '2026-10-16', capDiameterMean: 4 },
+        ],
+        today,
+      ),
+      1,
+    );
+    const quiet = evaluateGrowthStallWarning(
+      [{ id: 'rule-stall', metric: GROWTH_STALL_METRIC, threshold: 3, enabled: true, shedCode: null }],
+      flat,
+      today,
+    );
+    assert.equal(quiet.active, false);
+    assert.equal(quiet.current, 2);
+    assert.equal(quiet.note, '');
+    assert.equal(formatGrowthStallConfig(quiet), '菌盖生长停滞阈值 3 · 全场 · 当前停滞 2');
+    const active = evaluateGrowthStallWarning(
+      [
+        { id: 'rule-stall', metric: GROWTH_STALL_METRIC, threshold: 2, enabled: true, shedCode: null },
+        { id: 'rule-shed', metric: GROWTH_STALL_METRIC, threshold: 1, enabled: true, shedCode: 'S02' },
+        { id: 'rule-seed', metric: 'growth_stall', threshold: 0.05, enabled: true, shedCode: null },
+      ],
+      flat,
+      today,
+    );
+    assert.equal(active.ruleId, 'rule-stall');
+    assert.equal(active.shedCode, null);
+    assert.equal(active.threshold, 2);
+    assert.equal(active.current, 2);
+    assert.equal(active.active, true);
+    assert.equal(formatGrowthStallNote(active), '生长异常预警 停滞≥2 当前2');
+    assert.equal(active.note, '生长异常预警 停滞≥2 当前2');
+    const shedOnly = evaluateGrowthStallWarning(
+      [{ id: 'rule-s01', metric: GROWTH_STALL_METRIC, threshold: 2, enabled: true, shedCode: 'S01' }],
+      flat,
+      today,
+    );
+    assert.equal(shedOnly.note, '生长异常预警 棚区 S01 停滞≥2 当前2');
+    const missing = evaluateGrowthStallWarning([], flat, today);
+    assert.equal(missing.threshold, null);
+    assert.equal(missing.current, 2);
+    assert.equal(missing.active, false);
+    assert.equal(formatGrowthStallConfig(missing), GROWTH_STALL_LABEL.unset);
+    assert.equal(formatGrowthStallConfig(missing), '尚未配置菌盖生长停滞阈值');
+    const parsed = parseGrowthStallWarning({
+      ...growthStallOverviewFields(active),
+      liveMatureTotal: 8,
+    });
+    assert.equal(parsed.ok, true);
+    if (parsed.ok) {
+      assert.equal(growthStallFromOverview(parsed.value).note, '生长异常预警 停滞≥2 当前2');
+    }
+    const mismatched = parseGrowthStallWarning({
+      ...growthStallOverviewFields(active),
+      growthStallNote: '生长异常预警 停滞≥2 当前3',
+    });
+    assert.equal(mismatched.ok, false);
+    assert.equal(parseGrowthStallWarning({}).ok, false);
+    assert.match(GROWTH_STALL_THRESHOLD_ERROR, /大于等于 0 的整数/);
   });
 
   it('averages farm environment means per sensor and formats the note', () => {

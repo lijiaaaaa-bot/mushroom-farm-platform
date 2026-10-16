@@ -13,6 +13,9 @@ import {
   DISEASE_WARN_LABEL,
   ENV_ANOMALY_POINT_LABEL,
   ENV_MEAN_LABEL,
+  GROWTH_STALL_LABEL,
+  GROWTH_STALL_METRIC,
+  GROWTH_STALL_THRESHOLD_ERROR,
   LIVE_MUSHROOM_TOTAL_LABEL,
   MATURE_PICK_LABEL,
   MATURE_PICK_METRIC,
@@ -25,12 +28,16 @@ import {
   parseDeviceOnlineByType,
   formatEnvMeanNote,
   formatEnvMeanValue,
+  formatGrowthStallConfig,
   formatLiveMushroomTotalsNote,
+  growthStallFromOverview,
+  growthStallThresholdInteger,
   maturePickReminderFromOverview,
   maturePickThresholdInteger,
   diseaseWarnFromOverview,
   diseaseWarnThresholdInteger,
   parseDiseaseWarning,
+  parseGrowthStallWarning,
   parseMaturePickReminder,
   type FarmEnvMeans,
   type AlertLevel,
@@ -98,6 +105,12 @@ interface Overview {
   diseaseWarnSevereCount?: number;
   diseaseWarnSevereActive?: boolean;
   diseaseWarnSevereNote?: string;
+  growthStallRuleId?: string | null;
+  growthStallShedCode?: string | null;
+  growthStallThreshold?: number | null;
+  growthStallCurrent?: number;
+  growthStallActive?: boolean;
+  growthStallNote?: string;
   envMeanTemperature?: number | null;
   envMeanHumidity?: number | null;
   envMeanCo2?: number | null;
@@ -293,6 +306,33 @@ watch(
   (value) => {
     if (savingDisease.value) return;
     diseaseSevereDraft.value = value === null ? '' : String(value);
+  },
+  { immediate: true },
+);
+
+const emptyGrowthStall = {
+  ruleId: null,
+  shedCode: null,
+  threshold: null as number | null,
+  current: 0,
+  active: false,
+  note: '',
+};
+const growthStall = computed(() => {
+  const parsed = parseGrowthStallWarning(data.value ?? {});
+  return parsed.ok ? growthStallFromOverview(parsed.value) : emptyGrowthStall;
+});
+const growthStallConfig = computed(() => formatGrowthStallConfig(growthStall.value));
+const growthStallDraft = ref('');
+const savingStall = ref(false);
+const stallError = ref('');
+const canEditStall = computed(() => canWriteRules(currentUser.value?.role));
+
+watch(
+  () => growthStall.value.threshold,
+  (value) => {
+    if (savingStall.value) return;
+    growthStallDraft.value = value === null ? '' : String(value);
   },
   { immediate: true },
 );
@@ -717,6 +757,35 @@ async function saveDiseaseWarn() {
   }
 }
 
+async function saveGrowthStall() {
+  if (!canEditStall.value || savingStall.value) return;
+  const threshold = growthStallThresholdInteger(growthStallDraft.value);
+  if (threshold === null) {
+    stallError.value = GROWTH_STALL_THRESHOLD_ERROR;
+    return;
+  }
+  savingStall.value = true;
+  stallError.value = '';
+  try {
+    const ruleId = growthStall.value.ruleId;
+    if (ruleId) {
+      await http.patch(`/alert-rules/${ruleId}`, { threshold, enabled: true });
+    } else {
+      await http.post('/alert-rules', {
+        name: GROWTH_STALL_LABEL.title,
+        metric: GROWTH_STALL_METRIC,
+        threshold,
+        level: 'info',
+      });
+    }
+    await loadBoard();
+  } catch (cause) {
+    stallError.value = errorText(cause);
+  } finally {
+    savingStall.value = false;
+  }
+}
+
 async function saveMaturePick() {
   if (!canEditPick.value || savingPick.value) return;
   const threshold = maturePickThresholdInteger(maturePickDraft.value);
@@ -883,6 +952,35 @@ onBeforeUnmount(() => {
         当前重度 {{ diseaseWarn.severe.severeCount }}，未达到阈值 {{ diseaseWarn.severe.threshold }}
       </p>
       <p v-if="diseaseError" class="text-danger" data-field="disease-warn-error">{{ diseaseError }}</p>
+    </section>
+    <section class="growth-stall-block" aria-label="生长异常预警" data-field="growth-stall">
+      <h2 data-field="growth-stall-title">{{ GROWTH_STALL_LABEL.title }}</h2>
+      <form class="growth-stall-form" @submit.prevent="saveGrowthStall">
+        <label>
+          {{ GROWTH_STALL_LABEL.threshold }}
+          <input
+            v-model="growthStallDraft"
+            data-field="growth-stall-threshold"
+            type="number"
+            min="0"
+            step="1"
+            inputmode="numeric"
+            :disabled="!canEditStall || savingStall"
+            :aria-label="GROWTH_STALL_LABEL.threshold"
+          />
+        </label>
+        <button v-if="canEditStall" type="submit" data-field="growth-stall-save" :disabled="savingStall">
+          {{ savingStall ? '保存中…' : '保存' }}
+        </button>
+      </form>
+      <p class="today-counts-note" data-field="growth-stall-config">{{ growthStallConfig }}</p>
+      <p v-if="growthStall.active" class="growth-stall-banner" data-field="growth-stall-note">
+        {{ growthStall.note }}
+      </p>
+      <p v-else-if="growthStall.threshold !== null" class="today-counts-note" data-field="growth-stall-idle">
+        当前停滞 {{ growthStall.current }}，未达到阈值 {{ growthStall.threshold }}
+      </p>
+      <p v-if="stallError" class="text-danger" data-field="growth-stall-error">{{ stallError }}</p>
     </section>
     <section class="env-mean-block" aria-label="全园环境参数均值">
       <h2 class="env-mean-title" data-field="env-mean-title">{{ ENV_MEAN_LABEL.title }}</h2>

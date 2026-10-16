@@ -312,6 +312,51 @@ body {
   border-radius: 8px;
 }
 
+.growth-stall-block {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.growth-stall-block h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.growth-stall-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+}
+
+.growth-stall-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.growth-stall-form input {
+  width: 8rem;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.growth-stall-banner {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #9a6700;
+  background: #fff8e8;
+  border: 1px solid #e6d3a1;
+  border-radius: 8px;
+}
+
 .tb-top,
 .tb-bottom {
   display: grid;

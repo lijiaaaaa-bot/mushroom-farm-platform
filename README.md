@@ -61,6 +61,7 @@ make web      # http://127.0.0.1:43123
 病害详情同一屏看到该棚当时的温度、湿度、CO₂ 和基质含水率：[`docs/DEMO_DISEASE_ENV_DETAIL.md`](docs/DEMO_DISEASE_ENV_DETAIL.md)（`make demo-disease-env-detail`）。  
 病害高发时段和棚区可查可见：[`docs/DEMO_DISEASE_HOTSPOT.md`](docs/DEMO_DISEASE_HOTSPOT.md)（`make demo-disease-hotspot`）。  
 总览 `/` 可配病害比例阈值和重度病害数量阈值，达到任一阈值时同一屏显示病害预警：[`docs/DEMO_DISEASE_RATIO_THRESHOLD.md`](docs/DEMO_DISEASE_RATIO_THRESHOLD.md)（`make demo-disease-ratio-threshold`）。  
+总览 `/` 可配菌盖生长停滞阈值，连续停滞天数达到阈值时同一屏显示生长异常预警：[`docs/DEMO_GROWTH_STALL_THRESHOLD.md`](docs/DEMO_GROWTH_STALL_THRESHOLD.md)（`make demo-growth-stall-threshold`）。  
 采摘记录可查可见：[`docs/DEMO_HARVEST_LIST.md`](docs/DEMO_HARVEST_LIST.md)（`make demo-harvest-list`）。  
 按棚区和时间窗筛选采摘记录：[`docs/DEMO_HARVEST_FILTER.md`](docs/DEMO_HARVEST_FILTER.md)（`make demo-harvest-filter`）。  
 采摘任务可查可排：[`docs/DEMO_HARVEST_TASK.md`](docs/DEMO_HARVEST_TASK.md)（`make demo-harvest-task`）。  
