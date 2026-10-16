@@ -1,11 +1,12 @@
 # STATUS｜mushroom-farm-platform
 
-更新：2026-10-15（Asia/Shanghai）
+更新：2026-10-16（Asia/Shanghai）
 仓：https://github.com/lijiaaaaa-bot/mushroom-farm-platform
 
 进度只认：已合并 PR + 已关闭 Issue + 本文件一行。聊天文字不算交付。
 
 ## 已完成
+- 抓拍对照可查可见：`/capture-preview` 同一屏左右对照「原始」与「标注」，下方历史时间轴点一条切换。原始图读 `GET /api/v1/ingest/recognitions/:id/snapshot`。只有一张图时，标注在同图上叠蘑菇数、成熟、病害，并写「AI标注」。没有图时写「无原始抓拍」「无标注图」。没有时间轴点时写「没有可回看的抓拍。」。`make demo-capture-preview` 读取 `recognition.demo-one.json`，样例文件不改。写入 `CAM-CP-01`（棚区 S01）三条不同识别时间，蘑菇数 8、10、12，都能打开抓拍。旁注「原始 · 标注 · 时间轴 3 点」。对照 `CAM-CP-NONE` 没有点。不改 `/recognitions` 列表、`/big-screen` 抓拍墙、单棚四数、生长增量、病害趋势、环境 24 小时、病害高发、成熟率。不改接入观测。步骤见 `docs/DEMO_CAPTURE_PREVIEW.md`。草稿不合并。
 - 单棚实时蘑菇生长数据可查可见：`/shed-live-stats` 同一屏写出该棚当前蘑菇数、成熟数、待成熟、病害数。`GET /api/v1/growth-trends/live?shedCode=&cameraCode=` 读当日日桶。必选棚区；有摄像头是这一台最新，没有则各摄像头最新相加，待成熟在相加之后再算（蘑菇为 0 或相减为负时是 0）。少于可用点时写「该棚暂无实时生长数据。」，四格是「—」。`make demo-shed-live-stats` 读取 `recognition.demo-growth-trend.json`，样例文件不改，写入 `CAM-SLS-01`（棚区 S01）当日一条：蘑菇 20、成熟 8、病害 2，待成熟 12，病害等级 1。对照 `cameraCode=CAM-SLS-NONE` 没有点。不改 `/growth-trends` 曲线、`/shed-growth-delta`、`/shed-disease-trend`、`/shed-env-24h`、`/duty-screen`、总览 `/`。不改接入观测。步骤见 `docs/DEMO_SHED_LIVE_STATS.md`。草稿不合并。PR #164。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/164
 - 单棚病害发生趋势可查可见：`/shed-disease-trend` 同一屏画出近 7/30 日病害数量曲线和表。`GET /api/v1/diseases/trends?days=7|30&shedCode=&cameraCode=` 读 `metric_buckets_day` 的 `disease_count`。旁注写出「病害 1 → 3 → 6 → 10（升）」。表里相邻日写「升」或「降」。少于两个点时写「没有病害日趋势，未绘制曲线。」`make demo-shed-disease-trend` 读取 `recognition.demo-growth-trend.json`，样例文件不改，写入 `CAM-SDT-01`（棚区 S01）四个上海日：病害数量 1/3/6/10，病害等级 1。6 和 10 会碰到「病害数量一般」，命令末尾关闭这台摄像头上的未闭合告警。不改 `/diseases` 列表，不改 `GET /api/v1/diseases/peaks`，不改病害详情同期环境，不改 `/growth-trends`、`/shed-growth-delta`、`/shed-env-24h`。不改接入观测。步骤见 `docs/DEMO_SHED_DISEASE_TREND.md`。草稿不合并。PR #163。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/163
 - 单棚当日生长增量曲线可查可见：`/shed-growth-delta` 同一屏画出这一台摄像头相邻日的蘑菇增量、成熟增量。读已有日桶 `GET /api/v1/growth-trends?days=7|30&shedCode=&cameraCode=`，页面用相邻日的差，不画绝对数。旁注写出「蘑菇增量 6 → 8 → 10（升）」。少于两个增量时写「没有相邻日增量，未绘制曲线。」`make demo-shed-growth-delta` 读取 `recognition.demo-growth-trend.json`，样例文件不改，写入 `CAM-GD-01`（棚区 S01）四个上海日：蘑菇 10/16/24/34，成熟 2/4/7/11，增量是 +6、+8、+10 和 +2、+3、+4。表里相邻增量写「升」。不改 `/growth-trends`、`/growth-compare`、`/shed-env-24h`。不改接入观测。步骤见 `docs/DEMO_SHED_GROWTH_DELTA.md`。草稿不合并。PR #162。https://github.com/lijiaaaaa-bot/mushroom-farm-platform/pull/162
