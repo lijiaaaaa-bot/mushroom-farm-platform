@@ -32,6 +32,7 @@ describe('dashboard overview bucket reads', () => {
         harvestableCameras: 1,
         recognitionCount: 4,
         captureCount: 2,
+        diseaseCount: 5,
       }),
       trendFromDayBuckets: jest
         .fn()
@@ -68,6 +69,7 @@ describe('dashboard overview bucket reads', () => {
     expect(overview.todayMature).toBe(3);
     expect(overview.todayRecognitionCount).toBe(4);
     expect(overview.todayCaptureCount).toBe(2);
+    expect(overview.todayDiseaseCount).toBe(5);
     expect(overview.harvestableCameras).toBe(1);
     expect(overview.trend).toEqual([
       { day: '2026-09-24', mushroom: 9, mature: 3, disease: 2 },

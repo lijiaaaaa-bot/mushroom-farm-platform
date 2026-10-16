@@ -1038,6 +1038,7 @@ describe('hour buckets and disease peaks', () => {
       harvestableCameras: 1,
       recognitionCount: 1,
       captureCount: 0,
+      diseaseCount: 2,
     });
   });
 
@@ -1052,6 +1053,9 @@ describe('hour buckets and disease peaks', () => {
     seedMetric(days, start, 'S01', 'CAM-1', METRIC_CAPTURE_COUNT, 2);
     seedMetric(days, start, 'S02', '', METRIC_SAMPLE_COUNT, 5);
     seedMetric(days, start, 'S02', '', METRIC_CAPTURE_COUNT, 1);
+    seedMetric(days, start, 'S01', '', METRIC_DISEASE_COUNT, 4);
+    seedMetric(days, start, 'S01', 'CAM-1', METRIC_DISEASE_COUNT, 4);
+    seedMetric(days, start, 'S02', '', METRIC_DISEASE_COUNT, 6);
     const records = memoryRecords([]);
     const scan = jest.spyOn(records, 'createQueryBuilder');
     const service = new GrowthTrendService(
@@ -1064,6 +1068,7 @@ describe('hour buckets and disease peaks', () => {
     expect(scan).not.toHaveBeenCalled();
     expect(all.recognitionCount).toBe(8);
     expect(all.captureCount).toBe(3);
+    expect(all.diseaseCount).toBe(10);
     const manager: AuthUser = {
       ...admin,
       role: 'shed_manager',
@@ -1075,6 +1080,7 @@ describe('hour buckets and disease peaks', () => {
     );
     expect(scoped.recognitionCount).toBe(3);
     expect(scoped.captureCount).toBe(2);
+    expect(scoped.diseaseCount).toBe(4);
   });
 
   it('writes environment hour and day means from observedAt and serves disease peaks from buckets', async () => {

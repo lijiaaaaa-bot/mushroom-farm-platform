@@ -79,6 +79,8 @@ export interface TodaySnapshot {
   recognitionCount: number;
   /** 今日抓拍总量：各棚日桶 capture_count 相加。 */
   captureCount: number;
+  /** 当日病害总数：各棚日桶棚级 disease_count 相加。 */
+  diseaseCount: number;
 }
 
 export interface TrendDayRollup {
@@ -546,6 +548,7 @@ export class GrowthTrendService {
         harvestableCameras: 0,
         recognitionCount: 0,
         captureCount: 0,
+        diseaseCount: 0,
       };
     }
     const day = todayShanghai(now);
@@ -559,6 +562,7 @@ export class GrowthTrendService {
         METRIC_MATURE_COUNT,
         METRIC_SAMPLE_COUNT,
         METRIC_CAPTURE_COUNT,
+        METRIC_DISEASE_COUNT,
       ],
       scope,
     );
@@ -578,6 +582,7 @@ export class GrowthTrendService {
       harvestableCameras,
       recognitionCount: Math.round(shed(METRIC_SAMPLE_COUNT)),
       captureCount: Math.round(shed(METRIC_CAPTURE_COUNT)),
+      diseaseCount: Math.round(shed(METRIC_DISEASE_COUNT)),
     };
   }
 
