@@ -30,6 +30,8 @@ describe('dashboard overview bucket reads', () => {
         mushroomCount: 9,
         matureCount: 3,
         harvestableCameras: 1,
+        recognitionCount: 4,
+        captureCount: 2,
       }),
       trendFromDayBuckets: jest
         .fn()
@@ -64,6 +66,8 @@ describe('dashboard overview bucket reads', () => {
     expect(growth.latestEnvironment).toHaveBeenCalled();
     expect(overview.todayMushroom).toBe(9);
     expect(overview.todayMature).toBe(3);
+    expect(overview.todayRecognitionCount).toBe(4);
+    expect(overview.todayCaptureCount).toBe(2);
     expect(overview.harvestableCameras).toBe(1);
     expect(overview.trend).toEqual([
       { day: '2026-09-24', mushroom: 9, mature: 3, disease: 2 },

@@ -59,6 +59,8 @@ export class DashboardService {
       deviceOnline: deviceCounts.online,
       todayMushroom: today.mushroomCount,
       todayMature: today.matureCount,
+      todayRecognitionCount: today.recognitionCount,
+      todayCaptureCount: today.captureCount,
       harvestableCameras: today.harvestableCameras,
       openAlerts,
       severeAlerts,

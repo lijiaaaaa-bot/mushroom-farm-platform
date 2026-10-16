@@ -29,6 +29,7 @@ import {
 import {
   foldBuckets,
   METRIC_CAP_DIAMETER_MEAN,
+  METRIC_CAPTURE_COUNT,
   METRIC_DISEASE_COUNT,
   METRIC_ENV_HUMIDITY,
   METRIC_ENV_TEMPERATURE,
@@ -246,6 +247,7 @@ describe('day bucket rollup', () => {
     expect(bucketValue(rows, METRIC_MUSHROOM_COUNT, '')?.value).toBe(23);
     expect(bucketValue(rows, METRIC_CAP_DIAMETER_MEAN, '')?.value).toBe(4.67);
     expect(bucketValue(rows, METRIC_SAMPLE_COUNT, '')?.value).toBe(4);
+    expect(bucketValue(rows, METRIC_CAPTURE_COUNT, '')).toBeUndefined();
     expect(bucketValue(rows, METRIC_MUSHROOM_COUNT, 'CAM-1')?.value).toBe(12);
     expect(bucketValue(rows, METRIC_CAP_DIAMETER_MEAN, 'CAM-1')?.value).toBe(5);
     expect(bucketValue(rows, METRIC_SAMPLE_COUNT, 'CAM-1')?.value).toBe(2);
@@ -258,6 +260,60 @@ describe('day bucket rollup', () => {
 
   it('returns no rows when the day has no recognitions', () => {
     expect(foldBuckets([], shanghaiDayRange('2026-09-23').start)).toEqual([]);
+  });
+
+  it('counts a capture only when the recognition has a snapshot key or url', () => {
+    const day = '2026-09-23';
+    const start = shanghaiDayRange(day).start;
+    const rows = foldBuckets(
+      [
+        {
+          id: 'shot',
+          shedCode: 'S01',
+          cameraCode: 'CAM-1',
+          recognizedAt: '2026-09-23T01:00:00.000Z',
+          mushroomCount: 8,
+          avgCapDiameter: 4,
+          snapshotObjectKey: 'snapshots/S01/CAM-1/a.jpg',
+        },
+        {
+          id: 'url',
+          shedCode: 'S01',
+          cameraCode: 'CAM-1',
+          recognizedAt: '2026-09-23T02:00:00.000Z',
+          mushroomCount: 11,
+          avgCapDiameter: 4,
+          snapshotUrl: 'https://example.test/shot.jpg',
+        },
+        {
+          id: 'bare',
+          shedCode: 'S01',
+          cameraCode: 'CAM-1',
+          recognizedAt: '2026-09-23T03:00:00.000Z',
+          mushroomCount: 6,
+          avgCapDiameter: 4,
+          snapshotObjectKey: '  ',
+          snapshotUrl: '',
+        },
+        {
+          id: 'other',
+          shedCode: 'S02',
+          cameraCode: 'CAM-2',
+          recognizedAt: '2026-09-23T01:30:00.000Z',
+          mushroomCount: 3,
+          avgCapDiameter: 4,
+          snapshotObjectKey: 'snapshots/S02/CAM-2/b.jpg',
+        },
+      ],
+      start,
+    );
+    expect(bucketValue(rows, METRIC_SAMPLE_COUNT, '')?.value).toBe(3);
+    expect(bucketValue(rows, METRIC_CAPTURE_COUNT, '')?.value).toBe(2);
+    expect(bucketValue(rows, METRIC_SAMPLE_COUNT, 'CAM-1')?.value).toBe(3);
+    expect(bucketValue(rows, METRIC_CAPTURE_COUNT, 'CAM-1')?.value).toBe(2);
+    const s02 = rows.filter((row) => row.shedCode === 'S02');
+    expect(bucketValue(s02, METRIC_SAMPLE_COUNT, '')?.value).toBe(1);
+    expect(bucketValue(s02, METRIC_CAPTURE_COUNT, '')?.value).toBe(1);
   });
 
   it('rewrites the day and drops cameras that no longer reported', async () => {
@@ -980,7 +1036,45 @@ describe('hour buckets and disease peaks', () => {
       mushroomCount: 9,
       matureCount: 3,
       harvestableCameras: 1,
+      recognitionCount: 1,
+      captureCount: 0,
     });
+  });
+
+  it('sums shed-level recognition and capture counts without scanning records', async () => {
+    const now = new Date('2026-09-24T03:30:00.000Z');
+    const today = todayShanghai(now);
+    const start = shanghaiDayRange(today).start;
+    const days = memoryMetricBuckets();
+    seedMetric(days, start, 'S01', '', METRIC_SAMPLE_COUNT, 3);
+    seedMetric(days, start, 'S01', 'CAM-1', METRIC_SAMPLE_COUNT, 3);
+    seedMetric(days, start, 'S01', '', METRIC_CAPTURE_COUNT, 2);
+    seedMetric(days, start, 'S01', 'CAM-1', METRIC_CAPTURE_COUNT, 2);
+    seedMetric(days, start, 'S02', '', METRIC_SAMPLE_COUNT, 5);
+    seedMetric(days, start, 'S02', '', METRIC_CAPTURE_COUNT, 1);
+    const records = memoryRecords([]);
+    const scan = jest.spyOn(records, 'createQueryBuilder');
+    const service = new GrowthTrendService(
+      records as never,
+      memoryMetricBuckets() as never,
+      days as never,
+    );
+    const { ShedScope } = await import('../common/shed-scope');
+    const all = await service.todaySnapshot(ShedScope.fromUser(admin), now);
+    expect(scan).not.toHaveBeenCalled();
+    expect(all.recognitionCount).toBe(8);
+    expect(all.captureCount).toBe(3);
+    const manager: AuthUser = {
+      ...admin,
+      role: 'shed_manager',
+      shedCodes: ['S01'],
+    };
+    const scoped = await service.todaySnapshot(
+      ShedScope.fromUser(manager),
+      now,
+    );
+    expect(scoped.recognitionCount).toBe(3);
+    expect(scoped.captureCount).toBe(2);
   });
 
   it('writes environment hour and day means from observedAt and serves disease peaks from buckets', async () => {

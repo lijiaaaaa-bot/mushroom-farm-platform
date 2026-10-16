@@ -202,6 +202,8 @@ export class IngestService {
           avgCapDiameter: saved.avgCapDiameter,
           matureCount: saved.matureCount,
           diseaseCount: saved.diseaseCount,
+          snapshotObjectKey: saved.snapshotObjectKey,
+          snapshotUrl: saved.snapshotUrl,
         });
       } catch (refreshError) {
         this.logger.warn(
