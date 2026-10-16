@@ -1,9 +1,12 @@
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { currentUser, type SessionUser } from '../auth';
 import { farmOpsTokens as tokens } from '../farm-ops-tokens';
 import DashboardView from './DashboardView.vue';
 
 const httpGet = vi.hoisted(() => vi.fn());
+const httpPatch = vi.hoisted(() => vi.fn());
+const httpPost = vi.hoisted(() => vi.fn());
 const setOption = vi.hoisted(() => vi.fn());
 const chartInit = vi.hoisted(() =>
   vi.fn(() => ({
@@ -14,7 +17,7 @@ const chartInit = vi.hoisted(() =>
 );
 
 vi.mock('../api', () => ({
-  http: { get: httpGet },
+  http: { get: httpGet, patch: httpPatch, post: httpPost },
   errorText: () => '请求失败',
 }));
 
@@ -74,11 +77,23 @@ const overview = {
   ],
 };
 
+const admin: SessionUser = {
+  id: 'admin',
+  username: 'admin',
+  displayName: '管理员',
+  role: 'super_admin',
+  shedCodes: [],
+};
+
 describe('DashboardView', () => {
   beforeEach(() => {
     httpGet.mockReset();
+    httpPatch.mockReset();
+    httpPost.mockReset();
     setOption.mockReset();
     chartInit.mockClear();
+    currentUser.value = null;
+    localStorage.clear();
   });
 
   it('draws series from overview trend and lists alerts plus recognitions', async () => {
@@ -265,6 +280,58 @@ describe('DashboardView', () => {
     expect(wrapper.text()).toContain('请求失败');
     expect(wrapper.find('.kpi-tile').exists()).toBe(false);
     expect(wrapper.find('.overview-chart').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('shows the configured mature threshold and the pick reminder', async () => {
+    currentUser.value = admin;
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/dashboard/overview') {
+        return Promise.resolve({
+          data: {
+            ...overview,
+            maturePickRuleId: 'rule-pick',
+            maturePickShedCode: null,
+            maturePickThreshold: 8,
+            maturePickMatureCount: 8,
+            maturePickActive: true,
+            maturePickNote: '采摘提醒 成熟≥8 当前8',
+          },
+        });
+      }
+      if (url === '/alert-rules') return Promise.resolve({ data: [] });
+      if (url === '/sheds') return Promise.resolve({ data: [] });
+      return Promise.resolve({ data: { items: [] } });
+    });
+    const wrapper = mount(DashboardView);
+    await flushPromises();
+
+    expect(wrapper.get('[data-field="mature-pick-title"]').text()).toBe('采摘提醒');
+    expect(wrapper.get('[data-field="mature-pick-threshold"]').element).toHaveProperty('value', '8');
+    expect(wrapper.get('[data-field="mature-pick-config"]').text()).toBe(
+      '成熟菇数量阈值 8 · 全场 · 当前成熟 8',
+    );
+    expect(wrapper.get('[data-field="mature-pick-note"]').text()).toBe('采摘提醒 成熟≥8 当前8');
+    expect(wrapper.get('[data-field="live-mushroom-note"]').text()).toBe(
+      '在养蘑菇总数 30 · 成熟可采摘总数 11 · 待成熟数量 19',
+    );
+
+    await wrapper.get('[data-field="mature-pick-threshold"]').setValue('12');
+    await wrapper.get('form.mature-pick-form').trigger('submit');
+    await flushPromises();
+
+    expect(httpPatch).toHaveBeenCalledWith('/alert-rules/rule-pick', { threshold: 12, enabled: true });
+    wrapper.unmount();
+  });
+
+  it('leaves the pick reminder unset when no rule is configured', async () => {
+    httpGet.mockResolvedValue({ data: overview });
+    const wrapper = mount(DashboardView);
+    await flushPromises();
+
+    expect(wrapper.get('[data-field="mature-pick-config"]').text()).toBe('尚未配置成熟菇数量阈值');
+    expect(wrapper.find('[data-field="mature-pick-note"]').exists()).toBe(false);
+    expect(wrapper.find('[data-field="mature-pick-save"]').exists()).toBe(false);
     wrapper.unmount();
   });
 });

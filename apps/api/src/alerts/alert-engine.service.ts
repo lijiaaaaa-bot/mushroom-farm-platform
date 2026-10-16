@@ -180,6 +180,8 @@ export class AlertEngineService {
           : 0;
       case 'mature_count':
         return record.matureCount;
+      case 'live_mature_pick':
+        return null;
       case 'disease_count':
         return record.diseaseCount;
       case 'disease_level':

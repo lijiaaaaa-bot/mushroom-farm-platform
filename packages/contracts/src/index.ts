@@ -67,6 +67,7 @@ export const ALERT_LEVEL_LABEL: Record<AlertLevel, string> = {
 export const alertMetricSchema = z.enum([
   'mature_ratio',
   'mature_count',
+  'live_mature_pick',
   'disease_count',
   'disease_level',
   'growth_stall',
@@ -82,6 +83,7 @@ export type AlertMetric = z.infer<typeof alertMetricSchema>;
 export const ALERT_METRIC_LABEL: Record<AlertMetric, string> = {
   mature_ratio: '成熟占比',
   mature_count: '成熟数量',
+  live_mature_pick: '成熟菇数量',
   disease_count: '病害数量',
   disease_level: '病害等级',
   growth_stall: '生长停滞',
@@ -994,6 +996,202 @@ export function parseLiveMushroomTotals(raw: unknown): ParseResult<LiveMushroomT
     liveMushroomTotal: record.liveMushroomTotal,
     liveMatureTotal: record.liveMatureTotal,
     liveImmatureTotal: record.liveImmatureTotal,
+  });
+  if (!parsed.success) {
+    const issue = zodErrors(parsed.error);
+    return fail(issue.code, issue.errors);
+  }
+  return { ok: true, value: parsed.data };
+}
+
+/**
+ * 采摘提醒用的规则指标。写在已有 alert_rules 上，棚区空着是全场。
+ * 不按单条识别的成熟数开告警；总览用当日在养成热数和阈值比较。
+ */
+export const MATURE_PICK_METRIC = 'live_mature_pick' as const;
+
+export const MATURE_PICK_LABEL = {
+  title: '采摘提醒',
+  threshold: '成熟菇数量阈值',
+  scopeAll: '全场',
+} as const;
+
+export const MATURE_PICK_THRESHOLD_ERROR = '成熟菇数量阈值须为大于等于 0 的整数';
+
+/** 整数 ≥ 0。8.0 算整数，小数和负数不算。 */
+export function maturePickThresholdInteger(value: unknown): number | null {
+  const number =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim() !== ''
+        ? Number(value)
+        : Number.NaN;
+  if (!Number.isFinite(number) || number < 0) return null;
+  const rounded = Math.round(number);
+  if (Math.abs(number - rounded) > 1e-6) return null;
+  return rounded;
+}
+
+export interface MaturePickRuleInput {
+  id?: string | null;
+  metric: string;
+  threshold: number;
+  enabled: boolean;
+  shedCode?: string | null;
+}
+
+export interface ShedMatureCount {
+  shedCode: string;
+  matureCount: number;
+}
+
+export interface MaturePickReminder {
+  ruleId: string | null;
+  shedCode: string | null;
+  threshold: number | null;
+  matureCount: number;
+  active: boolean;
+  note: string;
+}
+
+function blankShedCode(code: string | null | undefined): string | null {
+  const text = typeof code === 'string' ? code.trim() : '';
+  return text || null;
+}
+
+export function formatMaturePickNote(
+  reminder: Pick<MaturePickReminder, 'active' | 'threshold' | 'matureCount' | 'shedCode'>,
+): string {
+  if (!reminder.active || reminder.threshold === null) return '';
+  const scope = reminder.shedCode ? `棚区 ${reminder.shedCode} ` : '';
+  return `采摘提醒 ${scope}成熟≥${reminder.threshold} 当前${reminder.matureCount}`;
+}
+
+export function formatMaturePickConfig(
+  reminder: Pick<MaturePickReminder, 'threshold' | 'matureCount' | 'shedCode'>,
+): string {
+  if (reminder.threshold === null) return '尚未配置成熟菇数量阈值';
+  const scope = reminder.shedCode ? `棚区 ${reminder.shedCode}` : MATURE_PICK_LABEL.scopeAll;
+  return `${MATURE_PICK_LABEL.threshold} ${reminder.threshold} · ${scope} · 当前成熟 ${reminder.matureCount}`;
+}
+
+/**
+ * 已启用的成熟菇数量规则。有全场规则时用全场（空棚区），否则用阈值最小的棚规则。
+ * 全场比的是各棚当日成熟相加，与 liveMatureTotal 同一口径。棚规则比的是该棚当日成熟。
+ * 当前成熟 ≥ 阈值时提醒生效。没有启用规则时阈值是空，不提醒。
+ */
+export function evaluateMaturePickReminder(
+  rules: MaturePickRuleInput[],
+  sheds: ShedMatureCount[],
+): MaturePickReminder {
+  const shedMature = new Map<string, number>();
+  let farmMature = 0;
+  for (const shed of sheds) {
+    const code = blankShedCode(shed.shedCode);
+    if (!code) continue;
+    const mature = Number.isFinite(shed.matureCount) ? Math.round(shed.matureCount) : 0;
+    shedMature.set(code, (shedMature.get(code) ?? 0) + mature);
+    farmMature += mature;
+  }
+  const candidates: Array<{ ruleId: string | null; shedCode: string | null; threshold: number }> =
+    [];
+  for (const rule of rules) {
+    if (!rule.enabled || rule.metric !== MATURE_PICK_METRIC) continue;
+    const threshold = maturePickThresholdInteger(rule.threshold);
+    if (threshold === null) continue;
+    candidates.push({
+      ruleId: rule.id ? String(rule.id) : null,
+      shedCode: blankShedCode(rule.shedCode),
+      threshold,
+    });
+  }
+  const baseWide = candidates.filter((row) => row.shedCode === null);
+  const pool = baseWide.length ? baseWide : candidates;
+  pool.sort((a, b) => {
+    if (a.threshold !== b.threshold) return a.threshold - b.threshold;
+    return String(a.ruleId ?? '').localeCompare(String(b.ruleId ?? ''));
+  });
+  const chosen = pool[0];
+  if (!chosen) {
+    return {
+      ruleId: null,
+      shedCode: null,
+      threshold: null,
+      matureCount: farmMature,
+      active: false,
+      note: '',
+    };
+  }
+  const matureCount = chosen.shedCode ? (shedMature.get(chosen.shedCode) ?? 0) : farmMature;
+  const active = matureCount >= chosen.threshold;
+  const reminder: MaturePickReminder = {
+    ruleId: chosen.ruleId,
+    shedCode: chosen.shedCode,
+    threshold: chosen.threshold,
+    matureCount,
+    active,
+    note: '',
+  };
+  reminder.note = formatMaturePickNote(reminder);
+  return reminder;
+}
+
+export const maturePickOverviewSchema = z
+  .object({
+    maturePickRuleId: z.string().min(1).nullable(),
+    maturePickShedCode: z.string().min(1).nullable(),
+    maturePickThreshold: z.number().int().nonnegative().nullable(),
+    maturePickMatureCount: z.number().int().nonnegative(),
+    maturePickActive: z.boolean(),
+    maturePickNote: z.string(),
+  })
+  .strict()
+  .refine(
+    (row) =>
+      row.maturePickNote ===
+      formatMaturePickNote({
+        active: row.maturePickActive,
+        threshold: row.maturePickThreshold,
+        matureCount: row.maturePickMatureCount,
+        shedCode: row.maturePickShedCode,
+      }),
+    { message: '采摘提醒旁注与成熟数、阈值不一致' },
+  );
+
+export type MaturePickOverview = z.infer<typeof maturePickOverviewSchema>;
+
+export function maturePickOverviewFields(reminder: MaturePickReminder): MaturePickOverview {
+  return {
+    maturePickRuleId: reminder.ruleId,
+    maturePickShedCode: reminder.shedCode,
+    maturePickThreshold: reminder.threshold,
+    maturePickMatureCount: reminder.matureCount,
+    maturePickActive: reminder.active,
+    maturePickNote: reminder.note,
+  };
+}
+
+export function maturePickReminderFromOverview(row: MaturePickOverview): MaturePickReminder {
+  return {
+    ruleId: row.maturePickRuleId,
+    shedCode: row.maturePickShedCode,
+    threshold: row.maturePickThreshold,
+    matureCount: row.maturePickMatureCount,
+    active: row.maturePickActive,
+    note: row.maturePickNote,
+  };
+}
+
+/** 从总览响应里取出采摘提醒。其余字段不参与。 */
+export function parseMaturePickReminder(raw: unknown): ParseResult<MaturePickOverview> {
+  const record = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const parsed = maturePickOverviewSchema.safeParse({
+    maturePickRuleId: record.maturePickRuleId,
+    maturePickShedCode: record.maturePickShedCode,
+    maturePickThreshold: record.maturePickThreshold,
+    maturePickMatureCount: record.maturePickMatureCount,
+    maturePickActive: record.maturePickActive,
+    maturePickNote: record.maturePickNote,
   });
   if (!parsed.success) {
     const issue = zodErrors(parsed.error);

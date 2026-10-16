@@ -12,10 +12,13 @@ import { ListQuery, parsePage } from '../common/pagination';
 import { ShedScope } from '../common/shed-scope';
 import {
   ERROR_CODES,
+  MATURE_PICK_METRIC,
+  MATURE_PICK_THRESHOLD_ERROR,
   type AlertLevel,
   type AlertMetric,
   isAlertLevel,
   isAlertMetric,
+  maturePickThresholdInteger,
   transitionError,
 } from '@mushroom/contracts';
 import { AlertRule } from '../entities/alert-rule.entity';
@@ -303,11 +306,12 @@ export class AlertsService {
       throw new BadRequestException('告警指标无效');
     if (!isAlertLevel(input.level))
       throw new BadRequestException('告警等级无效');
+    const threshold = maturePickThresholdFor(input.metric, input.threshold);
     return this.rules.save(
       this.rules.create({
         name: input.name,
         metric: input.metric as AlertMetric,
-        threshold: Number(input.threshold),
+        threshold,
         level: input.level as AlertLevel,
         shedCode: input.shedCode ?? null,
         enabled: true,
@@ -337,7 +341,9 @@ export class AlertsService {
     const rule = await this.getRule(user, id);
     if (patch.name !== undefined) rule.name = patch.name;
     if (patch.enabled !== undefined) rule.enabled = patch.enabled;
-    if (patch.threshold !== undefined) rule.threshold = Number(patch.threshold);
+    if (patch.threshold !== undefined) {
+      rule.threshold = maturePickThresholdFor(rule.metric, patch.threshold);
+    }
     if (patch.windowMinutes !== undefined)
       rule.windowMinutes = patch.windowMinutes;
     if (patch.level !== undefined) {
@@ -425,6 +431,14 @@ function alertInstant(
 function storedNote(note?: string | null): string | null {
   const text = typeof note === 'string' ? note.trim() : '';
   return text || null;
+}
+
+function maturePickThresholdFor(metric: string, threshold: number): number {
+  if (metric !== MATURE_PICK_METRIC) return Number(threshold);
+  const integer = maturePickThresholdInteger(threshold);
+  if (integer === null)
+    throw new BadRequestException(MATURE_PICK_THRESHOLD_ERROR);
+  return integer;
 }
 
 function snapshotContentType(key: string): string {

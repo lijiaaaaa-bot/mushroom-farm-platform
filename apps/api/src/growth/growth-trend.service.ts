@@ -553,12 +553,33 @@ export class GrowthTrendService {
     scope: ShedScope,
     now = new Date(),
   ): Promise<LiveMushroomTotals> {
-    const empty: LiveMushroomTotals = {
-      liveMushroomTotal: 0,
-      liveMatureTotal: 0,
-      liveImmatureTotal: 0,
-    };
-    if (scope.codes && scope.codes.length === 0) return empty;
+    const byShed = await this.todayShedMushroomMature(scope, now);
+    return sumShedLiveMushroomTotals([...byShed.values()]);
+  }
+
+  /**
+   * 各棚当日成熟数。摄像头日桶相加，棚级行不计入。与 liveMatureTotal 同一读法。
+   */
+  async shedLiveMatureCounts(
+    scope: ShedScope,
+    now = new Date(),
+  ): Promise<Array<{ shedCode: string; matureCount: number }>> {
+    const byShed = await this.todayShedMushroomMature(scope, now);
+    return [...byShed.entries()].map(([shedCode, slot]) => ({
+      shedCode,
+      matureCount: Math.round(slot.matureCount),
+    }));
+  }
+
+  private async todayShedMushroomMature(
+    scope: ShedScope,
+    now = new Date(),
+  ): Promise<Map<string, { mushroomCount: number; matureCount: number }>> {
+    const byShed = new Map<
+      string,
+      { mushroomCount: number; matureCount: number }
+    >();
+    if (scope.codes && scope.codes.length === 0) return byShed;
     const day = todayShanghai(now);
     const { start, end } = shanghaiDayRange(day);
     const rows = await this.loadWindow(
@@ -568,10 +589,6 @@ export class GrowthTrendService {
       [METRIC_MUSHROOM_COUNT, METRIC_MATURE_COUNT],
       scope,
     );
-    const byShed = new Map<
-      string,
-      { mushroomCount: number; matureCount: number }
-    >();
     for (const row of rows) {
       if (!row.cameraCode || row.value === null) continue;
       const slot = byShed.get(row.shedCode) ?? {
@@ -585,7 +602,7 @@ export class GrowthTrendService {
       }
       byShed.set(row.shedCode, slot);
     }
-    return sumShedLiveMushroomTotals([...byShed.values()]);
+    return byShed;
   }
 
   /**

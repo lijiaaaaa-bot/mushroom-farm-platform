@@ -25,6 +25,13 @@ import {
   parseHeartbeatIngress,
   parseRecognitionIngress,
   parseLiveMushroomTotals,
+  MATURE_PICK_METRIC,
+  MATURE_PICK_THRESHOLD_ERROR,
+  evaluateMaturePickReminder,
+  formatMaturePickConfig,
+  formatMaturePickNote,
+  maturePickThresholdInteger,
+  parseMaturePickReminder,
   pendingLiveCount,
   sumShedLiveMushroomTotals,
   formatLiveMushroomTotalsNote,
@@ -454,6 +461,70 @@ describe('golden fixtures', () => {
       liveImmatureTotal: 0,
     });
     assert.equal(fraction.ok, false);
+  });
+
+  it('reminds to pick when live mature meets the configured integer threshold', () => {
+    assert.equal(maturePickThresholdInteger(8), 8);
+    assert.equal(maturePickThresholdInteger('0'), 0);
+    assert.equal(maturePickThresholdInteger(8.5), null);
+    assert.equal(maturePickThresholdInteger(-1), null);
+    assert.equal(MATURE_PICK_METRIC, 'live_mature_pick');
+    const sheds = [
+      { shedCode: 'S01', matureCount: 8 },
+      { shedCode: 'S02', matureCount: 0 },
+    ];
+    const quiet = evaluateMaturePickReminder(
+      [{ id: 'rule-pick', metric: MATURE_PICK_METRIC, threshold: 9, enabled: true, shedCode: null }],
+      sheds,
+    );
+    assert.equal(quiet.active, false);
+    assert.equal(quiet.matureCount, 8);
+    assert.equal(quiet.note, '');
+    assert.equal(formatMaturePickConfig(quiet), '成熟菇数量阈值 9 · 全场 · 当前成熟 8');
+    const active = evaluateMaturePickReminder(
+      [
+        { id: 'rule-pick', metric: MATURE_PICK_METRIC, threshold: 8, enabled: true, shedCode: null },
+        { id: 'rule-shed', metric: MATURE_PICK_METRIC, threshold: 1, enabled: true, shedCode: 'S02' },
+        { id: 'rule-temp', metric: 'temperature_high', threshold: 28, enabled: true, shedCode: null },
+      ],
+      sheds,
+    );
+    assert.equal(active.ruleId, 'rule-pick');
+    assert.equal(active.shedCode, null);
+    assert.equal(active.threshold, 8);
+    assert.equal(active.matureCount, 8);
+    assert.equal(active.active, true);
+    assert.equal(formatMaturePickNote(active), '采摘提醒 成熟≥8 当前8');
+    assert.equal(active.note, '采摘提醒 成熟≥8 当前8');
+    const shedOnly = evaluateMaturePickReminder(
+      [{ id: 'rule-s01', metric: MATURE_PICK_METRIC, threshold: 8, enabled: true, shedCode: 'S01' }],
+      sheds,
+    );
+    assert.equal(shedOnly.note, '采摘提醒 棚区 S01 成熟≥8 当前8');
+    const missing = evaluateMaturePickReminder([], sheds);
+    assert.equal(missing.threshold, null);
+    assert.equal(formatMaturePickConfig(missing), '尚未配置成熟菇数量阈值');
+    const parsed = parseMaturePickReminder({
+      maturePickRuleId: 'rule-pick',
+      maturePickShedCode: null,
+      maturePickThreshold: 8,
+      maturePickMatureCount: 8,
+      maturePickActive: true,
+      maturePickNote: '采摘提醒 成熟≥8 当前8',
+      liveMatureTotal: 8,
+    });
+    assert.equal(parsed.ok, true);
+    const mismatched = parseMaturePickReminder({
+      maturePickRuleId: 'rule-pick',
+      maturePickShedCode: null,
+      maturePickThreshold: 8,
+      maturePickMatureCount: 8,
+      maturePickActive: true,
+      maturePickNote: '采摘提醒 成熟≥8 当前9',
+    });
+    assert.equal(mismatched.ok, false);
+    assert.equal(parseMaturePickReminder({}).ok, false);
+    assert.match(MATURE_PICK_THRESHOLD_ERROR, /大于等于 0 的整数/);
   });
 
   it('averages farm environment means per sensor and formats the note', () => {

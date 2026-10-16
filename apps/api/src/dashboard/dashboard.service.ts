@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import {
+  MATURE_PICK_METRIC,
+  evaluateMaturePickReminder,
+  maturePickOverviewFields,
+} from '@mushroom/contracts';
 import { AuthUser } from '../common/auth-user';
 import { ShedScope } from '../common/shed-scope';
 import { Alert } from '../entities/alert.entity';
@@ -27,6 +32,7 @@ export class DashboardService {
     const scope = ShedScope.fromUser(user);
     const today = await this.growth.todaySnapshot(scope);
     const live = await this.growth.liveMushroomTotals(scope);
+    const shedMature = await this.growth.shedLiveMatureCounts(scope);
     const envMean = await this.growth.farmEnvironmentMeans(scope);
     const ruleRows = await this.rules.find({ where: { enabled: true } });
     const envAnomalyPointCount = await this.growth.farmEnvAnomalyPointCount(
@@ -69,6 +75,19 @@ export class DashboardService {
     const recentRecords = await this.recent(scope);
     const trend = await this.growth.trendFromDayBuckets(scope);
     const env = await this.growth.latestEnvironment(scope);
+    const maturePick = evaluateMaturePickReminder(
+      ruleRows
+        .filter((rule) => rule.metric === MATURE_PICK_METRIC)
+        .filter((rule) => !rule.shedCode || scope.allows(rule.shedCode))
+        .map((rule) => ({
+          id: rule.id,
+          metric: rule.metric,
+          threshold: Number(rule.threshold),
+          enabled: rule.enabled,
+          shedCode: rule.shedCode,
+        })),
+      shedMature,
+    );
     return {
       shedCount,
       deviceTotal: deviceCounts.total,
@@ -87,6 +106,7 @@ export class DashboardService {
       liveMushroomTotal: live.liveMushroomTotal,
       liveMatureTotal: live.liveMatureTotal,
       liveImmatureTotal: live.liveImmatureTotal,
+      ...maturePickOverviewFields(maturePick),
       envMeanTemperature: envMean.envMeanTemperature,
       envMeanHumidity: envMean.envMeanHumidity,
       envMeanCo2: envMean.envMeanCo2,
