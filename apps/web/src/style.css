@@ -267,6 +267,51 @@ body {
   border-radius: 8px;
 }
 
+.disease-warn-block {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #e5e6eb;
+  border-radius: 8px;
+  background: #fff;
+}
+
+.disease-warn-block h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.disease-warn-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: end;
+}
+
+.disease-warn-form label {
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+
+.disease-warn-form input {
+  width: 8rem;
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.disease-warn-banner {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #9f2d2d;
+  background: #fff1f0;
+  border: 1px solid #f0c2c0;
+  border-radius: 8px;
+}
+
 .tb-top,
 .tb-bottom {
   display: grid;

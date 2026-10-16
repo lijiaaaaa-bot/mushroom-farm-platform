@@ -181,6 +181,8 @@ export class AlertEngineService {
       case 'mature_count':
         return record.matureCount;
       case 'live_mature_pick':
+      case 'live_disease_ratio':
+      case 'live_disease_severe':
         return null;
       case 'disease_count':
         return record.diseaseCount;

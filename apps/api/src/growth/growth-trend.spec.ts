@@ -31,6 +31,7 @@ import {
   METRIC_CAP_DIAMETER_MEAN,
   METRIC_CAPTURE_COUNT,
   METRIC_DISEASE_COUNT,
+  METRIC_DISEASE_SEVERE,
   METRIC_ENV_CO2,
   METRIC_ENV_HUMIDITY,
   METRIC_ENV_MOISTURE,
@@ -250,6 +251,7 @@ describe('day bucket rollup', () => {
     expect(bucketValue(rows, METRIC_CAP_DIAMETER_MEAN, '')?.value).toBe(4.67);
     expect(bucketValue(rows, METRIC_SAMPLE_COUNT, '')?.value).toBe(4);
     expect(bucketValue(rows, METRIC_CAPTURE_COUNT, '')).toBeUndefined();
+    expect(bucketValue(rows, METRIC_DISEASE_SEVERE, '')).toBeUndefined();
     expect(bucketValue(rows, METRIC_MUSHROOM_COUNT, 'CAM-1')?.value).toBe(12);
     expect(bucketValue(rows, METRIC_CAP_DIAMETER_MEAN, 'CAM-1')?.value).toBe(5);
     expect(bucketValue(rows, METRIC_SAMPLE_COUNT, 'CAM-1')?.value).toBe(2);
@@ -258,6 +260,44 @@ describe('day bucket rollup', () => {
       bucketValue(rows, METRIC_CAP_DIAMETER_MEAN, 'CAM-3'),
     ).toBeUndefined();
     expect(rows.some((row) => row.value === 99)).toBe(false);
+  });
+
+  it('sums severe disease only from cameras whose latest level is 3', () => {
+    const day = '2026-09-23';
+    const rows = foldBuckets(
+      [
+        {
+          id: 'severe',
+          shedCode: 'S01',
+          cameraCode: 'CAM-DRT-01',
+          recognizedAt: '2026-09-23T01:00:00.000Z',
+          mushroomCount: 20,
+          avgCapDiameter: 4,
+          diseaseCount: 4,
+          diseaseLevel: 3,
+        },
+        {
+          id: 'mild',
+          shedCode: 'S01',
+          cameraCode: 'CAM-DRT-02',
+          recognizedAt: '2026-09-23T02:00:00.000Z',
+          mushroomCount: 10,
+          avgCapDiameter: 4,
+          diseaseCount: 2,
+          diseaseLevel: 1,
+        },
+      ],
+      shanghaiDayRange(day).start,
+    );
+    expect(bucketValue(rows, METRIC_DISEASE_SEVERE, 'CAM-DRT-01')?.value).toBe(
+      4,
+    );
+    expect(bucketValue(rows, METRIC_DISEASE_SEVERE, 'CAM-DRT-02')?.value).toBe(
+      0,
+    );
+    expect(bucketValue(rows, METRIC_DISEASE_SEVERE, '')?.value).toBe(4);
+    expect(bucketValue(rows, METRIC_DISEASE_COUNT, '')?.value).toBe(6);
+    expect(bucketValue(rows, METRIC_MUSHROOM_COUNT, '')?.value).toBe(30);
   });
 
   it('returns no rows when the day has no recognitions', () => {

@@ -136,6 +136,10 @@ describe('DashboardView', () => {
     expect(wrapper.get('[data-field="device-online-note"]').text()).toBe(
       '摄像头 2/3 · AI盒子 1/2 · 传感器 1/2',
     );
+    expect(wrapper.get('[data-field="disease-warn-title"]').text()).toBe('病害预警');
+    expect(wrapper.get('[data-field="disease-warn-config"]').text()).toBe('尚未配置病害比例/重度阈值');
+    expect(wrapper.find('[data-field="disease-warn-ratio-note"]').exists()).toBe(false);
+    expect(wrapper.find('[data-field="disease-warn-severe-note"]').exists()).toBe(false);
     expect(wrapper.text()).toContain('在养蘑菇总数');
     expect(wrapper.text()).toContain('成熟可采摘总数');
     expect(wrapper.text()).toContain('待成熟数量');
@@ -332,6 +336,59 @@ describe('DashboardView', () => {
     expect(wrapper.get('[data-field="mature-pick-config"]').text()).toBe('尚未配置成熟菇数量阈值');
     expect(wrapper.find('[data-field="mature-pick-note"]').exists()).toBe(false);
     expect(wrapper.find('[data-field="mature-pick-save"]').exists()).toBe(false);
+    expect(wrapper.get('[data-field="disease-warn-config"]').text()).toBe('尚未配置病害比例/重度阈值');
+    expect(wrapper.find('[data-field="disease-warn-save"]').exists()).toBe(false);
+    wrapper.unmount();
+  });
+
+  it('shows disease warnings when either threshold is met and saves both rules', async () => {
+    currentUser.value = admin;
+    httpGet.mockImplementation((url: string) => {
+      if (url === '/dashboard/overview') {
+        return Promise.resolve({
+          data: {
+            ...overview,
+            diseaseWarnRatioRuleId: 'rule-ratio',
+            diseaseWarnRatioShedCode: null,
+            diseaseWarnRatioThreshold: 20,
+            diseaseWarnRatioPercent: 20,
+            diseaseWarnRatioActive: true,
+            diseaseWarnRatioNote: '病害预警 比例≥20% 当前20%',
+            diseaseWarnSevereRuleId: 'rule-severe',
+            diseaseWarnSevereShedCode: null,
+            diseaseWarnSevereThreshold: 4,
+            diseaseWarnSevereCount: 4,
+            diseaseWarnSevereActive: true,
+            diseaseWarnSevereNote: '病害预警 重度≥4 当前4',
+          },
+        });
+      }
+      if (url === '/alert-rules') return Promise.resolve({ data: [] });
+      if (url === '/sheds') return Promise.resolve({ data: [] });
+      return Promise.resolve({ data: { items: [] } });
+    });
+    httpPatch.mockResolvedValue({ data: {} });
+    const wrapper = mount(DashboardView);
+    await flushPromises();
+
+    expect(wrapper.get('[data-field="disease-warn-config"]').text()).toBe(
+      '病害比例阈值 20% · 全场 · 当前比例 20% · 重度病害数量阈值 4 · 全场 · 当前重度 4',
+    );
+    expect(wrapper.get('[data-field="disease-warn-ratio-note"]').text()).toBe('病害预警 比例≥20% 当前20%');
+    expect(wrapper.get('[data-field="disease-warn-severe-note"]').text()).toBe('病害预警 重度≥4 当前4');
+    expect(wrapper.get('[data-field="mature-pick-config"]').text()).toBe('尚未配置成熟菇数量阈值');
+    expect(wrapper.get('[data-field="today-disease-note"]').text()).toBe('当日病害总数 5');
+    expect(wrapper.get('[data-field="live-mushroom-note"]').text()).toBe(
+      '在养蘑菇总数 30 · 成熟可采摘总数 11 · 待成熟数量 19',
+    );
+
+    await wrapper.get('[data-field="disease-warn-ratio"]').setValue('25');
+    await wrapper.get('[data-field="disease-warn-severe"]').setValue('6');
+    await wrapper.get('form.disease-warn-form').trigger('submit');
+    await flushPromises();
+
+    expect(httpPatch).toHaveBeenCalledWith('/alert-rules/rule-ratio', { threshold: 25, enabled: true });
+    expect(httpPatch).toHaveBeenCalledWith('/alert-rules/rule-severe', { threshold: 6, enabled: true });
     wrapper.unmount();
   });
 });

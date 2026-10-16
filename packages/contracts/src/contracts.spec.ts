@@ -32,6 +32,20 @@ import {
   formatMaturePickNote,
   maturePickThresholdInteger,
   parseMaturePickReminder,
+  DISEASE_RATIO_METRIC,
+  DISEASE_RATIO_THRESHOLD_ERROR,
+  DISEASE_SEVERE_METRIC,
+  DISEASE_SEVERE_THRESHOLD_ERROR,
+  DISEASE_WARN_LABEL,
+  diseaseRatioPercent,
+  diseaseWarnFromOverview,
+  diseaseWarnOverviewFields,
+  diseaseWarnThresholdInteger,
+  evaluateDiseaseWarning,
+  formatDiseaseWarnConfig,
+  formatDiseaseWarnRatioNote,
+  formatDiseaseWarnSevereNote,
+  parseDiseaseWarning,
   pendingLiveCount,
   sumShedLiveMushroomTotals,
   formatLiveMushroomTotalsNote,
@@ -525,6 +539,91 @@ describe('golden fixtures', () => {
     assert.equal(mismatched.ok, false);
     assert.equal(parseMaturePickReminder({}).ok, false);
     assert.match(MATURE_PICK_THRESHOLD_ERROR, /大于等于 0 的整数/);
+  });
+
+  it('warns when the disease ratio or the severe count meets its threshold', () => {
+    assert.equal(diseaseWarnThresholdInteger(20), 20);
+    assert.equal(diseaseWarnThresholdInteger('4'), 4);
+    assert.equal(diseaseWarnThresholdInteger(20.5), null);
+    assert.equal(diseaseWarnThresholdInteger(-1), null);
+    assert.equal(diseaseRatioPercent(4, 20), 20);
+    assert.equal(diseaseRatioPercent(1, 3), 33.3);
+    assert.equal(diseaseRatioPercent(2, 0), 0);
+    assert.equal(DISEASE_RATIO_METRIC, 'live_disease_ratio');
+    assert.equal(DISEASE_SEVERE_METRIC, 'live_disease_severe');
+    const sheds = [
+      { shedCode: 'S01', mushroomCount: 20, diseaseCount: 4, severeCount: 4 },
+      { shedCode: 'S02', mushroomCount: 0, diseaseCount: 0, severeCount: 0 },
+    ];
+    const quiet = evaluateDiseaseWarning(
+      [
+        { id: 'rule-ratio', metric: DISEASE_RATIO_METRIC, threshold: 21, enabled: true, shedCode: null },
+        { id: 'rule-severe', metric: DISEASE_SEVERE_METRIC, threshold: 5, enabled: true, shedCode: null },
+      ],
+      sheds,
+    );
+    assert.equal(quiet.ratio.active, false);
+    assert.equal(quiet.ratio.percent, 20);
+    assert.equal(quiet.ratio.note, '');
+    assert.equal(quiet.severe.active, false);
+    assert.equal(quiet.severe.severeCount, 4);
+    assert.equal(
+      formatDiseaseWarnConfig(quiet),
+      '病害比例阈值 21% · 全场 · 当前比例 20% · 重度病害数量阈值 5 · 全场 · 当前重度 4',
+    );
+    const active = evaluateDiseaseWarning(
+      [
+        { id: 'rule-ratio', metric: DISEASE_RATIO_METRIC, threshold: 20, enabled: true, shedCode: null },
+        { id: 'rule-shed', metric: DISEASE_RATIO_METRIC, threshold: 1, enabled: true, shedCode: 'S02' },
+        { id: 'rule-severe', metric: DISEASE_SEVERE_METRIC, threshold: 4, enabled: true, shedCode: null },
+        { id: 'rule-severe-shed', metric: DISEASE_SEVERE_METRIC, threshold: 1, enabled: true, shedCode: 'S02' },
+        { id: 'rule-temp', metric: 'temperature_high', threshold: 28, enabled: true, shedCode: null },
+      ],
+      sheds,
+    );
+    assert.equal(active.ratio.ruleId, 'rule-ratio');
+    assert.equal(active.ratio.note, '病害预警 比例≥20% 当前20%');
+    assert.equal(formatDiseaseWarnRatioNote(active.ratio), '病害预警 比例≥20% 当前20%');
+    assert.equal(active.severe.ruleId, 'rule-severe');
+    assert.equal(active.severe.note, '病害预警 重度≥4 当前4');
+    assert.equal(formatDiseaseWarnSevereNote(active.severe), '病害预警 重度≥4 当前4');
+    const shedOnly = evaluateDiseaseWarning(
+      [
+        { id: 'rule-s01', metric: DISEASE_RATIO_METRIC, threshold: 20, enabled: true, shedCode: 'S01' },
+        { id: 'rule-sev', metric: DISEASE_SEVERE_METRIC, threshold: 4, enabled: true, shedCode: 'S01' },
+      ],
+      sheds,
+    );
+    assert.equal(shedOnly.ratio.note, '病害预警 棚区 S01 比例≥20% 当前20%');
+    assert.equal(shedOnly.severe.note, '病害预警 棚区 S01 重度≥4 当前4');
+    const missing = evaluateDiseaseWarning([], sheds);
+    assert.equal(missing.ratio.threshold, null);
+    assert.equal(missing.severe.threshold, null);
+    assert.equal(formatDiseaseWarnConfig(missing), DISEASE_WARN_LABEL.unset);
+    assert.equal(formatDiseaseWarnConfig(missing), '尚未配置病害比例/重度阈值');
+    const ratioOnly = evaluateDiseaseWarning(
+      [{ id: 'rule-ratio', metric: DISEASE_RATIO_METRIC, threshold: 20, enabled: true, shedCode: null }],
+      sheds,
+    );
+    assert.match(formatDiseaseWarnConfig(ratioOnly), /尚未配置重度病害数量阈值/);
+    const parsed = parseDiseaseWarning({
+      ...diseaseWarnOverviewFields(active),
+      todayDiseaseCount: 4,
+    });
+    assert.equal(parsed.ok, true);
+    if (parsed.ok) {
+      const back = diseaseWarnFromOverview(parsed.value);
+      assert.equal(back.ratio.note, '病害预警 比例≥20% 当前20%');
+      assert.equal(back.severe.note, '病害预警 重度≥4 当前4');
+    }
+    const mismatched = parseDiseaseWarning({
+      ...diseaseWarnOverviewFields(active),
+      diseaseWarnRatioNote: '病害预警 比例≥20% 当前21%',
+    });
+    assert.equal(mismatched.ok, false);
+    assert.equal(parseDiseaseWarning({}).ok, false);
+    assert.match(DISEASE_RATIO_THRESHOLD_ERROR, /大于等于 0 的整数/);
+    assert.match(DISEASE_SEVERE_THRESHOLD_ERROR, /大于等于 0 的整数/);
   });
 
   it('averages farm environment means per sensor and formats the note', () => {
