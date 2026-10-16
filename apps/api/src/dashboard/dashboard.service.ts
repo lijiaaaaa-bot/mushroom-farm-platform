@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { AuthUser } from '../common/auth-user';
 import { ShedScope } from '../common/shed-scope';
 import { Alert } from '../entities/alert.entity';
+import { AlertRule } from '../entities/alert-rule.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { Shed } from '../entities/shed.entity';
 import { DevicesService } from '../devices';
@@ -18,6 +19,8 @@ export class DashboardService {
     @InjectRepository(RecognitionRecord)
     private readonly records: Repository<RecognitionRecord>,
     private readonly growth: GrowthTrendService,
+    @InjectRepository(AlertRule)
+    private readonly rules: Repository<AlertRule>,
   ) {}
 
   async overview(user: AuthUser) {
@@ -25,6 +28,16 @@ export class DashboardService {
     const today = await this.growth.todaySnapshot(scope);
     const live = await this.growth.liveMushroomTotals(scope);
     const envMean = await this.growth.farmEnvironmentMeans(scope);
+    const ruleRows = await this.rules.find({ where: { enabled: true } });
+    const envAnomalyPointCount = await this.growth.farmEnvAnomalyPointCount(
+      scope,
+      ruleRows.map((rule) => ({
+        metric: rule.metric,
+        threshold: Number(rule.threshold),
+        enabled: rule.enabled,
+        shedCode: rule.shedCode,
+      })),
+    );
     const deviceCounts = await this.devices.counts(user);
     const shedQb = this.sheds.createQueryBuilder('s');
     if (scope.codes) {
@@ -71,6 +84,7 @@ export class DashboardService {
       envMeanHumidity: envMean.envMeanHumidity,
       envMeanCo2: envMean.envMeanCo2,
       envMeanSubstrateMoisture: envMean.envMeanSubstrateMoisture,
+      envAnomalyPointCount,
       harvestableCameras: today.harvestableCameras,
       openAlerts,
       severeAlerts,

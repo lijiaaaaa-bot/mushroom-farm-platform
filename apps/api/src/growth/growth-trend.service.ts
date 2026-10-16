@@ -3,13 +3,15 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
+  countEnvAnomalyPoints,
   meanFarmEnvironment,
   shanghaiDate,
   shanghaiDayRange,
   shanghaiHourStart,
   sumShedLiveMushroomTotals,
   todayShanghai,
-  type EnvSensorDayReading,
+  type EnvAnomalySensorReading,
+  type EnvThresholdRule,
   type FarmEnvMeans,
   type LiveMushroomTotals,
 } from '@mushroom/contracts';
@@ -597,13 +599,29 @@ export class GrowthTrendService {
     scope: ShedScope,
     now = new Date(),
   ): Promise<FarmEnvMeans> {
-    const empty: FarmEnvMeans = {
-      envMeanTemperature: null,
-      envMeanHumidity: null,
-      envMeanCo2: null,
-      envMeanSubstrateMoisture: null,
-    };
-    if (scope.codes && scope.codes.length === 0) return empty;
+    return meanFarmEnvironment(await this.todaySensorEnvReadings(scope, now));
+  }
+
+  /**
+   * 异常环境点位数。读当日环境日桶的传感器行，对照已启用的环境阈值。
+   * 一个传感器计一个点：任一指标超出适用于该棚的阈值即计入，多个指标仍是 1。
+   * 棚级行不计入。今日是 observedAt 的上海自然日。没有超限点位时是 0。
+   * 不读告警表，不扫环境明细。
+   */
+  async farmEnvAnomalyPointCount(
+    scope: ShedScope,
+    rules: EnvThresholdRule[],
+    now = new Date(),
+  ): Promise<number> {
+    const readings = await this.todaySensorEnvReadings(scope, now);
+    return countEnvAnomalyPoints(readings, rules);
+  }
+
+  private async todaySensorEnvReadings(
+    scope: ShedScope,
+    now = new Date(),
+  ): Promise<EnvAnomalySensorReading[]> {
+    if (scope.codes && scope.codes.length === 0) return [];
     const day = todayShanghai(now);
     const { start, end } = shanghaiDayRange(day);
     const rows = await this.loadWindow(
@@ -613,11 +631,14 @@ export class GrowthTrendService {
       [...ENVIRONMENT_METRICS],
       scope,
     );
-    const bySensor = new Map<string, EnvSensorDayReading>();
+    const bySensor = new Map<string, EnvAnomalySensorReading>();
     for (const row of rows) {
       if (!row.cameraCode || row.value === null) continue;
       const key = `${row.shedCode}\0${row.cameraCode}`;
-      const slot = bySensor.get(key) ?? {};
+      const slot = bySensor.get(key) ?? {
+        shedCode: row.shedCode,
+        sensorCode: row.cameraCode,
+      };
       if (row.metric === METRIC_ENV_TEMPERATURE) slot.temperature = row.value;
       else if (row.metric === METRIC_ENV_HUMIDITY) slot.humidity = row.value;
       else if (row.metric === METRIC_ENV_CO2) slot.co2 = row.value;
@@ -626,7 +647,7 @@ export class GrowthTrendService {
       }
       bySensor.set(key, slot);
     }
-    return meanFarmEnvironment([...bySensor.values()]);
+    return [...bySensor.values()];
   }
 
   async todaySnapshot(

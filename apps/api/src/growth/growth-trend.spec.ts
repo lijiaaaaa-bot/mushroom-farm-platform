@@ -1224,6 +1224,101 @@ describe('hour buckets and disease peaks', () => {
     });
   });
 
+  it('counts sensors whose today env day bucket is outside enabled thresholds', async () => {
+    const now = new Date('2026-09-24T03:30:00.000Z');
+    const today = todayShanghai(now);
+    const start = shanghaiDayRange(today).start;
+    const yesterday = shanghaiDayRange(shiftShanghaiDay(today, -1)).start;
+    const days = memoryMetricBuckets();
+    const seedEnv = (
+      at: Date,
+      shed: string,
+      sensor: string,
+      temperature: number | null,
+      humidity: number | null,
+      co2: number | null,
+      moisture: number | null,
+    ) => {
+      if (temperature !== null) {
+        seedMetric(days, at, shed, sensor, METRIC_ENV_TEMPERATURE, temperature);
+      }
+      if (humidity !== null) {
+        seedMetric(days, at, shed, sensor, METRIC_ENV_HUMIDITY, humidity);
+      }
+      if (co2 !== null) seedMetric(days, at, shed, sensor, METRIC_ENV_CO2, co2);
+      if (moisture !== null) {
+        seedMetric(days, at, shed, sensor, METRIC_ENV_MOISTURE, moisture);
+      }
+    };
+    seedEnv(start, 'S01', 'SENSOR-EAC-01', 32, 55, 800, 65);
+    seedEnv(start, 'S02', 'SENSOR-EAC-02', 22, 80, 900, 40);
+    seedEnv(start, 'S01', 'SENSOR-EAC-OK', 22, 80, 800, 65);
+    seedEnv(start, 'S01', '', 99, 10, 9000, 1);
+    seedEnv(yesterday, 'S01', 'SENSOR-EAC-YDAY', 40, 80, 800, 65);
+    const rules = [
+      {
+        metric: 'temperature_high',
+        threshold: 28,
+        enabled: true,
+        shedCode: null,
+      },
+      {
+        metric: 'temperature_low',
+        threshold: 12,
+        enabled: true,
+        shedCode: null,
+      },
+      { metric: 'humidity_low', threshold: 70, enabled: true, shedCode: null },
+      { metric: 'humidity_high', threshold: 98, enabled: true, shedCode: null },
+      { metric: 'co2_high', threshold: 2000, enabled: true, shedCode: null },
+      {
+        metric: 'substrate_moisture_low',
+        threshold: 50,
+        enabled: true,
+        shedCode: null,
+      },
+      { metric: 'disease_count', threshold: 1, enabled: true, shedCode: null },
+    ];
+    const records = memoryRecords([]);
+    const scan = jest.spyOn(records, 'createQueryBuilder');
+    const service = new GrowthTrendService(
+      records as never,
+      memoryMetricBuckets() as never,
+      days as never,
+    );
+    const { ShedScope } = await import('../common/shed-scope');
+    const all = await service.farmEnvAnomalyPointCount(
+      ShedScope.fromUser(admin),
+      rules,
+      now,
+    );
+    expect(scan).not.toHaveBeenCalled();
+    expect(all).toBe(2);
+    const manager: AuthUser = {
+      ...admin,
+      role: 'shed_manager',
+      shedCodes: ['S02'],
+    };
+    const scoped = await service.farmEnvAnomalyPointCount(
+      ShedScope.fromUser(manager),
+      rules,
+      now,
+    );
+    expect(scoped).toBe(1);
+    const empty = await service.farmEnvAnomalyPointCount(
+      ShedScope.fromUser({ ...admin, role: 'viewer', shedCodes: [] }),
+      rules,
+      now,
+    );
+    expect(empty).toBe(0);
+    const disabled = await service.farmEnvAnomalyPointCount(
+      ShedScope.fromUser(admin),
+      rules.map((rule) => ({ ...rule, enabled: false })),
+      now,
+    );
+    expect(disabled).toBe(0);
+  });
+
   it('writes environment hour and day means from observedAt and serves disease peaks from buckets', async () => {
     const hours = memoryMetricBuckets();
     const days = memoryMetricBuckets();

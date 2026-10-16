@@ -38,6 +38,7 @@ const overview = {
   envMeanHumidity: 85,
   envMeanCo2: 800,
   envMeanSubstrateMoisture: 73,
+  envAnomalyPointCount: 2,
   harvestableCameras: 6,
   openAlerts: 8,
   severeAlerts: 2,
@@ -101,6 +102,9 @@ describe('DashboardView', () => {
     expect(wrapper.get('[data-field="env-mean-note"]').text()).toBe(
       '全园环境参数均值 温度 24℃ · 湿度 85% · CO₂ 800ppm · 基质含水率 73%',
     );
+    expect(wrapper.get('[data-field="env-anomaly-title"]').text()).toBe('异常环境点位数');
+    expect(wrapper.get('[data-field="env-anomaly-count"]').text()).toBe('2');
+    expect(wrapper.get('[data-field="env-anomaly-note"]').text()).toBe('异常环境点位数 2');
     expect(wrapper.text()).toContain('在养蘑菇总数');
     expect(wrapper.text()).toContain('成熟可采摘总数');
     expect(wrapper.text()).toContain('待成熟数量');

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DevicesModule } from '../devices';
 import { Alert } from '../entities/alert.entity';
+import { AlertRule } from '../entities/alert-rule.entity';
 import { RecognitionRecord } from '../entities/recognition-record.entity';
 import { Shed } from '../entities/shed.entity';
 import { GrowthTrendModule } from '../growth';
@@ -10,7 +11,7 @@ import { DashboardService } from './dashboard.service';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Alert, Shed, RecognitionRecord]),
+    TypeOrmModule.forFeature([Alert, AlertRule, Shed, RecognitionRecord]),
     GrowthTrendModule,
     DevicesModule,
   ],

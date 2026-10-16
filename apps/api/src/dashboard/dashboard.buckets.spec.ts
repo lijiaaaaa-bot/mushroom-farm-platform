@@ -45,6 +45,7 @@ describe('dashboard overview bucket reads', () => {
         envMeanCo2: 800,
         envMeanSubstrateMoisture: 73,
       }),
+      farmEnvAnomalyPointCount: jest.fn().mockResolvedValue(2),
       trendFromDayBuckets: jest
         .fn()
         .mockResolvedValue([
@@ -57,12 +58,23 @@ describe('dashboard overview bucket reads', () => {
         avgSubstrateMoisture: 55,
       }),
     };
+    const rules = {
+      find: jest.fn().mockResolvedValue([
+        {
+          metric: 'temperature_high',
+          threshold: 28,
+          enabled: true,
+          shedCode: null,
+        },
+      ]),
+    };
     const dashboard = new DashboardService(
       { counts: async () => ({ total: 2, online: 1 }) } as never,
       { createQueryBuilder: () => qb } as never,
       { createQueryBuilder: () => qb } as never,
       { createQueryBuilder: () => qb, query } as never,
       growth as never,
+      rules as never,
     );
     const user: AuthUser = {
       id: 'admin',
@@ -76,6 +88,18 @@ describe('dashboard overview bucket reads', () => {
     expect(growth.todaySnapshot).toHaveBeenCalled();
     expect(growth.liveMushroomTotals).toHaveBeenCalled();
     expect(growth.farmEnvironmentMeans).toHaveBeenCalled();
+    expect(rules.find).toHaveBeenCalledWith({ where: { enabled: true } });
+    expect(growth.farmEnvAnomalyPointCount).toHaveBeenCalledWith(
+      expect.anything(),
+      [
+        {
+          metric: 'temperature_high',
+          threshold: 28,
+          enabled: true,
+          shedCode: null,
+        },
+      ],
+    );
     expect(growth.trendFromDayBuckets).toHaveBeenCalled();
     expect(growth.latestEnvironment).toHaveBeenCalled();
     expect(overview.todayMushroom).toBe(9);
@@ -90,6 +114,7 @@ describe('dashboard overview bucket reads', () => {
     expect(overview.envMeanHumidity).toBe(85);
     expect(overview.envMeanCo2).toBe(800);
     expect(overview.envMeanSubstrateMoisture).toBe(73);
+    expect(overview.envAnomalyPointCount).toBe(2);
     expect(overview.harvestableCameras).toBe(1);
     expect(overview.trend).toEqual([
       { day: '2026-09-24', mushroom: 9, mature: 3, disease: 2 },

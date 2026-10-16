@@ -5,8 +5,10 @@ import {
   ALERT_LEVEL_LABEL,
   ALERT_METRIC_LABEL,
   ALERT_STATUS_LABEL,
+  ENV_ANOMALY_POINT_LABEL,
   ENV_MEAN_LABEL,
   LIVE_MUSHROOM_TOTAL_LABEL,
+  formatEnvAnomalyPointNote,
   formatEnvMeanNote,
   formatEnvMeanValue,
   formatLiveMushroomTotalsNote,
@@ -61,6 +63,7 @@ interface Overview {
   envMeanHumidity?: number | null;
   envMeanCo2?: number | null;
   envMeanSubstrateMoisture?: number | null;
+  envAnomalyPointCount?: number;
   harvestableCameras?: number;
   openAlerts?: number;
   severeAlerts?: number;
@@ -156,6 +159,12 @@ const envMeans = computed((): FarmEnvMeans => ({
   envMeanSubstrateMoisture: finiteOrNull(data.value?.envMeanSubstrateMoisture),
 }));
 const envMeanNote = computed(() => formatEnvMeanNote(envMeans.value));
+const envAnomalyPointCount = computed(() => {
+  const value = data.value?.envAnomalyPointCount;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) return 0;
+  return Math.trunc(value);
+});
+const envAnomalyNote = computed(() => formatEnvAnomalyPointNote(envAnomalyPointCount.value));
 
 function formatCount(value: number | null | undefined) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '0';
@@ -584,6 +593,13 @@ onBeforeUnmount(() => {
         <p class="today-count" data-field="env-mean-moisture">{{ formatEnvMeanValue(envMeans.envMeanSubstrateMoisture, '%') }}</p>
       </article>
       <p class="today-counts-note" data-field="env-mean-note">{{ envMeanNote }}</p>
+    </section>
+    <section class="today-counts env-anomaly-block" aria-label="异常环境点位数">
+      <article class="tb-card">
+        <h2 data-field="env-anomaly-title">{{ ENV_ANOMALY_POINT_LABEL }}</h2>
+        <p class="today-count" data-field="env-anomaly-count">{{ formatCount(envAnomalyPointCount) }}</p>
+      </article>
+      <p class="today-counts-note" data-field="env-anomaly-note">{{ envAnomalyNote }}</p>
     </section>
     <section class="tb-top">
       <article class="tb-card">
