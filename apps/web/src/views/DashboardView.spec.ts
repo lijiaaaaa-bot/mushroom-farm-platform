@@ -31,6 +31,9 @@ const overview = {
   todayRecognitionCount: 3,
   todayCaptureCount: 2,
   todayDiseaseCount: 5,
+  liveMushroomTotal: 30,
+  liveMatureTotal: 11,
+  liveImmatureTotal: 19,
   harvestableCameras: 6,
   openAlerts: 8,
   severeAlerts: 2,
@@ -80,6 +83,15 @@ describe('DashboardView', () => {
     expect(wrapper.get('[data-field="today-disease"]').text()).toBe('5');
     expect(wrapper.get('[data-field="today-note"]').text()).toBe('今日识别次数 3 · 今日抓拍总量 2');
     expect(wrapper.get('[data-field="today-disease-note"]').text()).toBe('当日病害总数 5');
+    expect(wrapper.get('[data-field="live-mushroom"]').text()).toBe('30');
+    expect(wrapper.get('[data-field="live-mature"]').text()).toBe('11');
+    expect(wrapper.get('[data-field="live-immature"]').text()).toBe('19');
+    expect(wrapper.get('[data-field="live-mushroom-note"]').text()).toBe(
+      '在养蘑菇总数 30 · 成熟可采摘总数 11 · 待成熟数量 19',
+    );
+    expect(wrapper.text()).toContain('在养蘑菇总数');
+    expect(wrapper.text()).toContain('成熟可采摘总数');
+    expect(wrapper.text()).toContain('待成熟数量');
     expect(wrapper.text()).toContain('今日识别次数');
     expect(wrapper.text()).toContain('今日抓拍总量');
     expect(wrapper.text()).toContain('当日病害总数');

@@ -24,6 +24,11 @@ import {
   parseEnvironmentIngress,
   parseHeartbeatIngress,
   parseRecognitionIngress,
+  parseLiveMushroomTotals,
+  pendingLiveCount,
+  sumShedLiveMushroomTotals,
+  formatLiveMushroomTotalsNote,
+  LIVE_MUSHROOM_TOTAL_LABEL,
   TIMESERIES_RETENTION_DAYS,
   transitionError,
 } from './index';
@@ -384,6 +389,56 @@ describe('golden fixtures', () => {
     const low = parsePatchSystemParams({ alertUnreadPollSeconds: 1 });
     assert.equal(low.ok, false);
     if (!low.ok) assert.equal(low.code, 'VALIDATION_FAILED');
+  });
+
+  it('sums shed live mushroom totals after each shed immature count', () => {
+    assert.equal(pendingLiveCount(20, 8), 12);
+    assert.equal(pendingLiveCount(0, 3), 0);
+    assert.equal(pendingLiveCount(4, 10), 0);
+    const clean = sumShedLiveMushroomTotals([
+      { mushroomCount: 20 + 10, matureCount: 8 + 3 },
+      { mushroomCount: 0, matureCount: 0 },
+    ]);
+    assert.deepEqual(clean, {
+      liveMushroomTotal: 30,
+      liveMatureTotal: 11,
+      liveImmatureTotal: 19,
+    });
+    const clamped = sumShedLiveMushroomTotals([
+      { mushroomCount: 30, matureCount: 11 },
+      { mushroomCount: 4, matureCount: 10 },
+    ]);
+    assert.deepEqual(clamped, {
+      liveMushroomTotal: 34,
+      liveMatureTotal: 21,
+      liveImmatureTotal: 19,
+    });
+    assert.deepEqual(sumShedLiveMushroomTotals([]), {
+      liveMushroomTotal: 0,
+      liveMatureTotal: 0,
+      liveImmatureTotal: 0,
+    });
+    assert.equal(
+      formatLiveMushroomTotalsNote(clean),
+      '在养蘑菇总数 30 · 成熟可采摘总数 11 · 待成熟数量 19',
+    );
+    assert.equal(LIVE_MUSHROOM_TOTAL_LABEL.liveMushroomTotal, '在养蘑菇总数');
+    assert.equal(LIVE_MUSHROOM_TOTAL_LABEL.liveMatureTotal, '成熟可采摘总数');
+    assert.equal(LIVE_MUSHROOM_TOTAL_LABEL.liveImmatureTotal, '待成熟数量');
+    const parsed = parseLiveMushroomTotals({
+      ...clean,
+      todayDiseaseCount: 5,
+    });
+    assert.equal(parsed.ok, true);
+    if (parsed.ok) assert.deepEqual(parsed.value, clean);
+    const missing = parseLiveMushroomTotals({ liveMushroomTotal: 30 });
+    assert.equal(missing.ok, false);
+    const fraction = parseLiveMushroomTotals({
+      liveMushroomTotal: 1.5,
+      liveMatureTotal: 1,
+      liveImmatureTotal: 0,
+    });
+    assert.equal(fraction.ok, false);
   });
 
   it('loads the snapshot key fixture', () => {

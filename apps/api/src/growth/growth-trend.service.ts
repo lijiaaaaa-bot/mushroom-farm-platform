@@ -6,7 +6,9 @@ import {
   shanghaiDate,
   shanghaiDayRange,
   shanghaiHourStart,
+  sumShedLiveMushroomTotals,
   todayShanghai,
+  type LiveMushroomTotals,
 } from '@mushroom/contracts';
 import { AuthUser } from '../common/auth-user';
 import { ShedScope } from '../common/shed-scope';
@@ -535,6 +537,50 @@ export class GrowthTrendService {
       pendingMatureCount: pendingMatureCount(mushroomCount, matureCount),
       diseaseCount,
     };
+  }
+
+  /**
+   * 全场当日在养三数。读 metric_buckets_day 当日摄像头行的蘑菇、成熟。
+   * 每棚先把各摄像头最新相加，待成熟在相加之后再算，再把各棚三数相加。
+   * 棚级行（cameraCode 为空）不重复计入。不扫识别明细。
+   */
+  async liveMushroomTotals(
+    scope: ShedScope,
+    now = new Date(),
+  ): Promise<LiveMushroomTotals> {
+    const empty: LiveMushroomTotals = {
+      liveMushroomTotal: 0,
+      liveMatureTotal: 0,
+      liveImmatureTotal: 0,
+    };
+    if (scope.codes && scope.codes.length === 0) return empty;
+    const day = todayShanghai(now);
+    const { start, end } = shanghaiDayRange(day);
+    const rows = await this.loadWindow(
+      this.dayBuckets,
+      start,
+      end,
+      [METRIC_MUSHROOM_COUNT, METRIC_MATURE_COUNT],
+      scope,
+    );
+    const byShed = new Map<
+      string,
+      { mushroomCount: number; matureCount: number }
+    >();
+    for (const row of rows) {
+      if (!row.cameraCode || row.value === null) continue;
+      const slot = byShed.get(row.shedCode) ?? {
+        mushroomCount: 0,
+        matureCount: 0,
+      };
+      if (row.metric === METRIC_MUSHROOM_COUNT) {
+        slot.mushroomCount += row.value;
+      } else if (row.metric === METRIC_MATURE_COUNT) {
+        slot.matureCount += row.value;
+      }
+      byShed.set(row.shedCode, slot);
+    }
+    return sumShedLiveMushroomTotals([...byShed.values()]);
   }
 
   async todaySnapshot(

@@ -35,6 +35,9 @@ const overview = {
   todayRecognitionCount: 3,
   todayCaptureCount: 2,
   todayDiseaseCount: 5,
+  liveMushroomTotal: 30,
+  liveMatureTotal: 11,
+  liveImmatureTotal: 19,
   openAlerts: 1,
   severeAlerts: 1,
   env: {
@@ -111,6 +114,9 @@ const emptyOverview = {
   todayRecognitionCount: 0,
   todayCaptureCount: 0,
   todayDiseaseCount: 0,
+  liveMushroomTotal: 0,
+  liveMatureTotal: 0,
+  liveImmatureTotal: 0,
   openAlerts: 0,
   severeAlerts: 0,
   env: {
@@ -214,6 +220,15 @@ describe('BigScreenView', () => {
     expect(wrapper.get('[data-field="diseases"]').text()).toContain('5');
     expect(wrapper.get('[data-field="today-note"]').text()).toBe('今日识别次数 3 · 今日抓拍总量 2');
     expect(wrapper.get('[data-field="today-disease-note"]').text()).toBe('当日病害总数 5');
+    expect(wrapper.get('[data-field="live-mushroom"]').text()).toContain('在养蘑菇总数');
+    expect(wrapper.get('[data-field="live-mushroom"]').text()).toContain('30');
+    expect(wrapper.get('[data-field="live-mature"]').text()).toContain('成熟可采摘总数');
+    expect(wrapper.get('[data-field="live-mature"]').text()).toContain('11');
+    expect(wrapper.get('[data-field="live-immature"]').text()).toContain('待成熟数量');
+    expect(wrapper.get('[data-field="live-immature"]').text()).toContain('19');
+    expect(wrapper.get('[data-field="live-mushroom-note"]').text()).toBe(
+      '在养蘑菇总数 30 · 成熟可采摘总数 11 · 待成熟数量 19',
+    );
     expect(screen.left.text()).toContain('棚区平面');
     expect(screen.left.text()).toContain('S01');
     expect(screen.left.text()).toContain('一号棚');
