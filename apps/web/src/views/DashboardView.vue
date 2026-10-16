@@ -5,8 +5,12 @@ import {
   ALERT_LEVEL_LABEL,
   ALERT_METRIC_LABEL,
   ALERT_STATUS_LABEL,
+  ENV_MEAN_LABEL,
   LIVE_MUSHROOM_TOTAL_LABEL,
+  formatEnvMeanNote,
+  formatEnvMeanValue,
   formatLiveMushroomTotalsNote,
+  type FarmEnvMeans,
   type AlertLevel,
   type AlertMetric,
   type AlertStatus,
@@ -53,6 +57,10 @@ interface Overview {
   liveMushroomTotal?: number;
   liveMatureTotal?: number;
   liveImmatureTotal?: number;
+  envMeanTemperature?: number | null;
+  envMeanHumidity?: number | null;
+  envMeanCo2?: number | null;
+  envMeanSubstrateMoisture?: number | null;
   harvestableCameras?: number;
   openAlerts?: number;
   severeAlerts?: number;
@@ -141,10 +149,21 @@ const liveMushroomNote = computed(() =>
     liveImmatureTotal: Number(formatCount(data.value?.liveImmatureTotal)),
   }),
 );
+const envMeans = computed((): FarmEnvMeans => ({
+  envMeanTemperature: finiteOrNull(data.value?.envMeanTemperature),
+  envMeanHumidity: finiteOrNull(data.value?.envMeanHumidity),
+  envMeanCo2: finiteOrNull(data.value?.envMeanCo2),
+  envMeanSubstrateMoisture: finiteOrNull(data.value?.envMeanSubstrateMoisture),
+}));
+const envMeanNote = computed(() => formatEnvMeanNote(envMeans.value));
 
 function formatCount(value: number | null | undefined) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '0';
   return String(value);
+}
+
+function finiteOrNull(value: number | null | undefined) {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 const alerts = computed(() => data.value?.recentAlerts ?? []);
 const records = computed(() => data.value?.recentRecords ?? []);
@@ -545,6 +564,26 @@ onBeforeUnmount(() => {
         <p class="today-count" data-field="live-immature">{{ formatCount(data.liveImmatureTotal) }}</p>
       </article>
       <p class="today-counts-note" data-field="live-mushroom-note">{{ liveMushroomNote }}</p>
+    </section>
+    <section class="env-mean-block" aria-label="全园环境参数均值">
+      <h2 class="env-mean-title" data-field="env-mean-title">{{ ENV_MEAN_LABEL.title }}</h2>
+      <article class="tb-card">
+        <h2>{{ ENV_MEAN_LABEL.envMeanTemperature }}</h2>
+        <p class="today-count" data-field="env-mean-temperature">{{ formatEnvMeanValue(envMeans.envMeanTemperature, '℃') }}</p>
+      </article>
+      <article class="tb-card">
+        <h2>{{ ENV_MEAN_LABEL.envMeanHumidity }}</h2>
+        <p class="today-count" data-field="env-mean-humidity">{{ formatEnvMeanValue(envMeans.envMeanHumidity, '%') }}</p>
+      </article>
+      <article class="tb-card">
+        <h2>{{ ENV_MEAN_LABEL.envMeanCo2 }}</h2>
+        <p class="today-count" data-field="env-mean-co2">{{ formatEnvMeanValue(envMeans.envMeanCo2, 'ppm') }}</p>
+      </article>
+      <article class="tb-card">
+        <h2>{{ ENV_MEAN_LABEL.envMeanSubstrateMoisture }}</h2>
+        <p class="today-count" data-field="env-mean-moisture">{{ formatEnvMeanValue(envMeans.envMeanSubstrateMoisture, '%') }}</p>
+      </article>
+      <p class="today-counts-note" data-field="env-mean-note">{{ envMeanNote }}</p>
     </section>
     <section class="tb-top">
       <article class="tb-card">

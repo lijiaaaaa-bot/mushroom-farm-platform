@@ -1002,6 +1002,97 @@ export function parseLiveMushroomTotals(raw: unknown): ParseResult<LiveMushroomT
   return { ok: true, value: parsed.data };
 }
 
+/** 总览与基地大屏上的全园环境参数均值。 */
+export const ENV_MEAN_LABEL = {
+  title: '全园环境参数均值',
+  envMeanTemperature: '温度',
+  envMeanHumidity: '湿度',
+  envMeanCo2: 'CO₂',
+  envMeanSubstrateMoisture: '基质含水率',
+} as const;
+
+const envMeanNumber = z.number().finite().nullable();
+
+export const farmEnvMeansSchema = z
+  .object({
+    envMeanTemperature: envMeanNumber,
+    envMeanHumidity: envMeanNumber,
+    envMeanCo2: envMeanNumber,
+    envMeanSubstrateMoisture: envMeanNumber,
+  })
+  .strict();
+
+export type FarmEnvMeans = z.infer<typeof farmEnvMeansSchema>;
+
+/** 一个传感器当天日桶上的四个环境数。缺测的指标不参加该项平均。 */
+export interface EnvSensorDayReading {
+  temperature?: number | null;
+  humidity?: number | null;
+  co2?: number | null;
+  substrateMoisture?: number | null;
+}
+
+/** 四舍五入到 1 位小数。与总览环境小时均值的显示精度相同。 */
+export function roundEnvMean(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+/**
+ * 全园算术平均。每个传感器计一次，不按样本数再加权。
+ * 调用方应只传入传感器行，不要把棚级汇总行再传进来。
+ * 没有任何有限数值时，该项是 null。
+ */
+export function meanFarmEnvironment(readings: EnvSensorDayReading[]): FarmEnvMeans {
+  const meanOf = (pick: (row: EnvSensorDayReading) => number | null | undefined) => {
+    const values = readings
+      .map(pick)
+      .filter((value): value is number => typeof value === 'number' && Number.isFinite(value));
+    if (!values.length) return null;
+    return roundEnvMean(values.reduce((sum, value) => sum + value, 0) / values.length);
+  };
+  return {
+    envMeanTemperature: meanOf((row) => row.temperature),
+    envMeanHumidity: meanOf((row) => row.humidity),
+    envMeanCo2: meanOf((row) => row.co2),
+    envMeanSubstrateMoisture: meanOf((row) => row.substrateMoisture),
+  };
+}
+
+export function formatEnvMeanValue(value: number | null, unit: string): string {
+  if (value === null || !Number.isFinite(value)) return '—';
+  const rounded = roundEnvMean(value);
+  const text = Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+  return `${text}${unit}`;
+}
+
+export function formatEnvMeanNote(means: FarmEnvMeans): string {
+  const label = ENV_MEAN_LABEL;
+  const parts = [
+    `${label.envMeanTemperature} ${formatEnvMeanValue(means.envMeanTemperature, '℃')}`,
+    `${label.envMeanHumidity} ${formatEnvMeanValue(means.envMeanHumidity, '%')}`,
+    `${label.envMeanCo2} ${formatEnvMeanValue(means.envMeanCo2, 'ppm')}`,
+    `${label.envMeanSubstrateMoisture} ${formatEnvMeanValue(means.envMeanSubstrateMoisture, '%')}`,
+  ];
+  return `${label.title} ${parts.join(' · ')}`;
+}
+
+/** 从总览响应里取出全园环境均值。其余字段不参与。 */
+export function parseFarmEnvMeans(raw: unknown): ParseResult<FarmEnvMeans> {
+  const record =
+    raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const parsed = farmEnvMeansSchema.safeParse({
+    envMeanTemperature: record.envMeanTemperature ?? null,
+    envMeanHumidity: record.envMeanHumidity ?? null,
+    envMeanCo2: record.envMeanCo2 ?? null,
+    envMeanSubstrateMoisture: record.envMeanSubstrateMoisture ?? null,
+  });
+  if (!parsed.success) {
+    const issue = zodErrors(parsed.error);
+    return fail(issue.code, issue.errors);
+  }
+  return { ok: true, value: parsed.data };
+}
+
 export function isRole(value: string): value is Role {
   return roleSchema.safeParse(value).success;
 }

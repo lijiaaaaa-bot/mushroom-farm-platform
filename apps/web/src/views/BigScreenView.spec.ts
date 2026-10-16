@@ -38,6 +38,10 @@ const overview = {
   liveMushroomTotal: 30,
   liveMatureTotal: 11,
   liveImmatureTotal: 19,
+  envMeanTemperature: 24,
+  envMeanHumidity: 85,
+  envMeanCo2: 800,
+  envMeanSubstrateMoisture: 73,
   openAlerts: 1,
   severeAlerts: 1,
   env: {
@@ -117,6 +121,10 @@ const emptyOverview = {
   liveMushroomTotal: 0,
   liveMatureTotal: 0,
   liveImmatureTotal: 0,
+  envMeanTemperature: null,
+  envMeanHumidity: null,
+  envMeanCo2: null,
+  envMeanSubstrateMoisture: null,
   openAlerts: 0,
   severeAlerts: 0,
   env: {
@@ -229,6 +237,16 @@ describe('BigScreenView', () => {
     expect(wrapper.get('[data-field="live-mushroom-note"]').text()).toBe(
       '在养蘑菇总数 30 · 成熟可采摘总数 11 · 待成熟数量 19',
     );
+    expect(wrapper.get('[data-field="env-mean-title"]').text()).toBe('全园环境参数均值');
+    expect(wrapper.get('[data-field="env-mean-temperature"]').text()).toContain('温度');
+    expect(wrapper.get('[data-field="env-mean-temperature"]').text()).toContain('24℃');
+    expect(wrapper.get('[data-field="env-mean-humidity"]').text()).toContain('85%');
+    expect(wrapper.get('[data-field="env-mean-co2"]').text()).toContain('800ppm');
+    expect(wrapper.get('[data-field="env-mean-moisture"]').text()).toContain('基质含水率');
+    expect(wrapper.get('[data-field="env-mean-moisture"]').text()).toContain('73%');
+    expect(wrapper.get('[data-field="env-mean-note"]').text()).toBe(
+      '全园环境参数均值 温度 24℃ · 湿度 85% · CO₂ 800ppm · 基质含水率 73%',
+    );
     expect(screen.left.text()).toContain('棚区平面');
     expect(screen.left.text()).toContain('S01');
     expect(screen.left.text()).toContain('一号棚');
@@ -249,6 +267,8 @@ describe('BigScreenView', () => {
     expect(detail.text()).toContain('成熟 4/10');
     expect(screen.right.text()).toContain('环境');
     expect(screen.right.text()).toContain('22.5');
+    expect(wrapper.get('[data-field="env-mean-note"]').text()).toContain('24℃');
+    expect(wrapper.get('[data-field="env-mean-note"]').text()).not.toContain('22.5');
     expect(screen.right.text()).toContain('设备');
     expect(screen.right.text()).toContain('CAM-S01');
     expect(screen.bottom.text()).toContain('滚动');
@@ -289,6 +309,10 @@ describe('BigScreenView', () => {
     expect(screen.center.text()).toContain('暂无识别记录，抓拍墙没有画面。');
     expect(screen.right.text()).toContain('暂无告警');
     expect(screen.right.text()).toContain('暂无设备');
+    expect(wrapper.get('[data-field="env-mean-title"]').text()).toBe('全园环境参数均值');
+    expect(wrapper.get('[data-field="env-mean-note"]').text()).toBe(
+      '全园环境参数均值 温度 — · 湿度 — · CO₂ — · 基质含水率 —',
+    );
     expect(screen.bottom.text()).toContain('暂无告警与识别记录');
     expect(screen.bottom.text()).toContain('暂无识别时间，不能按抓拍时段筛选。');
     expect(wrapper.find('a.timeline-filter').exists()).toBe(false);
