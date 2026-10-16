@@ -6,6 +6,11 @@ import {
   ALERT_METRIC_LABEL,
   ALERT_STATUS_LABEL,
   DEVICE_ONLINE_BY_TYPE_LABEL,
+  DISEASE_RATIO_METRIC,
+  DISEASE_RATIO_THRESHOLD_ERROR,
+  DISEASE_SEVERE_METRIC,
+  DISEASE_SEVERE_THRESHOLD_ERROR,
+  DISEASE_WARN_LABEL,
   ENV_ANOMALY_POINT_LABEL,
   ENV_MEAN_LABEL,
   LIVE_MUSHROOM_TOTAL_LABEL,
@@ -15,6 +20,7 @@ import {
   formatDeviceOnlineByTypeNote,
   formatDeviceOnlineRatio,
   formatEnvAnomalyPointNote,
+  formatDiseaseWarnConfig,
   formatMaturePickConfig,
   parseDeviceOnlineByType,
   formatEnvMeanNote,
@@ -22,6 +28,9 @@ import {
   formatLiveMushroomTotalsNote,
   maturePickReminderFromOverview,
   maturePickThresholdInteger,
+  diseaseWarnFromOverview,
+  diseaseWarnThresholdInteger,
+  parseDiseaseWarning,
   parseMaturePickReminder,
   type FarmEnvMeans,
   type AlertLevel,
@@ -77,6 +86,18 @@ interface Overview {
   maturePickMatureCount?: number;
   maturePickActive?: boolean;
   maturePickNote?: string;
+  diseaseWarnRatioRuleId?: string | null;
+  diseaseWarnRatioShedCode?: string | null;
+  diseaseWarnRatioThreshold?: number | null;
+  diseaseWarnRatioPercent?: number;
+  diseaseWarnRatioActive?: boolean;
+  diseaseWarnRatioNote?: string;
+  diseaseWarnSevereRuleId?: string | null;
+  diseaseWarnSevereShedCode?: string | null;
+  diseaseWarnSevereThreshold?: number | null;
+  diseaseWarnSevereCount?: number;
+  diseaseWarnSevereActive?: boolean;
+  diseaseWarnSevereNote?: string;
   envMeanTemperature?: number | null;
   envMeanHumidity?: number | null;
   envMeanCo2?: number | null;
@@ -226,6 +247,52 @@ watch(
   (value) => {
     if (savingPick.value) return;
     maturePickDraft.value = value === null ? '' : String(value);
+  },
+  { immediate: true },
+);
+
+const emptyDiseaseWarn = {
+  ratio: {
+    ruleId: null,
+    shedCode: null,
+    threshold: null as number | null,
+    percent: 0,
+    active: false,
+    note: '',
+  },
+  severe: {
+    ruleId: null,
+    shedCode: null,
+    threshold: null as number | null,
+    severeCount: 0,
+    active: false,
+    note: '',
+  },
+};
+const diseaseWarn = computed(() => {
+  const parsed = parseDiseaseWarning(data.value ?? {});
+  return parsed.ok ? diseaseWarnFromOverview(parsed.value) : emptyDiseaseWarn;
+});
+const diseaseWarnConfig = computed(() => formatDiseaseWarnConfig(diseaseWarn.value));
+const diseaseRatioDraft = ref('');
+const diseaseSevereDraft = ref('');
+const savingDisease = ref(false);
+const diseaseError = ref('');
+const canEditDisease = computed(() => canWriteRules(currentUser.value?.role));
+
+watch(
+  () => diseaseWarn.value.ratio.threshold,
+  (value) => {
+    if (savingDisease.value) return;
+    diseaseRatioDraft.value = value === null ? '' : String(value);
+  },
+  { immediate: true },
+);
+watch(
+  () => diseaseWarn.value.severe.threshold,
+  (value) => {
+    if (savingDisease.value) return;
+    diseaseSevereDraft.value = value === null ? '' : String(value);
   },
   { immediate: true },
 );
@@ -587,6 +654,69 @@ async function loadBoard() {
   loading.value = false;
 }
 
+async function saveDiseaseRule(
+  metric: typeof DISEASE_RATIO_METRIC | typeof DISEASE_SEVERE_METRIC,
+  name: string,
+  ruleId: string | null,
+  threshold: number,
+) {
+  if (ruleId) {
+    await http.patch(`/alert-rules/${ruleId}`, { threshold, enabled: true });
+    return;
+  }
+  await http.post('/alert-rules', {
+    name,
+    metric,
+    threshold,
+    level: 'info',
+  });
+}
+
+async function saveDiseaseWarn() {
+  if (!canEditDisease.value || savingDisease.value) return;
+  const ratioText = String(diseaseRatioDraft.value ?? '').trim();
+  const severeText = String(diseaseSevereDraft.value ?? '').trim();
+  if (!ratioText && !severeText) {
+    diseaseError.value = '请填写病害比例或重度数量阈值';
+    return;
+  }
+  const ratio = ratioText ? diseaseWarnThresholdInteger(ratioText) : null;
+  if (ratioText && ratio === null) {
+    diseaseError.value = DISEASE_RATIO_THRESHOLD_ERROR;
+    return;
+  }
+  const severe = severeText ? diseaseWarnThresholdInteger(severeText) : null;
+  if (severeText && severe === null) {
+    diseaseError.value = DISEASE_SEVERE_THRESHOLD_ERROR;
+    return;
+  }
+  savingDisease.value = true;
+  diseaseError.value = '';
+  try {
+    if (ratio !== null) {
+      await saveDiseaseRule(
+        DISEASE_RATIO_METRIC,
+        '病害比例预警',
+        diseaseWarn.value.ratio.ruleId,
+        ratio,
+      );
+    }
+    if (severe !== null) {
+      await saveDiseaseRule(
+        DISEASE_SEVERE_METRIC,
+        '重度病害预警',
+        diseaseWarn.value.severe.ruleId,
+        severe,
+      );
+    }
+    await loadBoard();
+  } catch (cause) {
+    diseaseError.value = errorText(cause);
+  } finally {
+    savingDisease.value = false;
+  }
+}
+
 async function saveMaturePick() {
   if (!canEditPick.value || savingPick.value) return;
   const threshold = maturePickThresholdInteger(maturePickDraft.value);
@@ -697,6 +827,62 @@ onBeforeUnmount(() => {
         当前成熟 {{ maturePick.matureCount }}，未达到阈值 {{ maturePick.threshold }}
       </p>
       <p v-if="pickError" class="text-danger" data-field="mature-pick-error">{{ pickError }}</p>
+    </section>
+    <section class="disease-warn-block" aria-label="病害预警" data-field="disease-warn">
+      <h2 data-field="disease-warn-title">{{ DISEASE_WARN_LABEL.title }}</h2>
+      <form class="disease-warn-form" @submit.prevent="saveDiseaseWarn">
+        <label>
+          {{ DISEASE_WARN_LABEL.ratioThreshold }}
+          <input
+            v-model="diseaseRatioDraft"
+            data-field="disease-warn-ratio"
+            type="number"
+            min="0"
+            step="1"
+            inputmode="numeric"
+            :disabled="!canEditDisease || savingDisease"
+            :aria-label="DISEASE_WARN_LABEL.ratioThreshold"
+          />
+        </label>
+        <label>
+          {{ DISEASE_WARN_LABEL.severeThreshold }}
+          <input
+            v-model="diseaseSevereDraft"
+            data-field="disease-warn-severe"
+            type="number"
+            min="0"
+            step="1"
+            inputmode="numeric"
+            :disabled="!canEditDisease || savingDisease"
+            :aria-label="DISEASE_WARN_LABEL.severeThreshold"
+          />
+        </label>
+        <button v-if="canEditDisease" type="submit" data-field="disease-warn-save" :disabled="savingDisease">
+          {{ savingDisease ? '保存中…' : '保存' }}
+        </button>
+      </form>
+      <p class="today-counts-note" data-field="disease-warn-config">{{ diseaseWarnConfig }}</p>
+      <p v-if="diseaseWarn.ratio.active" class="disease-warn-banner" data-field="disease-warn-ratio-note">
+        {{ diseaseWarn.ratio.note }}
+      </p>
+      <p
+        v-else-if="diseaseWarn.ratio.threshold !== null"
+        class="today-counts-note"
+        data-field="disease-warn-ratio-idle"
+      >
+        当前比例 {{ diseaseWarn.ratio.percent }}%，未达到阈值 {{ diseaseWarn.ratio.threshold }}%
+      </p>
+      <p v-if="diseaseWarn.severe.active" class="disease-warn-banner" data-field="disease-warn-severe-note">
+        {{ diseaseWarn.severe.note }}
+      </p>
+      <p
+        v-else-if="diseaseWarn.severe.threshold !== null"
+        class="today-counts-note"
+        data-field="disease-warn-severe-idle"
+      >
+        当前重度 {{ diseaseWarn.severe.severeCount }}，未达到阈值 {{ diseaseWarn.severe.threshold }}
+      </p>
+      <p v-if="diseaseError" class="text-danger" data-field="disease-warn-error">{{ diseaseError }}</p>
     </section>
     <section class="env-mean-block" aria-label="全园环境参数均值">
       <h2 class="env-mean-title" data-field="env-mean-title">{{ ENV_MEAN_LABEL.title }}</h2>

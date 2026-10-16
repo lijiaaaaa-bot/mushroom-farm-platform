@@ -11,6 +11,7 @@ import {
   sumShedLiveMushroomTotals,
   todayShanghai,
   type EnvAnomalySensorReading,
+  type ShedDiseaseLive,
   type EnvThresholdRule,
   type FarmEnvMeans,
   type LiveMushroomTotals,
@@ -37,6 +38,7 @@ import {
   ENVIRONMENT_METRICS,
   METRIC_CAP_DIAMETER_MEAN,
   METRIC_DISEASE_COUNT,
+  METRIC_DISEASE_SEVERE,
   METRIC_ENV_CO2,
   METRIC_ENV_HUMIDITY,
   METRIC_ENV_MOISTURE,
@@ -571,6 +573,23 @@ export class GrowthTrendService {
     }));
   }
 
+  /**
+   * 各棚当日病害比例用的蘑菇数、病害数，以及重度病害数量。
+   * 摄像头日桶相加，棚级行不计入。重度是 disease_severe_count（病害等级为 3 的数量）。
+   */
+  async shedLiveDiseaseCounts(
+    scope: ShedScope,
+    now = new Date(),
+  ): Promise<ShedDiseaseLive[]> {
+    const byShed = await this.todayShedDiseaseLive(scope, now);
+    return [...byShed.entries()].map(([shedCode, slot]) => ({
+      shedCode,
+      mushroomCount: Math.round(slot.mushroomCount),
+      diseaseCount: Math.round(slot.diseaseCount),
+      severeCount: Math.round(slot.severeCount),
+    }));
+  }
+
   private async todayShedMushroomMature(
     scope: ShedScope,
     now = new Date(),
@@ -600,6 +619,46 @@ export class GrowthTrendService {
       } else if (row.metric === METRIC_MATURE_COUNT) {
         slot.matureCount += row.value;
       }
+      byShed.set(row.shedCode, slot);
+    }
+    return byShed;
+  }
+
+  private async todayShedDiseaseLive(
+    scope: ShedScope,
+    now = new Date(),
+  ): Promise<
+    Map<
+      string,
+      { mushroomCount: number; diseaseCount: number; severeCount: number }
+    >
+  > {
+    const byShed = new Map<
+      string,
+      { mushroomCount: number; diseaseCount: number; severeCount: number }
+    >();
+    if (scope.codes && scope.codes.length === 0) return byShed;
+    const day = todayShanghai(now);
+    const { start, end } = shanghaiDayRange(day);
+    const rows = await this.loadWindow(
+      this.dayBuckets,
+      start,
+      end,
+      [METRIC_MUSHROOM_COUNT, METRIC_DISEASE_COUNT, METRIC_DISEASE_SEVERE],
+      scope,
+    );
+    for (const row of rows) {
+      if (!row.cameraCode || row.value === null) continue;
+      const slot = byShed.get(row.shedCode) ?? {
+        mushroomCount: 0,
+        diseaseCount: 0,
+        severeCount: 0,
+      };
+      if (row.metric === METRIC_MUSHROOM_COUNT) slot.mushroomCount += row.value;
+      else if (row.metric === METRIC_DISEASE_COUNT)
+        slot.diseaseCount += row.value;
+      else if (row.metric === METRIC_DISEASE_SEVERE)
+        slot.severeCount += row.value;
       byShed.set(row.shedCode, slot);
     }
     return byShed;

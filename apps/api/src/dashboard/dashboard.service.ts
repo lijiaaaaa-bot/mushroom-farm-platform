@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import {
   MATURE_PICK_METRIC,
+  diseaseWarnOverviewFields,
+  evaluateDiseaseWarning,
   evaluateMaturePickReminder,
   maturePickOverviewFields,
 } from '@mushroom/contracts';
@@ -33,6 +35,7 @@ export class DashboardService {
     const today = await this.growth.todaySnapshot(scope);
     const live = await this.growth.liveMushroomTotals(scope);
     const shedMature = await this.growth.shedLiveMatureCounts(scope);
+    const shedDisease = await this.growth.shedLiveDiseaseCounts(scope);
     const envMean = await this.growth.farmEnvironmentMeans(scope);
     const ruleRows = await this.rules.find({ where: { enabled: true } });
     const envAnomalyPointCount = await this.growth.farmEnvAnomalyPointCount(
@@ -88,6 +91,18 @@ export class DashboardService {
         })),
       shedMature,
     );
+    const diseaseWarn = evaluateDiseaseWarning(
+      ruleRows
+        .filter((rule) => !rule.shedCode || scope.allows(rule.shedCode))
+        .map((rule) => ({
+          id: rule.id,
+          metric: rule.metric,
+          threshold: Number(rule.threshold),
+          enabled: rule.enabled,
+          shedCode: rule.shedCode,
+        })),
+      shedDisease,
+    );
     return {
       shedCount,
       deviceTotal: deviceCounts.total,
@@ -107,6 +122,7 @@ export class DashboardService {
       liveMatureTotal: live.liveMatureTotal,
       liveImmatureTotal: live.liveImmatureTotal,
       ...maturePickOverviewFields(maturePick),
+      ...diseaseWarnOverviewFields(diseaseWarn),
       envMeanTemperature: envMean.envMeanTemperature,
       envMeanHumidity: envMean.envMeanHumidity,
       envMeanCo2: envMean.envMeanCo2,

@@ -202,6 +202,7 @@ export class IngestService {
           avgCapDiameter: saved.avgCapDiameter,
           matureCount: saved.matureCount,
           diseaseCount: saved.diseaseCount,
+          diseaseLevel: saved.diseaseLevel,
           snapshotObjectKey: saved.snapshotObjectKey,
           snapshotUrl: saved.snapshotUrl,
         });

@@ -274,6 +274,59 @@ describe('alert-rules HTTP', () => {
     expect(negative.status).toBe(400);
   });
 
+  it('accepts integer disease-warning thresholds and rejects a fraction', async () => {
+    const ratio = await request(app.getHttpServer())
+      .post('/api/v1/alert-rules')
+      .set('x-test-role', 'super_admin')
+      .send({
+        name: '病害比例预警',
+        metric: 'live_disease_ratio',
+        threshold: 20,
+        level: 'info',
+      });
+    expect(ratio.status).toBe(201);
+    expect(ratio.body).toMatchObject({
+      metric: 'live_disease_ratio',
+      threshold: 20,
+      shedCode: null,
+      enabled: true,
+    });
+
+    const severe = await request(app.getHttpServer())
+      .post('/api/v1/alert-rules')
+      .set('x-test-role', 'production_admin')
+      .send({
+        name: '重度病害预警',
+        metric: 'live_disease_severe',
+        threshold: 4,
+        level: 'info',
+      });
+    expect(severe.status).toBe(201);
+    expect(severe.body).toMatchObject({
+      metric: 'live_disease_severe',
+      threshold: 4,
+      enabled: true,
+    });
+
+    const fraction = await request(app.getHttpServer())
+      .patch(`/api/v1/alert-rules/${ratio.body.id}`)
+      .set('x-test-role', 'super_admin')
+      .send({ threshold: 20.5 });
+    expect(fraction.status).toBe(400);
+    expect(JSON.stringify(fraction.body)).toContain(
+      '病害比例阈值须为大于等于 0 的整数',
+    );
+
+    const severeFraction = await request(app.getHttpServer())
+      .patch(`/api/v1/alert-rules/${severe.body.id}`)
+      .set('x-test-role', 'super_admin')
+      .send({ threshold: 1.5 });
+    expect(severeFraction.status).toBe(400);
+    expect(JSON.stringify(severeFraction.body)).toContain(
+      '重度病害数量阈值须为大于等于 0 的整数',
+    );
+  });
+
   it('rejects a rule whose metric is not in the contract', async () => {
     const response = await request(app.getHttpServer())
       .post('/api/v1/alert-rules')

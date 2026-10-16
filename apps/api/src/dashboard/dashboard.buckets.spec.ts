@@ -42,6 +42,14 @@ describe('dashboard overview bucket reads', () => {
       shedLiveMatureCounts: jest
         .fn()
         .mockResolvedValue([{ shedCode: 'S01', matureCount: 11 }]),
+      shedLiveDiseaseCounts: jest.fn().mockResolvedValue([
+        {
+          shedCode: 'S01',
+          mushroomCount: 20,
+          diseaseCount: 4,
+          severeCount: 0,
+        },
+      ]),
       farmEnvironmentMeans: jest.fn().mockResolvedValue({
         envMeanTemperature: 24,
         envMeanHumidity: 85,
@@ -128,6 +136,15 @@ describe('dashboard overview bucket reads', () => {
     expect(overview.maturePickMatureCount).toBe(11);
     expect(overview.maturePickNote).toBe('');
     expect(growth.shedLiveMatureCounts).toHaveBeenCalled();
+    expect(growth.shedLiveDiseaseCounts).toHaveBeenCalled();
+    expect(overview.diseaseWarnRatioThreshold).toBeNull();
+    expect(overview.diseaseWarnRatioActive).toBe(false);
+    expect(overview.diseaseWarnRatioPercent).toBe(20);
+    expect(overview.diseaseWarnRatioNote).toBe('');
+    expect(overview.diseaseWarnSevereThreshold).toBeNull();
+    expect(overview.diseaseWarnSevereActive).toBe(false);
+    expect(overview.diseaseWarnSevereCount).toBe(0);
+    expect(overview.diseaseWarnSevereNote).toBe('');
     expect(overview.envMeanTemperature).toBe(24);
     expect(overview.envMeanHumidity).toBe(85);
     expect(overview.envMeanCo2).toBe(800);
@@ -191,6 +208,20 @@ describe('dashboard overview bucket reads', () => {
         { shedCode: 'S01', matureCount: 8 },
         { shedCode: 'S02', matureCount: 0 },
       ]),
+      shedLiveDiseaseCounts: jest.fn().mockResolvedValue([
+        {
+          shedCode: 'S01',
+          mushroomCount: 20,
+          diseaseCount: 4,
+          severeCount: 4,
+        },
+        {
+          shedCode: 'S02',
+          mushroomCount: 0,
+          diseaseCount: 0,
+          severeCount: 0,
+        },
+      ]),
       farmEnvironmentMeans: jest.fn().mockResolvedValue({
         envMeanTemperature: null,
         envMeanHumidity: null,
@@ -218,6 +249,27 @@ describe('dashboard overview bucket reads', () => {
         {
           id: 'rule-shed',
           metric: 'live_mature_pick',
+          threshold: 1,
+          enabled: true,
+          shedCode: 'S02',
+        },
+        {
+          id: 'rule-ratio',
+          metric: 'live_disease_ratio',
+          threshold: 20,
+          enabled: true,
+          shedCode: null,
+        },
+        {
+          id: 'rule-severe',
+          metric: 'live_disease_severe',
+          threshold: 4,
+          enabled: true,
+          shedCode: null,
+        },
+        {
+          id: 'rule-severe-shed',
+          metric: 'live_disease_severe',
           threshold: 1,
           enabled: true,
           shedCode: 'S02',
@@ -255,5 +307,17 @@ describe('dashboard overview bucket reads', () => {
     expect(overview.maturePickMatureCount).toBe(8);
     expect(overview.maturePickActive).toBe(true);
     expect(overview.maturePickNote).toBe('采摘提醒 成熟≥8 当前8');
+    expect(overview.diseaseWarnRatioRuleId).toBe('rule-ratio');
+    expect(overview.diseaseWarnRatioShedCode).toBeNull();
+    expect(overview.diseaseWarnRatioThreshold).toBe(20);
+    expect(overview.diseaseWarnRatioPercent).toBe(20);
+    expect(overview.diseaseWarnRatioActive).toBe(true);
+    expect(overview.diseaseWarnRatioNote).toBe('病害预警 比例≥20% 当前20%');
+    expect(overview.diseaseWarnSevereRuleId).toBe('rule-severe');
+    expect(overview.diseaseWarnSevereShedCode).toBeNull();
+    expect(overview.diseaseWarnSevereThreshold).toBe(4);
+    expect(overview.diseaseWarnSevereCount).toBe(4);
+    expect(overview.diseaseWarnSevereActive).toBe(true);
+    expect(overview.diseaseWarnSevereNote).toBe('病害预警 重度≥4 当前4');
   });
 });

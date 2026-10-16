@@ -6,6 +6,8 @@ export const METRIC_SAMPLE_COUNT = 'sample_count';
 export const METRIC_CAPTURE_COUNT = 'capture_count';
 export const METRIC_MATURE_COUNT = 'mature_count';
 export const METRIC_DISEASE_COUNT = 'disease_count';
+/** 当日该摄像头最新一条里，病害等级为 3 时记下病害数量，否则是 0。 */
+export const METRIC_DISEASE_SEVERE = 'disease_severe_count';
 export const METRIC_ENV_TEMPERATURE = 'env_temperature';
 export const METRIC_ENV_HUMIDITY = 'env_humidity';
 export const METRIC_ENV_CO2 = 'env_co2';
@@ -18,6 +20,7 @@ export const RECOGNITION_METRICS = [
   METRIC_CAPTURE_COUNT,
   METRIC_MATURE_COUNT,
   METRIC_DISEASE_COUNT,
+  METRIC_DISEASE_SEVERE,
 ] as const;
 
 export const ENVIRONMENT_METRICS = [
@@ -47,6 +50,8 @@ export interface RecognitionDelta {
   avgCapDiameter: number | null;
   matureCount?: number;
   diseaseCount?: number;
+  /** 0–3。缺省时不写重度病害日桶，避免旧调用方把已有重度行清掉。 */
+  diseaseLevel?: number;
   /** 有对象键或抓拍 URL 时，日桶 capture_count 加一。 */
   snapshotObjectKey?: string | null;
   snapshotUrl?: string | null;
@@ -195,11 +200,23 @@ export function applyRecognitionToBuckets(
     bumpLatest(record.cameraCode, METRIC_DISEASE_COUNT, record.diseaseCount);
     rollLatestSum(METRIC_DISEASE_COUNT);
   }
+  const level = diseaseLevelOf(record.diseaseLevel);
+  if (level !== null && isFiniteCount(record.diseaseCount)) {
+    const severe = level === 3 ? record.diseaseCount : 0;
+    bumpLatest(record.cameraCode, METRIC_DISEASE_SEVERE, severe);
+    rollLatestSum(METRIC_DISEASE_SEVERE);
+  }
   return { rows, dirty };
 }
 
 function isFiniteCount(value: number | undefined): value is number {
   return typeof value === 'number' && Number.isFinite(value);
+}
+
+function diseaseLevelOf(value: number | undefined): number | null {
+  if (typeof value !== 'number' || !Number.isInteger(value)) return null;
+  if (value < 0 || value > 3) return null;
+  return value;
 }
 
 /** 可溯源抓拍：对象键或抓拍 URL 有非空白内容。 */

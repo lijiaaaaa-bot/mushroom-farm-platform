@@ -68,6 +68,8 @@ export const alertMetricSchema = z.enum([
   'mature_ratio',
   'mature_count',
   'live_mature_pick',
+  'live_disease_ratio',
+  'live_disease_severe',
   'disease_count',
   'disease_level',
   'growth_stall',
@@ -84,6 +86,8 @@ export const ALERT_METRIC_LABEL: Record<AlertMetric, string> = {
   mature_ratio: '成熟占比',
   mature_count: '成熟数量',
   live_mature_pick: '成熟菇数量',
+  live_disease_ratio: '病害比例',
+  live_disease_severe: '重度病害数量',
   disease_count: '病害数量',
   disease_level: '病害等级',
   growth_stall: '生长停滞',
@@ -1192,6 +1196,325 @@ export function parseMaturePickReminder(raw: unknown): ParseResult<MaturePickOve
     maturePickMatureCount: record.maturePickMatureCount,
     maturePickActive: record.maturePickActive,
     maturePickNote: record.maturePickNote,
+  });
+  if (!parsed.success) {
+    const issue = zodErrors(parsed.error);
+    return fail(issue.code, issue.errors);
+  }
+  return { ok: true, value: parsed.data };
+}
+
+/**
+ * 病害预警用的两条规则指标。写在已有 alert_rules 上，棚区空着是全场。
+ * 不按单条识别新开告警。总览用当日日桶比较：病害比例是病害数 ÷ 蘑菇数，
+ * 重度病害数量是病害等级为 3 的数量合计。
+ */
+export const DISEASE_RATIO_METRIC = 'live_disease_ratio' as const;
+export const DISEASE_SEVERE_METRIC = 'live_disease_severe' as const;
+
+export const DISEASE_WARN_LABEL = {
+  title: '病害预警',
+  ratioThreshold: '病害比例阈值',
+  severeThreshold: '重度病害数量阈值',
+  scopeAll: '全场',
+  unset: '尚未配置病害比例/重度阈值',
+} as const;
+
+export const DISEASE_RATIO_THRESHOLD_ERROR = '病害比例阈值须为大于等于 0 的整数';
+export const DISEASE_SEVERE_THRESHOLD_ERROR = '重度病害数量阈值须为大于等于 0 的整数';
+
+/** 整数 ≥ 0。20.0 算整数，小数和负数不算。比例和重度共用。 */
+export function diseaseWarnThresholdInteger(value: unknown): number | null {
+  return maturePickThresholdInteger(value);
+}
+
+export interface ShedDiseaseLive {
+  shedCode: string;
+  mushroomCount: number;
+  diseaseCount: number;
+  severeCount: number;
+}
+
+export interface DiseaseRatioReminder {
+  ruleId: string | null;
+  shedCode: string | null;
+  threshold: number | null;
+  percent: number;
+  active: boolean;
+  note: string;
+}
+
+export interface DiseaseSevereReminder {
+  ruleId: string | null;
+  shedCode: string | null;
+  threshold: number | null;
+  severeCount: number;
+  active: boolean;
+  note: string;
+}
+
+export interface DiseaseWarning {
+  ratio: DiseaseRatioReminder;
+  severe: DiseaseSevereReminder;
+}
+
+function roundCount(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(value);
+}
+
+/** 病害数 ÷ 蘑菇数，百分数保留一位。蘑菇为 0 时是 0。 */
+export function diseaseRatioPercent(diseaseCount: number, mushroomCount: number): number {
+  const mushroom = roundCount(mushroomCount);
+  if (mushroom <= 0) return 0;
+  const disease = roundCount(diseaseCount);
+  return Math.round((disease / mushroom) * 1000) / 10;
+}
+
+export function formatDiseasePercent(percent: number): string {
+  const rounded = Math.round(percent * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
+function diseaseScopePrefix(shedCode: string | null): string {
+  return shedCode ? `棚区 ${shedCode} ` : '';
+}
+
+function diseaseScopeLabel(shedCode: string | null): string {
+  return shedCode ? `棚区 ${shedCode}` : DISEASE_WARN_LABEL.scopeAll;
+}
+
+export function formatDiseaseWarnRatioNote(
+  reminder: Pick<DiseaseRatioReminder, 'active' | 'threshold' | 'percent' | 'shedCode'>,
+): string {
+  if (!reminder.active || reminder.threshold === null) return '';
+  const scope = diseaseScopePrefix(reminder.shedCode);
+  return `病害预警 ${scope}比例≥${reminder.threshold}% 当前${formatDiseasePercent(reminder.percent)}%`;
+}
+
+export function formatDiseaseWarnSevereNote(
+  reminder: Pick<DiseaseSevereReminder, 'active' | 'threshold' | 'severeCount' | 'shedCode'>,
+): string {
+  if (!reminder.active || reminder.threshold === null) return '';
+  const scope = diseaseScopePrefix(reminder.shedCode);
+  return `病害预警 ${scope}重度≥${reminder.threshold} 当前${reminder.severeCount}`;
+}
+
+export function formatDiseaseWarnConfig(warning: {
+  ratio: Pick<DiseaseRatioReminder, 'threshold' | 'percent' | 'shedCode'>;
+  severe: Pick<DiseaseSevereReminder, 'threshold' | 'severeCount' | 'shedCode'>;
+}): string {
+  const { ratio, severe } = warning;
+  if (ratio.threshold === null && severe.threshold === null) return DISEASE_WARN_LABEL.unset;
+  const parts: string[] = [];
+  if (ratio.threshold === null) {
+    parts.push('尚未配置病害比例阈值');
+  } else {
+    parts.push(
+      `${DISEASE_WARN_LABEL.ratioThreshold} ${ratio.threshold}% · ${diseaseScopeLabel(ratio.shedCode)} · 当前比例 ${formatDiseasePercent(ratio.percent)}%`,
+    );
+  }
+  if (severe.threshold === null) {
+    parts.push('尚未配置重度病害数量阈值');
+  } else {
+    parts.push(
+      `${DISEASE_WARN_LABEL.severeThreshold} ${severe.threshold} · ${diseaseScopeLabel(severe.shedCode)} · 当前重度 ${severe.severeCount}`,
+    );
+  }
+  return parts.join(' · ');
+}
+
+function chooseDiseaseRule(
+  rules: MaturePickRuleInput[],
+  metric: string,
+): { ruleId: string | null; shedCode: string | null; threshold: number } | null {
+  const candidates: Array<{ ruleId: string | null; shedCode: string | null; threshold: number }> =
+    [];
+  for (const rule of rules) {
+    if (!rule.enabled || rule.metric !== metric) continue;
+    const threshold = diseaseWarnThresholdInteger(rule.threshold);
+    if (threshold === null) continue;
+    candidates.push({
+      ruleId: rule.id ? String(rule.id) : null,
+      shedCode: blankShedCode(rule.shedCode),
+      threshold,
+    });
+  }
+  const baseWide = candidates.filter((row) => row.shedCode === null);
+  const pool = baseWide.length ? baseWide : candidates;
+  pool.sort((a, b) => {
+    if (a.threshold !== b.threshold) return a.threshold - b.threshold;
+    return String(a.ruleId ?? '').localeCompare(String(b.ruleId ?? ''));
+  });
+  return pool[0] ?? null;
+}
+
+function sumDiseaseSheds(sheds: ShedDiseaseLive[]) {
+  const byShed = new Map<string, { mushroom: number; disease: number; severe: number }>();
+  for (const shed of sheds) {
+    const code = blankShedCode(shed.shedCode);
+    if (!code) continue;
+    const slot = byShed.get(code) ?? { mushroom: 0, disease: 0, severe: 0 };
+    slot.mushroom += roundCount(shed.mushroomCount);
+    slot.disease += roundCount(shed.diseaseCount);
+    slot.severe += roundCount(shed.severeCount);
+    byShed.set(code, slot);
+  }
+  let mushroom = 0;
+  let disease = 0;
+  let severe = 0;
+  for (const slot of byShed.values()) {
+    mushroom += slot.mushroom;
+    disease += slot.disease;
+    severe += slot.severe;
+  }
+  return { byShed, mushroom, disease, severe };
+}
+
+/**
+ * 已启用的病害比例规则和重度病害数量规则，各自独立。
+ * 有全场规则时用全场（空棚区），否则用阈值最小的棚规则。
+ * 比例是当日病害数 ÷ 当日蘑菇数，百分数保留一位；重度是病害等级为 3 的数量合计。
+ * 当前值 ≥ 阈值时该条预警生效。没有启用规则时阈值是空，不预警。
+ */
+export function evaluateDiseaseWarning(
+  rules: MaturePickRuleInput[],
+  sheds: ShedDiseaseLive[],
+): DiseaseWarning {
+  const totals = sumDiseaseSheds(sheds);
+  const ratioRule = chooseDiseaseRule(rules, DISEASE_RATIO_METRIC);
+  const severeRule = chooseDiseaseRule(rules, DISEASE_SEVERE_METRIC);
+  const ratioCounts = ratioRule?.shedCode
+    ? (totals.byShed.get(ratioRule.shedCode) ?? { mushroom: 0, disease: 0, severe: 0 })
+    : totals;
+  const severeCounts = severeRule?.shedCode
+    ? (totals.byShed.get(severeRule.shedCode) ?? { mushroom: 0, disease: 0, severe: 0 })
+    : totals;
+  const percent = diseaseRatioPercent(
+    ratioRule ? ratioCounts.disease : totals.disease,
+    ratioRule ? ratioCounts.mushroom : totals.mushroom,
+  );
+  const severeCount = severeRule ? severeCounts.severe : totals.severe;
+  const ratio: DiseaseRatioReminder = {
+    ruleId: ratioRule?.ruleId ?? null,
+    shedCode: ratioRule?.shedCode ?? null,
+    threshold: ratioRule?.threshold ?? null,
+    percent,
+    active: ratioRule ? percent >= ratioRule.threshold : false,
+    note: '',
+  };
+  ratio.note = formatDiseaseWarnRatioNote(ratio);
+  const severe: DiseaseSevereReminder = {
+    ruleId: severeRule?.ruleId ?? null,
+    shedCode: severeRule?.shedCode ?? null,
+    threshold: severeRule?.threshold ?? null,
+    severeCount,
+    active: severeRule ? severeCount >= severeRule.threshold : false,
+    note: '',
+  };
+  severe.note = formatDiseaseWarnSevereNote(severe);
+  return { ratio, severe };
+}
+
+const diseasePercent = z
+  .number()
+  .nonnegative()
+  .finite()
+  .refine((value) => Math.abs(value * 10 - Math.round(value * 10)) < 1e-6, {
+    message: '病害比例须保留一位小数',
+  });
+
+export const diseaseWarnOverviewSchema = z
+  .object({
+    diseaseWarnRatioRuleId: z.string().min(1).nullable(),
+    diseaseWarnRatioShedCode: z.string().min(1).nullable(),
+    diseaseWarnRatioThreshold: z.number().int().nonnegative().nullable(),
+    diseaseWarnRatioPercent: diseasePercent,
+    diseaseWarnRatioActive: z.boolean(),
+    diseaseWarnRatioNote: z.string(),
+    diseaseWarnSevereRuleId: z.string().min(1).nullable(),
+    diseaseWarnSevereShedCode: z.string().min(1).nullable(),
+    diseaseWarnSevereThreshold: z.number().int().nonnegative().nullable(),
+    diseaseWarnSevereCount: z.number().int().nonnegative(),
+    diseaseWarnSevereActive: z.boolean(),
+    diseaseWarnSevereNote: z.string(),
+  })
+  .strict()
+  .refine(
+    (row) =>
+      row.diseaseWarnRatioNote ===
+        formatDiseaseWarnRatioNote({
+          active: row.diseaseWarnRatioActive,
+          threshold: row.diseaseWarnRatioThreshold,
+          percent: row.diseaseWarnRatioPercent,
+          shedCode: row.diseaseWarnRatioShedCode,
+        }) &&
+      row.diseaseWarnSevereNote ===
+        formatDiseaseWarnSevereNote({
+          active: row.diseaseWarnSevereActive,
+          threshold: row.diseaseWarnSevereThreshold,
+          severeCount: row.diseaseWarnSevereCount,
+          shedCode: row.diseaseWarnSevereShedCode,
+        }),
+    { message: '病害预警旁注与当前值、阈值不一致' },
+  );
+
+export type DiseaseWarnOverview = z.infer<typeof diseaseWarnOverviewSchema>;
+
+export function diseaseWarnOverviewFields(warning: DiseaseWarning): DiseaseWarnOverview {
+  return {
+    diseaseWarnRatioRuleId: warning.ratio.ruleId,
+    diseaseWarnRatioShedCode: warning.ratio.shedCode,
+    diseaseWarnRatioThreshold: warning.ratio.threshold,
+    diseaseWarnRatioPercent: warning.ratio.percent,
+    diseaseWarnRatioActive: warning.ratio.active,
+    diseaseWarnRatioNote: warning.ratio.note,
+    diseaseWarnSevereRuleId: warning.severe.ruleId,
+    diseaseWarnSevereShedCode: warning.severe.shedCode,
+    diseaseWarnSevereThreshold: warning.severe.threshold,
+    diseaseWarnSevereCount: warning.severe.severeCount,
+    diseaseWarnSevereActive: warning.severe.active,
+    diseaseWarnSevereNote: warning.severe.note,
+  };
+}
+
+export function diseaseWarnFromOverview(row: DiseaseWarnOverview): DiseaseWarning {
+  return {
+    ratio: {
+      ruleId: row.diseaseWarnRatioRuleId,
+      shedCode: row.diseaseWarnRatioShedCode,
+      threshold: row.diseaseWarnRatioThreshold,
+      percent: row.diseaseWarnRatioPercent,
+      active: row.diseaseWarnRatioActive,
+      note: row.diseaseWarnRatioNote,
+    },
+    severe: {
+      ruleId: row.diseaseWarnSevereRuleId,
+      shedCode: row.diseaseWarnSevereShedCode,
+      threshold: row.diseaseWarnSevereThreshold,
+      severeCount: row.diseaseWarnSevereCount,
+      active: row.diseaseWarnSevereActive,
+      note: row.diseaseWarnSevereNote,
+    },
+  };
+}
+
+/** 从总览响应里取出病害预警。其余字段不参与。 */
+export function parseDiseaseWarning(raw: unknown): ParseResult<DiseaseWarnOverview> {
+  const record = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const parsed = diseaseWarnOverviewSchema.safeParse({
+    diseaseWarnRatioRuleId: record.diseaseWarnRatioRuleId,
+    diseaseWarnRatioShedCode: record.diseaseWarnRatioShedCode,
+    diseaseWarnRatioThreshold: record.diseaseWarnRatioThreshold,
+    diseaseWarnRatioPercent: record.diseaseWarnRatioPercent,
+    diseaseWarnRatioActive: record.diseaseWarnRatioActive,
+    diseaseWarnRatioNote: record.diseaseWarnRatioNote,
+    diseaseWarnSevereRuleId: record.diseaseWarnSevereRuleId,
+    diseaseWarnSevereShedCode: record.diseaseWarnSevereShedCode,
+    diseaseWarnSevereThreshold: record.diseaseWarnSevereThreshold,
+    diseaseWarnSevereCount: record.diseaseWarnSevereCount,
+    diseaseWarnSevereActive: record.diseaseWarnSevereActive,
+    diseaseWarnSevereNote: record.diseaseWarnSevereNote,
   });
   if (!parsed.success) {
     const issue = zodErrors(parsed.error);
