@@ -6,7 +6,9 @@ import {
   ALERT_LEVEL_LABEL,
   ALERT_STATUS_LABEL,
   DEVICE_TYPE_LABEL,
+  LIVE_MUSHROOM_TOTAL_LABEL,
   ROLE_LABEL,
+  formatLiveMushroomTotalsNote,
   shanghaiDate,
   shanghaiDayRange,
   type AlertLevel,
@@ -27,6 +29,9 @@ interface Overview {
   todayRecognitionCount?: number;
   todayCaptureCount?: number;
   todayDiseaseCount?: number;
+  liveMushroomTotal?: number;
+  liveMatureTotal?: number;
+  liveImmatureTotal?: number;
   openAlerts: number;
   severeAlerts: number;
   env: {
@@ -235,6 +240,36 @@ const todayNote = computed(() => {
 const todayDiseaseNote = computed(() => {
   const value = metricTiles.value.find((tile) => tile.key === 'diseases')?.value ?? '—';
   return `当日病害总数 ${value}`;
+});
+const liveMushroomCards = computed(() => {
+  const summary = overview.value;
+  const label = LIVE_MUSHROOM_TOTAL_LABEL;
+  return [
+    {
+      key: 'live-mushroom',
+      label: label.liveMushroomTotal,
+      value: summary ? String(summary.liveMushroomTotal ?? 0) : '—',
+    },
+    {
+      key: 'live-mature',
+      label: label.liveMatureTotal,
+      value: summary ? String(summary.liveMatureTotal ?? 0) : '—',
+    },
+    {
+      key: 'live-immature',
+      label: label.liveImmatureTotal,
+      value: summary ? String(summary.liveImmatureTotal ?? 0) : '—',
+    },
+  ];
+});
+const liveMushroomNote = computed(() => {
+  const summary = overview.value;
+  if (!summary) return '在养蘑菇总数 — · 成熟可采摘总数 — · 待成熟数量 —';
+  return formatLiveMushroomTotalsNote({
+    liveMushroomTotal: summary.liveMushroomTotal ?? 0,
+    liveMatureTotal: summary.liveMatureTotal ?? 0,
+    liveImmatureTotal: summary.liveImmatureTotal ?? 0,
+  });
 });
 
 const points = computed(() =>
@@ -758,6 +793,13 @@ onBeforeUnmount(() => {
       <template v-else>
         <p class="today-note" data-field="today-note">{{ todayNote }}</p>
         <p class="today-note" data-field="today-disease-note">{{ todayDiseaseNote }}</p>
+        <div class="live-mushroom-totals" aria-label="在养蘑菇总数、成熟可采摘总数、待成熟数量">
+          <article v-for="card in liveMushroomCards" :key="card.key" class="tile" :data-field="card.key">
+            <p class="tile-label">{{ card.label }}</p>
+            <p class="tile-value">{{ card.value }}</p>
+          </article>
+          <p class="today-note" data-field="live-mushroom-note">{{ liveMushroomNote }}</p>
+        </div>
       </template>
     </section>
 
@@ -1026,6 +1068,13 @@ onBeforeUnmount(() => {
 .metric-error,
 .today-note {
   grid-column: 1 / -1;
+}
+
+.live-mushroom-totals {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .today-note {
@@ -1703,6 +1752,10 @@ onBeforeUnmount(() => {
 
   .metrics {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .live-mushroom-totals {
+    grid-template-columns: 1fr;
   }
 }
 

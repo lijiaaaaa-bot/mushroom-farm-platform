@@ -34,6 +34,11 @@ describe('dashboard overview bucket reads', () => {
         captureCount: 2,
         diseaseCount: 5,
       }),
+      liveMushroomTotals: jest.fn().mockResolvedValue({
+        liveMushroomTotal: 30,
+        liveMatureTotal: 11,
+        liveImmatureTotal: 19,
+      }),
       trendFromDayBuckets: jest
         .fn()
         .mockResolvedValue([
@@ -63,6 +68,7 @@ describe('dashboard overview bucket reads', () => {
     const overview = await dashboard.overview(user);
     expect(query).not.toHaveBeenCalled();
     expect(growth.todaySnapshot).toHaveBeenCalled();
+    expect(growth.liveMushroomTotals).toHaveBeenCalled();
     expect(growth.trendFromDayBuckets).toHaveBeenCalled();
     expect(growth.latestEnvironment).toHaveBeenCalled();
     expect(overview.todayMushroom).toBe(9);
@@ -70,6 +76,9 @@ describe('dashboard overview bucket reads', () => {
     expect(overview.todayRecognitionCount).toBe(4);
     expect(overview.todayCaptureCount).toBe(2);
     expect(overview.todayDiseaseCount).toBe(5);
+    expect(overview.liveMushroomTotal).toBe(30);
+    expect(overview.liveMatureTotal).toBe(11);
+    expect(overview.liveImmatureTotal).toBe(19);
     expect(overview.harvestableCameras).toBe(1);
     expect(overview.trend).toEqual([
       { day: '2026-09-24', mushroom: 9, mature: 3, disease: 2 },

@@ -928,6 +928,80 @@ export function parseSystemParamsPatchResult(
   return { ok: true, value: parsed.data };
 }
 
+/** 总览与基地大屏上的实时在养三数。 */
+export const LIVE_MUSHROOM_TOTAL_LABEL = {
+  liveMushroomTotal: '在养蘑菇总数',
+  liveMatureTotal: '成熟可采摘总数',
+  liveImmatureTotal: '待成熟数量',
+} as const;
+
+export const liveMushroomTotalsSchema = z
+  .object({
+    liveMushroomTotal: z.number().int().nonnegative(),
+    liveMatureTotal: z.number().int().nonnegative(),
+    liveImmatureTotal: z.number().int().nonnegative(),
+  })
+  .strict();
+
+export type LiveMushroomTotals = z.infer<typeof liveMushroomTotalsSchema>;
+
+/** 一棚当日：各摄像头最新蘑菇、成熟已经相加。 */
+export interface ShedLiveMushroomCounts {
+  mushroomCount: number;
+  matureCount: number;
+}
+
+/**
+ * 待成熟 = 蘑菇数 − 成熟数。
+ * 蘑菇为 0，或相减为负时，是 0。与单棚实时相同。
+ */
+export function pendingLiveCount(mushroom: number, mature: number): number {
+  if (!Number.isFinite(mushroom) || mushroom <= 0) return 0;
+  const pending = Math.round(mushroom) - (Number.isFinite(mature) ? Math.round(mature) : 0);
+  return pending > 0 ? pending : 0;
+}
+
+/**
+ * 全场三数。每一棚的待成熟在该棚蘑菇、成熟相加之后再算，然后三数分别相加。
+ * 不把全场蘑菇减全场成熟一次算完。
+ */
+export function sumShedLiveMushroomTotals(
+  sheds: ShedLiveMushroomCounts[],
+): LiveMushroomTotals {
+  let liveMushroomTotal = 0;
+  let liveMatureTotal = 0;
+  let liveImmatureTotal = 0;
+  for (const shed of sheds) {
+    const mushroom = Number.isFinite(shed.mushroomCount) ? Math.round(shed.mushroomCount) : 0;
+    const mature = Number.isFinite(shed.matureCount) ? Math.round(shed.matureCount) : 0;
+    liveMushroomTotal += mushroom;
+    liveMatureTotal += mature;
+    liveImmatureTotal += pendingLiveCount(mushroom, mature);
+  }
+  return { liveMushroomTotal, liveMatureTotal, liveImmatureTotal };
+}
+
+export function formatLiveMushroomTotalsNote(totals: LiveMushroomTotals): string {
+  const label = LIVE_MUSHROOM_TOTAL_LABEL;
+  return `${label.liveMushroomTotal} ${totals.liveMushroomTotal} · ${label.liveMatureTotal} ${totals.liveMatureTotal} · ${label.liveImmatureTotal} ${totals.liveImmatureTotal}`;
+}
+
+/** 从总览响应里取出三数。其余字段不参与。 */
+export function parseLiveMushroomTotals(raw: unknown): ParseResult<LiveMushroomTotals> {
+  const record =
+    raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const parsed = liveMushroomTotalsSchema.safeParse({
+    liveMushroomTotal: record.liveMushroomTotal,
+    liveMatureTotal: record.liveMatureTotal,
+    liveImmatureTotal: record.liveImmatureTotal,
+  });
+  if (!parsed.success) {
+    const issue = zodErrors(parsed.error);
+    return fail(issue.code, issue.errors);
+  }
+  return { ok: true, value: parsed.data };
+}
+
 export function isRole(value: string): value is Role {
   return roleSchema.safeParse(value).success;
 }

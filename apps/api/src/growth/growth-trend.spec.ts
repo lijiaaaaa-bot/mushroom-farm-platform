@@ -1083,6 +1083,68 @@ describe('hour buckets and disease peaks', () => {
     expect(scoped.diseaseCount).toBe(4);
   });
 
+  it('sums camera-latest mushroom totals per shed before immature, farm-wide', async () => {
+    const now = new Date('2026-09-24T03:30:00.000Z');
+    const today = todayShanghai(now);
+    const start = shanghaiDayRange(today).start;
+    const yesterday = shanghaiDayRange(shiftShanghaiDay(today, -1)).start;
+    const days = memoryMetricBuckets();
+    seedMetric(days, start, 'S01', 'CAM-LMT-01', METRIC_MUSHROOM_COUNT, 20);
+    seedMetric(days, start, 'S01', 'CAM-LMT-01', METRIC_MATURE_COUNT, 8);
+    seedMetric(days, start, 'S01', 'CAM-LMT-02', METRIC_MUSHROOM_COUNT, 10);
+    seedMetric(days, start, 'S01', 'CAM-LMT-02', METRIC_MATURE_COUNT, 3);
+    seedMetric(days, start, 'S01', '', METRIC_MUSHROOM_COUNT, 30);
+    seedMetric(days, start, 'S01', '', METRIC_MATURE_COUNT, 11);
+    seedMetric(days, start, 'S01', 'CAM-LMT-01', METRIC_DISEASE_COUNT, 50);
+    seedMetric(days, start, 'S02', 'CAM-LMT-ZERO', METRIC_MUSHROOM_COUNT, 0);
+    seedMetric(days, start, 'S02', 'CAM-LMT-ZERO', METRIC_MATURE_COUNT, 0);
+    seedMetric(days, start, 'S03', 'CAM-OVER', METRIC_MUSHROOM_COUNT, 4);
+    seedMetric(days, start, 'S03', 'CAM-OVER', METRIC_MATURE_COUNT, 10);
+    seedMetric(days, yesterday, 'S01', 'CAM-OLD', METRIC_MUSHROOM_COUNT, 99);
+    seedMetric(days, yesterday, 'S01', 'CAM-OLD', METRIC_MATURE_COUNT, 99);
+    const records = memoryRecords([]);
+    const scan = jest.spyOn(records, 'createQueryBuilder');
+    const service = new GrowthTrendService(
+      records as never,
+      memoryMetricBuckets() as never,
+      days as never,
+    );
+    const { ShedScope } = await import('../common/shed-scope');
+    const all = await service.liveMushroomTotals(
+      ShedScope.fromUser(admin),
+      now,
+    );
+    expect(scan).not.toHaveBeenCalled();
+    expect(all).toEqual({
+      liveMushroomTotal: 34,
+      liveMatureTotal: 21,
+      liveImmatureTotal: 19,
+    });
+    const manager: AuthUser = {
+      ...admin,
+      role: 'shed_manager',
+      shedCodes: ['S01'],
+    };
+    const scoped = await service.liveMushroomTotals(
+      ShedScope.fromUser(manager),
+      now,
+    );
+    expect(scoped).toEqual({
+      liveMushroomTotal: 30,
+      liveMatureTotal: 11,
+      liveImmatureTotal: 19,
+    });
+    const empty = await service.liveMushroomTotals(
+      ShedScope.fromUser({ ...admin, role: 'viewer', shedCodes: [] }),
+      now,
+    );
+    expect(empty).toEqual({
+      liveMushroomTotal: 0,
+      liveMatureTotal: 0,
+      liveImmatureTotal: 0,
+    });
+  });
+
   it('writes environment hour and day means from observedAt and serves disease peaks from buckets', async () => {
     const hours = memoryMetricBuckets();
     const days = memoryMetricBuckets();

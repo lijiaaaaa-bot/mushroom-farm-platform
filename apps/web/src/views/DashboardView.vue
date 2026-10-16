@@ -5,6 +5,8 @@ import {
   ALERT_LEVEL_LABEL,
   ALERT_METRIC_LABEL,
   ALERT_STATUS_LABEL,
+  LIVE_MUSHROOM_TOTAL_LABEL,
+  formatLiveMushroomTotalsNote,
   type AlertLevel,
   type AlertMetric,
   type AlertStatus,
@@ -48,6 +50,9 @@ interface Overview {
   todayRecognitionCount?: number;
   todayCaptureCount?: number;
   todayDiseaseCount?: number;
+  liveMushroomTotal?: number;
+  liveMatureTotal?: number;
+  liveImmatureTotal?: number;
   harvestableCameras?: number;
   openAlerts?: number;
   severeAlerts?: number;
@@ -128,6 +133,13 @@ const todayNote = computed(() => {
 });
 const todayDiseaseNote = computed(
   () => `当日病害总数 ${formatCount(data.value?.todayDiseaseCount)}`,
+);
+const liveMushroomNote = computed(() =>
+  formatLiveMushroomTotalsNote({
+    liveMushroomTotal: Number(formatCount(data.value?.liveMushroomTotal)),
+    liveMatureTotal: Number(formatCount(data.value?.liveMatureTotal)),
+    liveImmatureTotal: Number(formatCount(data.value?.liveImmatureTotal)),
+  }),
 );
 
 function formatCount(value: number | null | undefined) {
@@ -518,6 +530,21 @@ onBeforeUnmount(() => {
       </article>
       <p class="today-counts-note" data-field="today-note">{{ todayNote }}</p>
       <p class="today-counts-note" data-field="today-disease-note">{{ todayDiseaseNote }}</p>
+    </section>
+    <section class="today-counts" aria-label="在养蘑菇总数、成熟可采摘总数、待成熟数量">
+      <article class="tb-card">
+        <h2>{{ LIVE_MUSHROOM_TOTAL_LABEL.liveMushroomTotal }}</h2>
+        <p class="today-count" data-field="live-mushroom">{{ formatCount(data.liveMushroomTotal) }}</p>
+      </article>
+      <article class="tb-card">
+        <h2>{{ LIVE_MUSHROOM_TOTAL_LABEL.liveMatureTotal }}</h2>
+        <p class="today-count" data-field="live-mature">{{ formatCount(data.liveMatureTotal) }}</p>
+      </article>
+      <article class="tb-card">
+        <h2>{{ LIVE_MUSHROOM_TOTAL_LABEL.liveImmatureTotal }}</h2>
+        <p class="today-count" data-field="live-immature">{{ formatCount(data.liveImmatureTotal) }}</p>
+      </article>
+      <p class="today-counts-note" data-field="live-mushroom-note">{{ liveMushroomNote }}</p>
     </section>
     <section class="tb-top">
       <article class="tb-card">

@@ -23,6 +23,7 @@ export class DashboardService {
   async overview(user: AuthUser) {
     const scope = ShedScope.fromUser(user);
     const today = await this.growth.todaySnapshot(scope);
+    const live = await this.growth.liveMushroomTotals(scope);
     const deviceCounts = await this.devices.counts(user);
     const shedQb = this.sheds.createQueryBuilder('s');
     if (scope.codes) {
@@ -62,6 +63,9 @@ export class DashboardService {
       todayRecognitionCount: today.recognitionCount,
       todayCaptureCount: today.captureCount,
       todayDiseaseCount: today.diseaseCount,
+      liveMushroomTotal: live.liveMushroomTotal,
+      liveMatureTotal: live.liveMatureTotal,
+      liveImmatureTotal: live.liveImmatureTotal,
       harvestableCameras: today.harvestableCameras,
       openAlerts,
       severeAlerts,
