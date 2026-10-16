@@ -29,13 +29,18 @@ import {
   sumShedLiveMushroomTotals,
   formatLiveMushroomTotalsNote,
   LIVE_MUSHROOM_TOTAL_LABEL,
+  DEVICE_ONLINE_BY_TYPE_LABEL,
   ENV_ANOMALY_POINT_LABEL,
   ENV_MEAN_LABEL,
+  countDevicesOnlineByType,
   countEnvAnomalyPoints,
+  formatDeviceOnlineByTypeNote,
+  formatDeviceOnlineRatio,
   formatEnvAnomalyPointNote,
   formatEnvMeanNote,
   formatEnvMeanValue,
   meanFarmEnvironment,
+  parseDeviceOnlineByType,
   parseEnvAnomalyPointCount,
   parseFarmEnvMeans,
   sensorIsEnvAnomaly,
@@ -604,6 +609,71 @@ describe('golden fixtures', () => {
     assert.equal(parseEnvAnomalyPointCount({}).ok, false);
     assert.equal(parseEnvAnomalyPointCount({ envAnomalyPointCount: 1.5 }).ok, false);
     assert.equal(parseEnvAnomalyPointCount({ envAnomalyPointCount: -1 }).ok, false);
+  });
+
+  it('counts online devices by type and formats the note', () => {
+    const devices = [
+      { type: 'camera', onlineStatus: 'online' },
+      { type: 'camera', onlineStatus: 'offline' },
+      { type: 'camera', onlineStatus: 'offline' },
+      { type: 'ai_box', onlineStatus: 'online' },
+      { type: 'ai_box', onlineStatus: 'offline' },
+      { type: 'sensor', onlineStatus: 'online' },
+      { type: 'sensor', onlineStatus: 'offline' },
+      { type: 'other', onlineStatus: 'online' },
+      { type: 'camera', onlineStatus: 'asleep' },
+    ];
+    const counts = countDevicesOnlineByType(devices);
+    assert.deepEqual(counts, {
+      cameraOnline: 1,
+      cameraTotal: 4,
+      aiBoxOnline: 1,
+      aiBoxTotal: 2,
+      sensorOnline: 1,
+      sensorTotal: 2,
+    });
+    assert.equal(countDevicesOnlineByType([]).cameraTotal, 0);
+    assert.equal(DEVICE_ONLINE_BY_TYPE_LABEL.title, '全局设备在线');
+    assert.equal(DEVICE_ONLINE_BY_TYPE_LABEL.aiBox, 'AI盒子');
+    assert.equal(formatDeviceOnlineRatio(1, 6), '1/6');
+    assert.equal(
+      formatDeviceOnlineByTypeNote({
+        cameraOnline: 1,
+        cameraTotal: 6,
+        aiBoxOnline: 1,
+        aiBoxTotal: 4,
+        sensorOnline: 1,
+        sensorTotal: 4,
+      }),
+      '摄像头 1/6 · AI盒子 1/4 · 传感器 1/4',
+    );
+    const parsed = parseDeviceOnlineByType({
+      cameraOnline: 1,
+      cameraTotal: 6,
+      aiBoxOnline: 1,
+      aiBoxTotal: 4,
+      sensorOnline: 1,
+      sensorTotal: 4,
+      deviceOnline: 3,
+      envAnomalyPointCount: 2,
+    });
+    assert.equal(parsed.ok, true);
+    if (parsed.ok) {
+      assert.equal(formatDeviceOnlineByTypeNote(parsed.value), '摄像头 1/6 · AI盒子 1/4 · 传感器 1/4');
+    }
+    assert.equal(parseDeviceOnlineByType({}).ok, false);
+    assert.equal(parseDeviceOnlineByType({ cameraOnline: 1.5, cameraTotal: 2, aiBoxOnline: 0, aiBoxTotal: 0, sensorOnline: 0, sensorTotal: 0 }).ok, false);
+    assert.equal(
+      parseDeviceOnlineByType({
+        cameraOnline: 3,
+        cameraTotal: 2,
+        aiBoxOnline: 0,
+        aiBoxTotal: 0,
+        sensorOnline: 0,
+        sensorTotal: 0,
+      }).ok,
+      false,
+    );
   });
 
   it('loads the snapshot key fixture', () => {

@@ -69,7 +69,17 @@ describe('dashboard overview bucket reads', () => {
       ]),
     };
     const dashboard = new DashboardService(
-      { counts: async () => ({ total: 2, online: 1 }) } as never,
+      {
+        counts: async () => ({ total: 4, online: 2 }),
+        countsByType: async () => ({
+          cameraOnline: 1,
+          cameraTotal: 2,
+          aiBoxOnline: 1,
+          aiBoxTotal: 1,
+          sensorOnline: 0,
+          sensorTotal: 1,
+        }),
+      } as never,
       { createQueryBuilder: () => qb } as never,
       { createQueryBuilder: () => qb } as never,
       { createQueryBuilder: () => qb, query } as never,
@@ -115,6 +125,14 @@ describe('dashboard overview bucket reads', () => {
     expect(overview.envMeanCo2).toBe(800);
     expect(overview.envMeanSubstrateMoisture).toBe(73);
     expect(overview.envAnomalyPointCount).toBe(2);
+    expect(overview.deviceTotal).toBe(4);
+    expect(overview.deviceOnline).toBe(2);
+    expect(overview.cameraOnline).toBe(1);
+    expect(overview.cameraTotal).toBe(2);
+    expect(overview.aiBoxOnline).toBe(1);
+    expect(overview.aiBoxTotal).toBe(1);
+    expect(overview.sensorOnline).toBe(0);
+    expect(overview.sensorTotal).toBe(1);
     expect(overview.harvestableCameras).toBe(1);
     expect(overview.trend).toEqual([
       { day: '2026-09-24', mushroom: 9, mature: 3, disease: 2 },

@@ -215,6 +215,13 @@ body {
   grid-template-columns: minmax(0, 280px);
 }
 
+.device-online-block .device-online-title {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
 .tb-top,
 .tb-bottom {
   display: grid;

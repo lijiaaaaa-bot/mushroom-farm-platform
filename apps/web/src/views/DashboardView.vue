@@ -5,10 +5,14 @@ import {
   ALERT_LEVEL_LABEL,
   ALERT_METRIC_LABEL,
   ALERT_STATUS_LABEL,
+  DEVICE_ONLINE_BY_TYPE_LABEL,
   ENV_ANOMALY_POINT_LABEL,
   ENV_MEAN_LABEL,
   LIVE_MUSHROOM_TOTAL_LABEL,
+  formatDeviceOnlineByTypeNote,
+  formatDeviceOnlineRatio,
   formatEnvAnomalyPointNote,
+  parseDeviceOnlineByType,
   formatEnvMeanNote,
   formatEnvMeanValue,
   formatLiveMushroomTotalsNote,
@@ -64,6 +68,12 @@ interface Overview {
   envMeanCo2?: number | null;
   envMeanSubstrateMoisture?: number | null;
   envAnomalyPointCount?: number;
+  cameraOnline?: number;
+  cameraTotal?: number;
+  aiBoxOnline?: number;
+  aiBoxTotal?: number;
+  sensorOnline?: number;
+  sensorTotal?: number;
   harvestableCameras?: number;
   openAlerts?: number;
   severeAlerts?: number;
@@ -165,6 +175,20 @@ const envAnomalyPointCount = computed(() => {
   return Math.trunc(value);
 });
 const envAnomalyNote = computed(() => formatEnvAnomalyPointNote(envAnomalyPointCount.value));
+const deviceOnlineByType = computed(() => {
+  const parsed = parseDeviceOnlineByType(data.value ?? {});
+  return parsed.ok
+    ? parsed.value
+    : {
+        cameraOnline: 0,
+        cameraTotal: 0,
+        aiBoxOnline: 0,
+        aiBoxTotal: 0,
+        sensorOnline: 0,
+        sensorTotal: 0,
+      };
+});
+const deviceOnlineNote = computed(() => formatDeviceOnlineByTypeNote(deviceOnlineByType.value));
 
 function formatCount(value: number | null | undefined) {
   if (typeof value !== 'number' || !Number.isFinite(value)) return '0';
@@ -600,6 +624,22 @@ onBeforeUnmount(() => {
         <p class="today-count" data-field="env-anomaly-count">{{ formatCount(envAnomalyPointCount) }}</p>
       </article>
       <p class="today-counts-note" data-field="env-anomaly-note">{{ envAnomalyNote }}</p>
+    </section>
+    <section class="today-counts device-online-block" aria-label="全局设备在线">
+      <h2 class="device-online-title" data-field="device-online-title">{{ DEVICE_ONLINE_BY_TYPE_LABEL.title }}</h2>
+      <article class="tb-card">
+        <h2 data-field="device-online-camera-title">{{ DEVICE_ONLINE_BY_TYPE_LABEL.camera }}</h2>
+        <p class="today-count" data-field="device-online-camera">{{ formatDeviceOnlineRatio(deviceOnlineByType.cameraOnline, deviceOnlineByType.cameraTotal) }}</p>
+      </article>
+      <article class="tb-card">
+        <h2 data-field="device-online-aibox-title">{{ DEVICE_ONLINE_BY_TYPE_LABEL.aiBox }}</h2>
+        <p class="today-count" data-field="device-online-aibox">{{ formatDeviceOnlineRatio(deviceOnlineByType.aiBoxOnline, deviceOnlineByType.aiBoxTotal) }}</p>
+      </article>
+      <article class="tb-card">
+        <h2 data-field="device-online-sensor-title">{{ DEVICE_ONLINE_BY_TYPE_LABEL.sensor }}</h2>
+        <p class="today-count" data-field="device-online-sensor">{{ formatDeviceOnlineRatio(deviceOnlineByType.sensorOnline, deviceOnlineByType.sensorTotal) }}</p>
+      </article>
+      <p class="today-counts-note" data-field="device-online-note">{{ deviceOnlineNote }}</p>
     </section>
     <section class="tb-top">
       <article class="tb-card">

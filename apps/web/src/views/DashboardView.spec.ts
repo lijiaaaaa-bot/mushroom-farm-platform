@@ -39,6 +39,12 @@ const overview = {
   envMeanCo2: 800,
   envMeanSubstrateMoisture: 73,
   envAnomalyPointCount: 2,
+  cameraOnline: 2,
+  cameraTotal: 3,
+  aiBoxOnline: 1,
+  aiBoxTotal: 2,
+  sensorOnline: 1,
+  sensorTotal: 2,
   harvestableCameras: 6,
   openAlerts: 8,
   severeAlerts: 2,
@@ -105,6 +111,16 @@ describe('DashboardView', () => {
     expect(wrapper.get('[data-field="env-anomaly-title"]').text()).toBe('异常环境点位数');
     expect(wrapper.get('[data-field="env-anomaly-count"]').text()).toBe('2');
     expect(wrapper.get('[data-field="env-anomaly-note"]').text()).toBe('异常环境点位数 2');
+    expect(wrapper.get('[data-field="device-online-title"]').text()).toBe('全局设备在线');
+    expect(wrapper.get('[data-field="device-online-camera-title"]').text()).toBe('摄像头');
+    expect(wrapper.get('[data-field="device-online-camera"]').text()).toBe('2/3');
+    expect(wrapper.get('[data-field="device-online-aibox-title"]').text()).toBe('AI盒子');
+    expect(wrapper.get('[data-field="device-online-aibox"]').text()).toBe('1/2');
+    expect(wrapper.get('[data-field="device-online-sensor-title"]').text()).toBe('传感器');
+    expect(wrapper.get('[data-field="device-online-sensor"]').text()).toBe('1/2');
+    expect(wrapper.get('[data-field="device-online-note"]').text()).toBe(
+      '摄像头 2/3 · AI盒子 1/2 · 传感器 1/2',
+    );
     expect(wrapper.text()).toContain('在养蘑菇总数');
     expect(wrapper.text()).toContain('成熟可采摘总数');
     expect(wrapper.text()).toContain('待成熟数量');
