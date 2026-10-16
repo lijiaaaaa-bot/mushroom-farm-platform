@@ -28,6 +28,8 @@ const overview = {
   deviceOnline: 8,
   todayMushroom: 40,
   todayMature: 221,
+  todayRecognitionCount: 3,
+  todayCaptureCount: 2,
   harvestableCameras: 6,
   openAlerts: 8,
   severeAlerts: 2,
@@ -72,6 +74,11 @@ describe('DashboardView', () => {
     expect(httpGet).toHaveBeenCalledWith('/dashboard/overview');
     expect(wrapper.find('.kpi-tile').exists()).toBe(false);
     expect(wrapper.find('.tb-kpi-strip').exists()).toBe(false);
+    expect(wrapper.get('[data-field="today-recognition"]').text()).toBe('3');
+    expect(wrapper.get('[data-field="today-capture"]').text()).toBe('2');
+    expect(wrapper.get('[data-field="today-note"]').text()).toBe('今日识别次数 3 · 今日抓拍总量 2');
+    expect(wrapper.text()).toContain('今日识别次数');
+    expect(wrapper.text()).toContain('今日抓拍总量');
     expect(wrapper.text()).toContain('棚区平面');
     expect(wrapper.text()).toContain('高温');
     expect(wrapper.text()).toContain('CAM-S01-01');

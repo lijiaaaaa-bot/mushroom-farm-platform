@@ -24,6 +24,8 @@ interface Overview {
   deviceOnline: number;
   todayMushroom: number;
   todayMature: number;
+  todayRecognitionCount?: number;
+  todayCaptureCount?: number;
   openAlerts: number;
   severeAlerts: number;
   env: {
@@ -193,6 +195,20 @@ const metricTiles = computed(() => {
       hot: false,
     },
     {
+      key: 'recognitions',
+      label: '今日识别次数',
+      value: summary ? String(summary.todayRecognitionCount ?? 0) : '—',
+      hint: '',
+      hot: false,
+    },
+    {
+      key: 'captures',
+      label: '今日抓拍总量',
+      value: summary ? String(summary.todayCaptureCount ?? 0) : '—',
+      hint: '',
+      hot: false,
+    },
+    {
       key: 'alerts',
       label: '未关闭告警',
       value: String(summary?.openAlerts ?? open.length),
@@ -200,6 +216,13 @@ const metricTiles = computed(() => {
       hot: (summary?.openAlerts ?? open.length) > 0,
     },
   ];
+});
+
+const todayNote = computed(() => {
+  const tiles = metricTiles.value;
+  const recognition = tiles.find((tile) => tile.key === 'recognitions')?.value ?? '—';
+  const capture = tiles.find((tile) => tile.key === 'captures')?.value ?? '—';
+  return `今日识别次数 ${recognition} · 今日抓拍总量 ${capture}`;
 });
 
 const points = computed(() =>
@@ -714,12 +737,13 @@ onBeforeUnmount(() => {
     </header>
 
     <section class="zone metrics" aria-label="指标">
-      <article v-for="tile in metricTiles" :key="tile.key" class="tile" :class="{ hot: tile.hot }">
+      <article v-for="tile in metricTiles" :key="tile.key" class="tile" :class="{ hot: tile.hot }" :data-field="tile.key">
         <p class="tile-label">{{ tile.label }}</p>
         <p class="tile-value">{{ tile.value }}</p>
         <p v-if="tile.hint" class="tile-hint">{{ tile.hint }}</p>
       </article>
       <p v-if="zoneError.overview" class="zone-error metric-error">{{ zoneError.overview }}</p>
+      <p v-else class="today-note" data-field="today-note">{{ todayNote }}</p>
     </section>
 
     <aside v-show="layout !== 'wall'" class="zone left">
@@ -972,7 +996,7 @@ onBeforeUnmount(() => {
 .metrics {
   grid-column: 1 / -1;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 8px;
   padding: 0;
   border: 0;
@@ -984,8 +1008,14 @@ onBeforeUnmount(() => {
   font-size: 22px;
 }
 
-.metric-error {
+.metric-error,
+.today-note {
   grid-column: 1 / -1;
+}
+
+.today-note {
+  margin: 0;
+  font-size: 14px;
 }
 
 .brand {

@@ -3,6 +3,7 @@ import { averageDiameter } from '@mushroom/contracts';
 export const METRIC_MUSHROOM_COUNT = 'mushroom_count';
 export const METRIC_CAP_DIAMETER_MEAN = 'cap_diameter_mean';
 export const METRIC_SAMPLE_COUNT = 'sample_count';
+export const METRIC_CAPTURE_COUNT = 'capture_count';
 export const METRIC_MATURE_COUNT = 'mature_count';
 export const METRIC_DISEASE_COUNT = 'disease_count';
 export const METRIC_ENV_TEMPERATURE = 'env_temperature';
@@ -14,6 +15,7 @@ export const RECOGNITION_METRICS = [
   METRIC_MUSHROOM_COUNT,
   METRIC_CAP_DIAMETER_MEAN,
   METRIC_SAMPLE_COUNT,
+  METRIC_CAPTURE_COUNT,
   METRIC_MATURE_COUNT,
   METRIC_DISEASE_COUNT,
 ] as const;
@@ -45,6 +47,9 @@ export interface RecognitionDelta {
   avgCapDiameter: number | null;
   matureCount?: number;
   diseaseCount?: number;
+  /** 有对象键或抓拍 URL 时，日桶 capture_count 加一。 */
+  snapshotObjectKey?: string | null;
+  snapshotUrl?: string | null;
 }
 
 export interface EnvironmentDelta {
@@ -124,6 +129,12 @@ export function applyRecognitionToBuckets(
     row.value = next;
     row.sampleCount = next;
   };
+  const bumpCapture = (cameraCode: string) => {
+    const row = touch(cameraCode, METRIC_CAPTURE_COUNT);
+    const next = (row.value ?? 0) + 1;
+    row.value = next;
+    row.sampleCount = next;
+  };
   const bumpMushroom = (cameraCode: string) => {
     const row = touch(cameraCode, METRIC_MUSHROOM_COUNT);
     const at = new Date(record.recognizedAt);
@@ -171,6 +182,10 @@ export function applyRecognitionToBuckets(
   bumpMean(record.cameraCode);
   bumpSample('');
   bumpMean('');
+  if (traceableSnapshot(record)) {
+    bumpCapture(record.cameraCode);
+    bumpCapture('');
+  }
   rollLatestSum(METRIC_MUSHROOM_COUNT);
   if (isFiniteCount(record.matureCount)) {
     bumpLatest(record.cameraCode, METRIC_MATURE_COUNT, record.matureCount);
@@ -185,6 +200,13 @@ export function applyRecognitionToBuckets(
 
 function isFiniteCount(value: number | undefined): value is number {
   return typeof value === 'number' && Number.isFinite(value);
+}
+
+/** 可溯源抓拍：对象键或抓拍 URL 有非空白内容。 */
+function traceableSnapshot(record: RecognitionDelta): boolean {
+  const key = record.snapshotObjectKey?.trim();
+  const url = record.snapshotUrl?.trim();
+  return Boolean(key || url);
 }
 
 /**

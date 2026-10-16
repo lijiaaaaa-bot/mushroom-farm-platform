@@ -45,6 +45,8 @@ interface Overview {
   deviceOnline?: number;
   todayMushroom?: number;
   todayMature?: number;
+  todayRecognitionCount?: number;
+  todayCaptureCount?: number;
   harvestableCameras?: number;
   openAlerts?: number;
   severeAlerts?: number;
@@ -118,6 +120,16 @@ const tempEl = ref<HTMLDivElement | null>(null);
 const charts: echarts.ECharts[] = [];
 
 const trend = computed(() => data.value?.trend ?? []);
+const todayNote = computed(() => {
+  const recognition = formatCount(data.value?.todayRecognitionCount);
+  const capture = formatCount(data.value?.todayCaptureCount);
+  return `今日识别次数 ${recognition} · 今日抓拍总量 ${capture}`;
+});
+
+function formatCount(value: number | null | undefined) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return '0';
+  return String(value);
+}
 const alerts = computed(() => data.value?.recentAlerts ?? []);
 const records = computed(() => data.value?.recentRecords ?? []);
 
@@ -487,6 +499,17 @@ onBeforeUnmount(() => {
   <p v-if="loading" class="text-mist">加载中…</p>
   <p v-else-if="error" class="text-danger">{{ error }}</p>
   <div v-else-if="data" class="ops-page tb-board" data-layout="tb-ops">
+    <section class="today-counts" aria-label="今日识别与抓拍">
+      <article class="tb-card">
+        <h2>今日识别次数</h2>
+        <p class="today-count" data-field="today-recognition">{{ formatCount(data.todayRecognitionCount) }}</p>
+      </article>
+      <article class="tb-card">
+        <h2>今日抓拍总量</h2>
+        <p class="today-count" data-field="today-capture">{{ formatCount(data.todayCaptureCount) }}</p>
+      </article>
+      <p class="today-counts-note" data-field="today-note">{{ todayNote }}</p>
+    </section>
     <section class="tb-top">
       <article class="tb-card">
         <header class="tb-card-head">

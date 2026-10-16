@@ -34,6 +34,7 @@ import {
   METRIC_ENV_HUMIDITY,
   METRIC_ENV_MOISTURE,
   METRIC_ENV_TEMPERATURE,
+  METRIC_CAPTURE_COUNT,
   METRIC_MATURE_COUNT,
   METRIC_MUSHROOM_COUNT,
   METRIC_SAMPLE_COUNT,
@@ -74,6 +75,10 @@ export interface TodaySnapshot {
   mushroomCount: number;
   matureCount: number;
   harvestableCameras: number;
+  /** 今日识别次数：各棚日桶 sample_count 相加。 */
+  recognitionCount: number;
+  /** 今日抓拍总量：各棚日桶 capture_count 相加。 */
+  captureCount: number;
 }
 
 export interface TrendDayRollup {
@@ -535,7 +540,13 @@ export class GrowthTrendService {
     now = new Date(),
   ): Promise<TodaySnapshot> {
     if (scope.codes && scope.codes.length === 0) {
-      return { mushroomCount: 0, matureCount: 0, harvestableCameras: 0 };
+      return {
+        mushroomCount: 0,
+        matureCount: 0,
+        harvestableCameras: 0,
+        recognitionCount: 0,
+        captureCount: 0,
+      };
     }
     const day = todayShanghai(now);
     const { start, end } = shanghaiDayRange(day);
@@ -543,7 +554,12 @@ export class GrowthTrendService {
       this.dayBuckets,
       start,
       end,
-      [METRIC_MUSHROOM_COUNT, METRIC_MATURE_COUNT],
+      [
+        METRIC_MUSHROOM_COUNT,
+        METRIC_MATURE_COUNT,
+        METRIC_SAMPLE_COUNT,
+        METRIC_CAPTURE_COUNT,
+      ],
       scope,
     );
     const shed = (metric: string) =>
@@ -560,6 +576,8 @@ export class GrowthTrendService {
       mushroomCount: Math.round(shed(METRIC_MUSHROOM_COUNT)),
       matureCount: Math.round(shed(METRIC_MATURE_COUNT)),
       harvestableCameras,
+      recognitionCount: Math.round(shed(METRIC_SAMPLE_COUNT)),
+      captureCount: Math.round(shed(METRIC_CAPTURE_COUNT)),
     };
   }
 

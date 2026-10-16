@@ -32,6 +32,8 @@ const overview = {
   deviceOnline: 1,
   todayMushroom: 12,
   todayMature: 7,
+  todayRecognitionCount: 3,
+  todayCaptureCount: 2,
   openAlerts: 1,
   severeAlerts: 1,
   env: {
@@ -105,6 +107,8 @@ const emptyOverview = {
   deviceOnline: 0,
   todayMushroom: 0,
   todayMature: 0,
+  todayRecognitionCount: 0,
+  todayCaptureCount: 0,
   openAlerts: 0,
   severeAlerts: 0,
   env: {
@@ -200,6 +204,11 @@ describe('BigScreenView', () => {
     expect(screen.top.text()).toContain('基地大屏');
     expect(wrapper.get('.metrics').text()).toContain('棚区');
     expect(wrapper.get('.metrics').text()).toContain('今日成熟');
+    expect(wrapper.get('[data-field="recognitions"]').text()).toContain('今日识别次数');
+    expect(wrapper.get('[data-field="recognitions"]').text()).toContain('3');
+    expect(wrapper.get('[data-field="captures"]').text()).toContain('今日抓拍总量');
+    expect(wrapper.get('[data-field="captures"]').text()).toContain('2');
+    expect(wrapper.get('[data-field="today-note"]').text()).toBe('今日识别次数 3 · 今日抓拍总量 2');
     expect(screen.left.text()).toContain('棚区平面');
     expect(screen.left.text()).toContain('S01');
     expect(screen.left.text()).toContain('一号棚');
